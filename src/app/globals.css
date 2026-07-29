@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --background: #f7faf5;
+  --foreground: #21312a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    Inter, ui-rounded, "SF Pro Rounded", "PingFang SC", "Microsoft YaHei",
+    sans-serif;
+}
+
+button,
+a {
+  font: inherit;
+}

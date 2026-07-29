@@ -25,4 +25,4 @@ test-results/
 .superpowers/
 .worktrees/
 *.log
-
+*.tsbuildinfo
