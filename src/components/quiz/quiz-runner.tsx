@@ -3,11 +3,14 @@
 import { useMemo, useState } from "react";
 
 import { evaluateAnswer, finishQuizAttempt } from "@/lib/quiz/attempt";
-import type { QuizQuestionDraft } from "@/lib/quiz/schema";
+import type { QuizQuestion } from "@/lib/quiz/schema";
 
 interface QuizRunnerProps {
-  questions: QuizQuestionDraft[];
+  questions: QuizQuestion[];
   passingScore?: number;
+  onComplete?: (
+    answers: Array<{ questionId: string; selected: string }>,
+  ) => Promise<void>;
 }
 
 type AnswerRecord = {
@@ -19,6 +22,7 @@ type AnswerRecord = {
 export function QuizRunner({
   questions,
   passingScore = 80,
+  onComplete,
 }: QuizRunnerProps) {
   const [activeQuestions, setActiveQuestions] = useState(questions);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -26,6 +30,8 @@ export function QuizRunner({
   const [feedback, setFeedback] = useState<AnswerRecord | null>(null);
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
   const [showResult, setShowResult] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveWarning, setSaveWarning] = useState(false);
   const current = activeQuestions[currentIndex];
   const outcome = useMemo(
     () =>
@@ -80,6 +86,11 @@ export function QuizRunner({
           答对 {answers.filter((answer) => answer.isCorrect).length} /{" "}
           {activeQuestions.length} 题
         </p>
+        {saveWarning ? (
+          <p className="mt-4 text-sm font-bold text-[#b56127]">
+            本次结果已显示，但练习记录暂未保存，请稍后再试。
+          </p>
+        ) : null}
         {missed.length > 0 ? (
           <button
             className="mt-7 min-h-12 rounded-2xl bg-[#65b87a] px-6 font-black text-white shadow-[0_4px_0_#3f9258] transition active:translate-y-1 active:shadow-none"
@@ -116,8 +127,24 @@ export function QuizRunner({
     setAnswers((previous) => [...previous, answer]);
   }
 
-  function continueQuiz() {
+  async function continueQuiz() {
     if (currentIndex === activeQuestions.length - 1) {
+      if (onComplete) {
+        setSaving(true);
+        setSaveWarning(false);
+        try {
+          await onComplete(
+            answers.map(({ questionId, selected: answerSelected }) => ({
+              questionId,
+              selected: answerSelected,
+            })),
+          );
+        } catch {
+          setSaveWarning(true);
+        } finally {
+          setSaving(false);
+        }
+      }
       setShowResult(true);
       return;
     }
@@ -126,13 +153,14 @@ export function QuizRunner({
     setFeedback(null);
   }
 
-  function restart(nextQuestions: QuizQuestionDraft[]) {
+  function restart(nextQuestions: QuizQuestion[]) {
     setActiveQuestions(nextQuestions);
     setCurrentIndex(0);
     setSelected("");
     setFeedback(null);
     setAnswers([]);
     setShowResult(false);
+    setSaveWarning(false);
   }
 
   return (
@@ -220,12 +248,15 @@ export function QuizRunner({
           {feedback ? (
             <button
               className="min-h-12 rounded-2xl bg-[#65b87a] px-6 font-black text-white shadow-[0_4px_0_#3f9258] transition active:translate-y-1 active:shadow-none"
+              disabled={saving}
               onClick={continueQuiz}
               type="button"
             >
-              {currentIndex === activeQuestions.length - 1
-                ? "查看结果"
-                : "下一题"}
+              {saving
+                ? "正在保存…"
+                : currentIndex === activeQuestions.length - 1
+                  ? "查看结果"
+                  : "下一题"}
             </button>
           ) : (
             <button
@@ -243,7 +274,7 @@ export function QuizRunner({
   );
 }
 
-function formatSource(question: QuizQuestionDraft): string {
+function formatSource(question: QuizQuestion): string {
   const source = question.sources[0];
   if (!source) {
     return "未标注";

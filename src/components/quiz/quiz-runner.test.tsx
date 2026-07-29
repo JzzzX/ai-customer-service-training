@@ -1,5 +1,10 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import { QuizRunner } from "./quiz-runner";
 import type { QuizQuestionDraft } from "@/lib/quiz/schema";
@@ -77,5 +82,39 @@ describe("QuizRunner", () => {
 
     expect(screen.getByText("第 1 / 1 题")).toBeInTheDocument();
     expect(screen.getByText("第一题的正确选项是？")).toBeInTheDocument();
+  });
+
+  it("submits the completed answer set before showing the result", async () => {
+    const onComplete = vi.fn().mockResolvedValue(undefined);
+    render(
+      <QuizRunner
+        onComplete={onComplete}
+        passingScore={80}
+        questions={questions}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("选项A"));
+    fireEvent.click(screen.getByRole("button", { name: "提交答案" }));
+    fireEvent.click(screen.getByRole("button", { name: "下一题" }));
+    fireEvent.click(screen.getByLabelText("正确"));
+    fireEvent.click(screen.getByRole("button", { name: "提交答案" }));
+    fireEvent.click(screen.getByRole("button", { name: "查看结果" }));
+
+    await waitFor(() =>
+      expect(onComplete).toHaveBeenCalledWith([
+        {
+          questionId: questions[0].id,
+          selected: "选项A",
+        },
+        {
+          questionId: questions[1].id,
+          selected: "正确",
+        },
+      ]),
+    );
+    expect(
+      screen.getByRole("heading", { name: "这组需要再练一次" }),
+    ).toBeInTheDocument();
   });
 });

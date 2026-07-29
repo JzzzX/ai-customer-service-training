@@ -20,15 +20,39 @@ export default async function AdminPage() {
         </header>
 
         <section className="mt-12 grid gap-5 md:grid-cols-3">
-          {["题库管理", "场景管理", "学习记录"].map((title) => (
+          {[
+            {
+              title: "题库管理",
+              description: "审核40道知识题，全部通过后发布给学员。",
+              href: "/admin/questions",
+            },
+            {
+              title: "场景管理",
+              description: "将在 Part 5 接入8个文字情景实战。",
+            },
+            {
+              title: "学习记录",
+              description: "学员成绩与错题记录正在接入。",
+            },
+          ].map((item) => (
             <article
               className="rounded-[24px] border-2 border-[#dde4ef] bg-white p-6"
-              key={title}
+              key={item.title}
             >
-              <h2 className="text-xl font-black text-[#21312a]">{title}</h2>
+              <h2 className="text-xl font-black text-[#21312a]">
+                {item.title}
+              </h2>
               <p className="mt-2 text-sm leading-6 text-[#68786f]">
-                数据结构已建立，功能将在后续 Part 逐步开放。
+                {item.description}
               </p>
+              {item.href ? (
+                <Link
+                  className="mt-5 inline-flex font-bold text-[#5c7cdb]"
+                  href={item.href}
+                >
+                  开始审题
+                </Link>
+              ) : null}
             </article>
           ))}
         </section>

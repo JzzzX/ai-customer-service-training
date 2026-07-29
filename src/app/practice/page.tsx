@@ -48,13 +48,25 @@ export default async function PracticePage() {
         </section>
 
         {user.role === "admin" ? (
+          <div className="mt-8 flex flex-wrap gap-5">
+            <Link
+              className="font-bold text-[#399a57]"
+              href="/practice/history"
+            >
+              查看练习记录
+            </Link>
+            <Link className="font-bold text-[#5c7cdb]" href="/admin">
+              进入管理端
+            </Link>
+          </div>
+        ) : (
           <Link
-            className="mt-8 inline-flex font-bold text-[#5c7cdb]"
-            href="/admin"
+            className="mt-8 inline-flex font-bold text-[#399a57]"
+            href="/practice/history"
           >
-            进入管理端
+            查看练习记录
           </Link>
-        ) : null}
+        )}
       </div>
     </main>
   );
