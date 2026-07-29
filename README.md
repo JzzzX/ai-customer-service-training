@@ -93,6 +93,17 @@ pnpm quiz:build
 `/practice/history` 查看自己的练习记录；本地测试记录保存在不进入Git的
 `artifacts/quiz`，后续可在不改变页面接口的前提下替换为企业正式存储。
 
+## Mock情景实战
+
+学员可从 `/practice/scenario` 进入8个固定场景，覆盖售前、物流、破损少货和客诉。
+当前使用确定性 `MockConversationProvider` 与 `MockEvaluationProvider`，支持连续
+文字对话、分块显示顾客回复、刷新恢复、最大12轮、五维演示评分、关键风险判定和
+原场景重练。
+
+所有页面和报告均明确标识“演示模式”或“演示评分”，不把Mock结果计入真实AI可信度
+验收。会话保存在不进入Git的 `artifacts/scenario`；未来接入真实模型和企业存储时，
+替换Provider与服务适配层即可，页面流程和会话契约保持不变。
+
 ## 资料边界
 
 原始客服知识库、会议记录、环境变量和本地生成报告均不进入 Git。知识编译器会从

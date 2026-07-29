@@ -37,13 +37,21 @@ export default async function PracticePage() {
           </article>
 
           <article className="rounded-[28px] border-2 border-[#dde4ef] bg-white p-7">
-            <p className="text-sm font-bold text-[#6a82cf]">下一 Part</p>
+            <p className="text-sm font-bold text-[#6a82cf]">
+              演示模式 · 约5分钟
+            </p>
             <h2 className="mt-2 text-2xl font-black text-[#21312a]">
               情景实战
             </h2>
             <p className="mt-3 leading-7 text-[#68786f]">
               在模拟顾客对话中练习售前、物流、破损和客诉处理。
             </p>
+            <Link
+              className="mt-6 inline-flex min-h-12 items-center justify-center rounded-2xl bg-[#6c8bea] px-5 font-black text-white shadow-[0_4px_0_#526fc6]"
+              href="/practice/scenario"
+            >
+              开始实战
+            </Link>
           </article>
         </section>
 
