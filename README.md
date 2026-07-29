@@ -6,8 +6,8 @@
 ## 当前进度
 
 项目按 [Roadmap](docs/ROADMAP.md) 分 Part 交付。当前版本已经建立 Next.js
-工程基线、简洁的双入口首页和版本化本地知识编译器；数据库、训练闭环和部署将在
-后续 Part 完成。
+工程基线、简洁的双入口首页、版本化本地知识编译器、PostgreSQL数据模型和预置
+账号认证；训练闭环和部署将在后续 Part 完成。
 
 ## 本地运行
 
@@ -26,8 +26,28 @@ pnpm dev
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm db:check
 pnpm build
 ```
+
+也可以一次运行全部质量门禁：
+
+```bash
+pnpm check
+```
+
+## 数据库与测试账号
+
+复制 `.env.example` 为不进入 Git 的 `.env.local`，填写 Neon 连接串、
+`AUTH_SECRET` 以及管理员和学员的测试密码，然后运行：
+
+```bash
+pnpm db:migrate
+pnpm db:seed
+```
+
+迁移采用代码优先方式保存在 `drizzle/`。预置账号不开放注册，真实密码不会写入
+仓库。
 
 ## 知识编译
 
@@ -41,6 +61,12 @@ pnpm knowledge:check
 
 ```bash
 pnpm knowledge:publish
+```
+
+Neon迁移和账号种子完成后，可以把同一知识版本以事务方式发布到数据库：
+
+```bash
+pnpm knowledge:publish:db
 ```
 
 ## 资料边界
