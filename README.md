@@ -50,6 +50,11 @@ pnpm db:seed
 仓库。当前Credentials登录仅用于MVP开发和试用；后续接入飞书账号时替换认证
 Provider与用户映射层，不引入Supabase，现有角色和训练数据模型继续复用。
 
+Neon尚未配置时，可以在不进入Git的 `.env.local` 中显式设置
+`LOCAL_TEST_AUTH_ENABLED=true`，并填写 `SEED_ADMIN_*` 与
+`SEED_LEARNER_*`。该回退只在非生产环境且没有 `DATABASE_URL` 时生效；生产环境
+或数据库已配置时会自动停用。
+
 ## 知识编译
 
 真实知识源保留在本地 `TOC售前客服知识库` 文件夹中。检查源文件覆盖情况：
