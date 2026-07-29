@@ -10,6 +10,8 @@
     "dev": "next dev",
     "build": "next build",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "knowledge:check": "tsx scripts/knowledge.ts check",
+    "knowledge:publish": "tsx scripts/knowledge.ts publish",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -18,9 +20,16 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "exceljs": "^4.4.0",
+    "fast-xml-parser": "^5.10.1",
+    "jszip": "^3.10.1",
     "next": "16.2.12",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.1.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@playwright/test": "1.62.0",
@@ -34,6 +43,7 @@
     "eslint-config-next": "16.2.12",
     "jsdom": "30.0.0",
     "tailwindcss": "4.3.3",
+    "tsx": "^4.23.1",
     "typescript": "5.9.3",
     "vitest": "4.1.10"
   }
