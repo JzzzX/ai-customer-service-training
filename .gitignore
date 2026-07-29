@@ -1,0 +1,28 @@
+# Dependencies and build output
+node_modules/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+
+# Local environment and databases
+.env
+.env.*
+!.env.example
+*.db
+*.db-journal
+
+# Private enterprise sources and generated import artifacts
+/TOC售前客服知识库/
+/outputs/
+/artifacts/
+/文字记录：宠物食品客服智能练习应用研讨会 2026年7月28日.md
+/宠物食品客服智能练习应用研讨会-会议纪要-2026-07-28.md
+
+# Local tooling
+.DS_Store
+.superpowers/
+.worktrees/
+*.log
+
