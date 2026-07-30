@@ -18,6 +18,7 @@
     "knowledge:publish": "tsx scripts/knowledge.ts publish",
     "knowledge:publish:db": "tsx scripts/publish-knowledge-to-db.ts",
     "quiz:build": "tsx scripts/quiz.ts build",
+    "quiz:publish:db": "tsx scripts/publish-quiz-to-db.ts",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
