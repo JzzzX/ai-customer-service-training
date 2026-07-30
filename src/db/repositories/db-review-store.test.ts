@@ -223,7 +223,12 @@ describe("DbReviewStore", () => {
       strengths: ["表达简洁"],
       omissions: ["未确认宠物年龄"],
       risks: [],
-      recommendations: ["先确认年龄、体重和主诉"],
+      recommendations: [
+        {
+          issue: "需求确认不足",
+          suggestedReply: "先确认年龄、体重和主诉",
+        },
+      ],
       turnFeedback: [],
       recommendedFlow: template.referenceFlow,
       sampleReply: template.referenceReply,

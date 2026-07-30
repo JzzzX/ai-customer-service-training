@@ -11,6 +11,10 @@ export const productionEnvironmentSchema = z.object({
     .startsWith("postgresql://"),
   AUTH_SECRET: z.string().min(32),
   LOCAL_TEST_AUTH_ENABLED: z.literal("false").optional(),
+  SCENARIO_AI_MODE: z.enum(["mock", "real"]).optional(),
+  OPENAI_API_KEY: z.string().min(1).optional(),
+  OPENAI_BASE_URL: z.string().min(1).optional(),
+  OPENAI_MODEL: z.string().min(1).optional(),
 });
 
 export function validateRuntimeEnvironment(

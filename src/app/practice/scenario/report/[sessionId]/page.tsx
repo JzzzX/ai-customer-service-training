@@ -33,6 +33,7 @@ export default async function ScenarioReportPage({
     notFound();
   }
   const passed = report.status === "passed";
+  const isRealMode = report.mode === "real";
 
   return (
     <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
@@ -41,9 +42,15 @@ export default async function ScenarioReportPage({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-bold text-[#5c7cdb]">训练报告</p>
-              <span className="rounded-full bg-[#eef3ff] px-3 py-1 text-xs font-bold text-[#5c7cdb]">
-                演示评分
-              </span>
+              {isRealMode ? (
+                <span className="rounded-full bg-[#eaf7ed] px-3 py-1 text-xs font-bold text-[#399a57]">
+                  AI 评分
+                </span>
+              ) : (
+                <span className="rounded-full bg-[#eef3ff] px-3 py-1 text-xs font-bold text-[#5c7cdb]">
+                  演示评分
+                </span>
+              )}
             </div>
             <h1 className="mt-2 text-3xl font-black text-[#21312a]">
               {passed ? "本次训练通过" : "本次需要重练"}
@@ -71,7 +78,9 @@ export default async function ScenarioReportPage({
             {Math.round(report.confidence * 100)}%
           </p>
           <p className="mt-3 text-xs leading-6 text-[#8a9690]">
-            这是确定性Mock评分，只用于验证产品流程，不代表真实AI评价效果。
+            {isRealMode
+              ? "本次评分由 AI 根据对话内容生成，可作为训练参考。"
+              : "这是确定性Mock评分，只用于验证产品流程，不代表真实AI评价效果。"}
           </p>
         </section>
 
@@ -128,20 +137,40 @@ export default async function ScenarioReportPage({
           </ReportCard>
         </div>
 
+        {report.lowConfidence && (
+          <section className="mt-8 rounded-[22px] border-2 border-[#f0e2c4] bg-[#fdf8ec] p-5">
+            <p className="text-sm font-bold text-[#a07a1e]">
+              本次评分置信度较低，建议人工复核后再作为考核依据。
+            </p>
+          </section>
+        )}
+
         <section className="mt-8 rounded-[24px] border-2 border-[#dce8df] bg-white p-6">
           <h2 className="text-xl font-black text-[#21312a]">
-            推荐处理流程
+            改进建议
           </h2>
-          <ol className="mt-4 space-y-3">
+          <div className="mt-4 space-y-4">
             {report.recommendations.map((item, index) => (
-              <li className="flex gap-3 leading-7 text-[#526159]" key={item}>
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[#eaf7ed] text-sm font-black text-[#399a57]">
-                  {index + 1}
-                </span>
-                <span>{item}</span>
-              </li>
+              <article
+                className="rounded-[18px] border-2 border-[#e8efe8] bg-[#f7fbf7] p-4"
+                key={`${item.issue}-${index}`}
+              >
+                <div className="flex items-start gap-3">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[#eaf7ed] text-sm font-black text-[#399a57]">
+                    {index + 1}
+                  </span>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-[#b56127]">
+                      问题：{item.issue}
+                    </p>
+                    <p className="mt-2 leading-7 text-[#526159]">
+                      建议回复：{item.suggestedReply}
+                    </p>
+                  </div>
+                </div>
+              </article>
             ))}
-          </ol>
+          </div>
         </section>
 
         <section className="mt-5 rounded-[24px] border-2 border-[#dde4ef] bg-white p-6">

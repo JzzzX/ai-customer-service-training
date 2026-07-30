@@ -18,6 +18,12 @@ import {
   MockConversationProvider,
   MockEvaluationProvider,
 } from "@/lib/scenario/mock-providers";
+import { createOpenAIProviders } from "@/lib/scenario/ai-providers";
+import {
+  createOpenAIClient,
+  resolveOpenAiModel,
+  resolveScenarioAiMode,
+} from "@/lib/scenario/ai-client";
 import type { ScenarioTemplateStore } from "@/lib/scenario/template-store";
 import { ScenarioTrainingService } from "@/lib/scenario/training-service";
 import {
@@ -165,6 +171,17 @@ export function createScenarioTrainingService(
     ...input,
     databaseFactory: () => database!,
   });
+  const aiMode = resolveScenarioAiMode(input.environment);
+  const useRealAi = aiMode === "real";
+  const providers = useRealAi
+    ? createOpenAIProviders(
+        createOpenAIClient(input.environment),
+        resolveOpenAiModel(input.environment),
+      )
+    : {
+        conversation: new MockConversationProvider(),
+        evaluation: new MockEvaluationProvider(),
+      };
 
   return new ScenarioTrainingService({
     store: isLocal
@@ -173,8 +190,8 @@ export function createScenarioTrainingService(
         )
       : new DbScenarioSessionStore(database!),
     templates,
-    conversationProvider: new MockConversationProvider(),
-    evaluationProvider: new MockEvaluationProvider(),
+    conversationProvider: providers.conversation,
+    evaluationProvider: providers.evaluation,
   });
 }
 

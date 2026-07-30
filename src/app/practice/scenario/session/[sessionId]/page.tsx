@@ -34,9 +34,15 @@ export default async function ScenarioSessionPage({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-bold text-[#5c7cdb]">情景实战</p>
-              <span className="rounded-full bg-[#eef3ff] px-3 py-1 text-xs font-bold text-[#5c7cdb]">
-                演示模式
-              </span>
+              {session.mode === "real" ? (
+                <span className="rounded-full bg-[#eaf7ed] px-3 py-1 text-xs font-bold text-[#399a57]">
+                  AI 实战
+                </span>
+              ) : (
+                <span className="rounded-full bg-[#eef3ff] px-3 py-1 text-xs font-bold text-[#5c7cdb]">
+                  演示模式
+                </span>
+              )}
             </div>
             <h1 className="mt-2 text-2xl font-black text-[#21312a]">
               模拟接待

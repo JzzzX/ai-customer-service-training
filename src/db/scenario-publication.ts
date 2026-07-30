@@ -54,7 +54,7 @@ export type PreparedScenarioPublication = {
     referenceReply: string;
     sources: SourceLocator[];
     maxTurns: number;
-    mockMode: true;
+    mockMode: boolean;
     createdById: string;
   };
 };
@@ -277,7 +277,7 @@ function prepareScenarioPublication(
       referenceReply: template.referenceReply,
       sources: template.sources,
       maxTurns: template.maxTurns,
-      mockMode: true,
+      mockMode: template.mockMode,
       createdById,
     },
   };

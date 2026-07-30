@@ -1,3 +1,4 @@
+import type { KnowledgeUnit } from "@/lib/knowledge/schema";
 import type {
   ScenarioEvaluationReport,
   ScenarioMessageInput,
@@ -9,6 +10,7 @@ export interface ConversationProvider {
     scenario: ScenarioTemplate;
     learnerTurnCount: number;
     messages: ScenarioMessageInput[];
+    knowledgeUnits?: KnowledgeUnit[];
   }): AsyncIterable<string>;
 }
 

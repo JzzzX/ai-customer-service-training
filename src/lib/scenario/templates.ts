@@ -13,11 +13,14 @@ type TemplateInput = Omit<
   | "maxTurns"
   | "status"
   | "mockMode"
+  | "difficulty"
+  | "scenarioFocus"
+  | "customerPersona"
 >;
 
 const versionIds = ["a", "b", "c", "d", "e", "f", "0", "9"];
 
-const categoryRules: Record<
+export const categoryRules: Record<
   ScenarioCategory,
   Pick<
     ScenarioTemplate,

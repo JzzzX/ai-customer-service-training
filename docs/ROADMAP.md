@@ -10,6 +10,7 @@
 - 部署：Vercel + Neon 临时演示环境；交付地址为
   `https://ai-customer-service-training.vercel.app`
 - AI：`v0.1.0` 使用Mock Provider，真实模型接入延期
+- Agent 接手入口：`docs/AGENT-HANDOFF.md`
 
 ## 进度
 

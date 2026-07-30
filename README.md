@@ -5,13 +5,17 @@
 
 ## 当前进度
 
-项目按 [Roadmap](docs/ROADMAP.md) 分 Part 交付。当前版本已经建立 Next.js
-工程基线、简洁的双入口首页、版本化本地知识编译器、PostgreSQL数据模型和临时
-账号认证，并已进入知识小测闭环开发。
+项目按 [Roadmap](docs/ROADMAP.md) 分 Part 交付。当前 `v0.1.0` 技术 Demo 已完成
+知识小测、Mock 情景实战、管理闭环、Neon 临时持久化和 Vercel 部署。正式题库、
+真实 AI、飞书身份和企业知识引擎仍待后续迭代。
+
+由其他 Agent 或开发者接手前，请先阅读
+[Agent 交接文档](docs/AGENT-HANDOFF.md)，其中包含当前基线、架构边界、验证证据、
+未完成事项和协作约束。
 
 ## 本地运行
 
-要求 Node.js 20.9 或更高版本，并使用 pnpm。
+要求 Node.js 24，并使用 pnpm 10.33。
 
 ```bash
 pnpm install

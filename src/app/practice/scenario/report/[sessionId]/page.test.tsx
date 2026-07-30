@@ -75,8 +75,12 @@ describe("ScenarioReportPage", () => {
         ),
         missedSteps: [],
         risks: [],
-        recommendations: scenario.referenceFlow,
+        recommendations: scenario.referenceFlow.map((step) => ({
+          issue: "参考流程",
+          suggestedReply: step,
+        })),
         referenceReply: scenario.referenceReply,
+        lowConfidence: false,
       },
       startedAt: "2026-07-29T08:00:00.000Z",
       updatedAt: "2026-07-29T08:02:00.000Z",
@@ -101,7 +105,7 @@ describe("ScenarioReportPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("需求与宠物信息挖掘")).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "推荐处理流程" }),
+      screen.getByRole("heading", { name: "改进建议" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "参考回复" }),

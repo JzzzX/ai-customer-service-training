@@ -1,3 +1,4 @@
+import type { KnowledgeUnit } from "@/lib/knowledge/schema";
 import type {
   ConversationProvider,
   EvaluationProvider,
@@ -9,22 +10,29 @@ import type {
 } from "./session-store";
 import type { ScenarioTemplateStore } from "./template-store";
 
+export type KnowledgeUnitLoader = (
+  scenario: ScenarioTemplate,
+) => Promise<KnowledgeUnit[]>;
+
 export class ScenarioTrainingService {
   private readonly store: ScenarioSessionStore;
   private readonly templates: ScenarioTemplateStore;
   private readonly conversationProvider: ConversationProvider;
   private readonly evaluationProvider: EvaluationProvider;
+  private readonly knowledgeUnitLoader?: KnowledgeUnitLoader;
 
   constructor(input: {
     store: ScenarioSessionStore;
     templates: ScenarioTemplateStore;
     conversationProvider: ConversationProvider;
     evaluationProvider: EvaluationProvider;
+    knowledgeUnitLoader?: KnowledgeUnitLoader;
   }) {
     this.store = input.store;
     this.templates = input.templates;
     this.conversationProvider = input.conversationProvider;
     this.evaluationProvider = input.evaluationProvider;
+    this.knowledgeUnitLoader = input.knowledgeUnitLoader;
   }
 
   async start(input: {
@@ -67,11 +75,15 @@ export class ScenarioTrainingService {
       ...session.messages.map(({ role, content }) => ({ role, content })),
       { role: "learner" as const, content: input.content },
     ];
+    const knowledgeUnits = this.knowledgeUnitLoader
+      ? await this.knowledgeUnitLoader(scenario)
+      : [];
 
     for await (const chunk of this.conversationProvider.streamCustomerReply({
       scenario,
       learnerTurnCount: session.learnerTurnCount,
       messages,
+      knowledgeUnits,
     })) {
       customerChunks.push(chunk);
     }

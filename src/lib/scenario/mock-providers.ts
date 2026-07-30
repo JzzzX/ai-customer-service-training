@@ -80,8 +80,12 @@ export class MockEvaluationProvider implements EvaluationProvider {
       strengths,
       missedSteps,
       risks,
-      recommendations: input.scenario.referenceFlow,
+      recommendations: input.scenario.referenceFlow.map((step, index) => ({
+        issue: missedSteps[index % Math.max(missedSteps.length, 1)] ?? step,
+        suggestedReply: step,
+      })),
       referenceReply: input.scenario.referenceReply,
+      lowConfidence: input.learnerMessages.length < 3,
     });
   }
 }

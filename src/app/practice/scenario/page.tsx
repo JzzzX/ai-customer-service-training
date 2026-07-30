@@ -35,6 +35,9 @@ export default async function ScenarioListPage() {
   await requireUser();
   const scenarioTemplates =
     await getScenarioTemplateStore().listPublished();
+  const hasRealScenario = scenarioTemplates.some(
+    (scenario) => !scenario.mockMode,
+  );
 
   return (
     <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
@@ -43,15 +46,21 @@ export default async function ScenarioListPage() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-bold text-[#5c7cdb]">对话训练</p>
-              <span className="rounded-full bg-[#eef3ff] px-3 py-1 text-xs font-bold text-[#5c7cdb]">
-                演示模式
-              </span>
+              {hasRealScenario ? (
+                <span className="rounded-full bg-[#eaf7ed] px-3 py-1 text-xs font-bold text-[#399a57]">
+                  AI 实战
+                </span>
+              ) : (
+                <span className="rounded-full bg-[#eef3ff] px-3 py-1 text-xs font-bold text-[#5c7cdb]">
+                  演示模式
+                </span>
+              )}
             </div>
             <h1 className="mt-2 text-3xl font-black text-[#21312a]">
               情景实战
             </h1>
             <p className="mt-2 max-w-2xl leading-7 text-[#68786f]">
-              选择一个常见客服场景，用文字和模拟顾客连续对话。结果仅用于验证训练体验。
+              选择一个常见客服场景，用文字和模拟顾客连续对话，完成训练后获得评分报告。
             </p>
           </div>
           <Link

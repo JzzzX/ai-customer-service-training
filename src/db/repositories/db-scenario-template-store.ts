@@ -29,7 +29,6 @@ export class DbScenarioTemplateStore implements ScenarioTemplateStore {
     const published = and(
       eq(scenarios.status, "published"),
       eq(scenarioVersions.status, "published"),
-      eq(scenarioVersions.mockMode, true),
       ...(scenarioId
         ? [eq(scenarios.scenarioKey, scenarioId)]
         : []),
@@ -70,6 +69,5 @@ function mapTemplate(
   return {
     ...row,
     status: "published",
-    mockMode: true,
   };
 }

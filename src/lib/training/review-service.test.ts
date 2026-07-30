@@ -37,7 +37,9 @@ class MemoryReviewStore implements ReviewStore {
       strengths: ["表达清晰"],
       missedSteps: ["未追问宠物年龄"],
       risks: [],
-      recommendations: ["先确认宠物基本信息"],
+      recommendations: [
+        { issue: "需求确认不足", suggestedReply: "先确认宠物基本信息" },
+      ],
       referenceReply: "您好，请问宠物的年龄和体重是多少？",
       reviewTrigger: "failed" as const,
       transcript: [],

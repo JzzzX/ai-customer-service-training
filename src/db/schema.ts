@@ -21,6 +21,7 @@ import type { SourceLocator } from "@/lib/knowledge/schema";
 import type { QuizQuestionDraft } from "@/lib/quiz/schema";
 import type {
   ScenarioEvaluationReport,
+  ScenarioRecommendation,
   ScenarioTemplate,
 } from "@/lib/scenario/schema";
 
@@ -434,10 +435,6 @@ export const scenarioVersions = pgTable(
       "scenario_versions_max_turns_check",
       sql`${table.maxTurns} between 8 and 16`,
     ),
-    check(
-      "scenario_versions_mock_mode_check",
-      sql`${table.mockMode} = true`,
-    ),
   ],
 );
 
@@ -518,10 +515,6 @@ export const trainingSessions = pgTable(
       table.learnerId,
       table.startedAt,
     ),
-    check(
-      "training_sessions_mock_mode_check",
-      sql`${table.mode} = 'mock'`,
-    ),
   ],
 );
 
@@ -566,7 +559,9 @@ export const evaluationReports = pgTable(
     strengths: jsonb("strengths").$type<string[]>().notNull(),
     omissions: jsonb("omissions").$type<string[]>().notNull(),
     risks: jsonb("risks").$type<string[]>().notNull(),
-    recommendations: jsonb("recommendations").$type<string[]>().notNull(),
+    recommendations: jsonb("recommendations")
+      .$type<ScenarioRecommendation[]>()
+      .notNull(),
     turnFeedback: jsonb("turn_feedback")
       .$type<Array<Record<string, unknown>>>()
       .notNull(),
@@ -576,6 +571,7 @@ export const evaluationReports = pgTable(
       .$type<Array<Record<string, unknown>>>()
       .notNull(),
     confidence: numeric("confidence", { precision: 4, scale: 3 }).notNull(),
+    lowConfidence: boolean("low_confidence").default(false).notNull(),
     needsReview: boolean("needs_review").default(false).notNull(),
     reviewTrigger: reviewTriggerEnum("review_trigger"),
     createdAt: timestamp("created_at", { withTimezone: true })

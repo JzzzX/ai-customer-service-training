@@ -9,6 +9,14 @@ export const scenarioCategorySchema = z.enum([
   "complaint",
 ]);
 
+export const customerPersonaSchema = z.object({
+  temperament: z.enum(["calm", "anxious", "irritable", "bargain_hunting"]),
+  knowledgeLevel: z.enum(["low", "medium", "high"]),
+  mood: z.string().trim().min(1),
+});
+
+export const difficultySchema = z.enum(["easy", "medium", "hard"]);
+
 export const scenarioTemplateSchema = z.object({
   id: z.string().regex(/^st_[a-f0-9]{24}$/),
   versionId: z.string().regex(/^sv_[a-f0-9]{24}$/),
@@ -48,20 +56,28 @@ export const scenarioTemplateSchema = z.object({
   sources: z.array(sourceLocatorSchema).min(1),
   maxTurns: z.number().int().min(8).max(16),
   status: z.literal("published"),
-  mockMode: z.literal(true),
+  mockMode: z.boolean(),
+  customerPersona: customerPersonaSchema.optional(),
+  difficulty: difficultySchema.default("medium"),
+  scenarioFocus: z.string().trim().min(1).optional(),
 });
 
 export const scenarioTemplatesSchema = z
   .array(scenarioTemplateSchema)
-  .length(8);
+  .min(1);
 
 export const scenarioMessageInputSchema = z.object({
   role: z.enum(["customer", "learner"]),
   content: z.string().trim().min(1),
 });
 
+export const scenarioRecommendationSchema = z.object({
+  issue: z.string().trim().min(1),
+  suggestedReply: z.string().trim().min(1),
+});
+
 export const scenarioEvaluationReportSchema = z.object({
-  mode: z.literal("mock"),
+  mode: z.enum(["mock", "real"]),
   totalScore: z.number().int().min(0).max(100),
   status: z.enum(["passed", "needs_retry"]),
   confidence: z.number().min(0).max(1),
@@ -78,8 +94,9 @@ export const scenarioEvaluationReportSchema = z.object({
   strengths: z.array(z.string().trim().min(1)),
   missedSteps: z.array(z.string().trim().min(1)),
   risks: z.array(z.string().trim().min(1)),
-  recommendations: z.array(z.string().trim().min(1)),
+  recommendations: z.array(scenarioRecommendationSchema),
   referenceReply: z.string().trim().min(1),
+  lowConfidence: z.boolean().default(false),
 });
 
 export const scenarioSessionSchema = z
@@ -89,7 +106,7 @@ export const scenarioSessionSchema = z
     scenarioId: z.string().regex(/^st_[a-f0-9]{24}$/),
     scenarioVersionId: z.string().regex(/^sv_[a-f0-9]{24}$/),
     status: z.enum(["active", "completed"]),
-    mode: z.literal("mock"),
+    mode: z.enum(["mock", "real"]),
     learnerTurnCount: z.number().int().min(0),
     maxTurns: z.number().int().min(8).max(16),
     messages: z
@@ -129,9 +146,15 @@ export const scenarioSessionSchema = z
   });
 
 export type ScenarioCategory = z.infer<typeof scenarioCategorySchema>;
+export type ScenarioMode = "mock" | "real";
+export type CustomerPersona = z.infer<typeof customerPersonaSchema>;
+export type Difficulty = z.infer<typeof difficultySchema>;
 export type ScenarioTemplate = z.infer<typeof scenarioTemplateSchema>;
 export type ScenarioMessageInput = z.infer<
   typeof scenarioMessageInputSchema
+>;
+export type ScenarioRecommendation = z.infer<
+  typeof scenarioRecommendationSchema
 >;
 export type ScenarioEvaluationReport = z.infer<
   typeof scenarioEvaluationReportSchema

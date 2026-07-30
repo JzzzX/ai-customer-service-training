@@ -37,7 +37,7 @@ export class LocalScenarioSessionStore implements ScenarioSessionStore {
       scenarioId: input.scenario.id,
       scenarioVersionId: input.scenario.versionId,
       status: "active",
-      mode: "mock",
+      mode: input.scenario.mockMode ? "mock" : "real",
       learnerTurnCount: 0,
       maxTurns: input.scenario.maxTurns,
       messages: [

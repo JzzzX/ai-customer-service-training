@@ -62,7 +62,6 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
           ),
           eq(scenarios.status, "published"),
           eq(scenarioVersions.status, "published"),
-          eq(scenarioVersions.mockMode, true),
         ),
       )
       .limit(1);
@@ -101,7 +100,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
             knowledgeVersionId: version.knowledgeVersionId,
             scenarioVersionId: version.id,
             status: "in_progress",
-            mode: "mock",
+            mode: inputValue.scenario.mockMode ? "mock" : "real",
             turnCount: 0,
             startedAt,
             updatedAt: startedAt,
@@ -138,6 +137,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
         scenarioId: scenarios.scenarioKey,
         scenarioVersionId: scenarioVersions.versionKey,
         status: trainingSessions.status,
+        mode: trainingSessions.mode,
         turnCount: trainingSessions.turnCount,
         maxTurns: scenarioVersions.maxTurns,
         startedAt: trainingSessions.startedAt,
@@ -181,7 +181,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
       .limit(1);
     const report = storedReport
       ? scenarioEvaluationReportSchema.parse({
-          mode: "mock",
+          mode: session.mode as "mock" | "real",
           totalScore: storedReport.totalScore,
           status: storedReport.verdict,
           confidence: Number(storedReport.confidence),
@@ -191,6 +191,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
           risks: storedReport.risks,
           recommendations: storedReport.recommendations,
           referenceReply: storedReport.sampleReply,
+          lowConfidence: storedReport.lowConfidence,
         })
       : undefined;
     const isCompleted = session.status !== "in_progress";
@@ -201,7 +202,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
       scenarioId: session.scenarioId,
       scenarioVersionId: session.scenarioVersionId,
       status: isCompleted ? "completed" : "active",
-      mode: "mock",
+      mode: session.mode as "mock" | "real",
       learnerTurnCount: session.turnCount,
       maxTurns: session.maxTurns,
       messages: messages.map((message) => ({
@@ -315,6 +316,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
   ): Promise<ScenarioSession> {
     const identity = sessionIdentitySchema.parse(inputValue);
     const report = scenarioEvaluationReportSchema.parse(inputValue.report);
+    console.log("[DEBUG completeSession] report.lowConfidence =", report.lowConfidence);
     const completedAt = inputValue.completedAt
       ? new Date(inputValue.completedAt)
       : new Date();
@@ -360,13 +362,16 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
           risks: report.risks,
           recommendations: report.recommendations,
           turnFeedback: [],
-          recommendedFlow: report.recommendations,
+          recommendedFlow: report.recommendations.map(
+            (item) => item.suggestedReply,
+          ),
           sampleReply: report.referenceReply,
           evidence: report.dimensions.map((dimension) => ({
             dimension: dimension.name,
             evidence: dimension.evidence,
           })),
           confidence: report.confidence.toFixed(3),
+          lowConfidence: report.lowConfidence,
           needsReview: Boolean(reviewTrigger),
           reviewTrigger,
         })
