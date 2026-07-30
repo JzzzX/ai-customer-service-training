@@ -19,20 +19,43 @@ export default async function AdminPage() {
           <SignOutButton />
         </header>
 
-        <section className="mt-12 grid gap-5 md:grid-cols-3">
+        <section className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {[
+            {
+              title: "知识库状态",
+              description: "检查生产知识快照、冲突与发布覆盖。",
+              href: "/admin/knowledge",
+              action: "查看根基",
+            },
             {
               title: "题库管理",
               description: "审核40道知识题，全部通过后发布给学员。",
               href: "/admin/questions",
+              action: "开始审题",
             },
             {
               title: "场景管理",
-              description: "将在 Part 5 接入8个文字情景实战。",
+              description: "查看8个已发布文字场景及知识依据。",
+              href: "/admin/scenarios",
+              action: "查看场景",
+            },
+            {
+              title: "训练任务",
+              description: "向客服新人下发小测或情景实战。",
+              href: "/admin/assignments",
+              action: "下发任务",
             },
             {
               title: "学习记录",
-              description: "学员成绩与错题记录正在接入。",
+              description: "按学员查看任务状态与完成记录。",
+              href: "/admin/history",
+              action: "查看记录",
+            },
+            {
+              title: "人工复核",
+              description: "处理低分、风险与抽样训练报告。",
+              href: "/admin/reviews",
+              action: "查看队列",
             },
           ].map((item) => (
             <article
@@ -50,7 +73,7 @@ export default async function AdminPage() {
                   className="mt-5 inline-flex font-bold text-[#5c7cdb]"
                   href={item.href}
                 >
-                  开始审题
+                  {item.action}
                 </Link>
               ) : null}
             </article>

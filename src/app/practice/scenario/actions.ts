@@ -8,6 +8,10 @@ import { getScenarioTrainingService } from "@/lib/runtime/services";
 
 const scenarioIdSchema = z.string().regex(/^st_[a-f0-9]{24}$/);
 const sessionIdSchema = z.string().uuid();
+const optionalAssignmentIdSchema = z.preprocess(
+  (value) => (value === null || value === "" ? undefined : value),
+  z.string().uuid().optional(),
+);
 const messageSchema = z.string().trim().min(1).max(1000);
 
 type SendMessageResult = Awaited<
@@ -26,9 +30,13 @@ export async function startScenarioAction(
 ): Promise<void> {
   const user = await requireUser();
   const scenarioId = scenarioIdSchema.parse(formData.get("scenarioId"));
+  const assignmentId = optionalAssignmentIdSchema.parse(
+    formData.get("assignmentId"),
+  );
   const session = await getScenarioTrainingService().start({
     learnerId: user.id,
     scenarioId,
+    assignmentId,
   });
   redirect(`/practice/scenario/session/${session.id}`);
 }

@@ -10,8 +10,18 @@ import { selectQuestionGroup } from "@/lib/quiz/select-question-group";
 
 import { saveQuizAttemptAction } from "./actions";
 
-export default async function PracticeQuizPage() {
+export default async function PracticeQuizPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ assignment?: string }>;
+} = {}) {
   await requireUser();
+  const assignmentInput = (await searchParams)?.assignment;
+  const assignmentId =
+    assignmentInput &&
+    /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(assignmentInput)
+      ? assignmentInput
+      : undefined;
   const attemptId = randomUUID();
   const publishedQuiz = await loadPublishedQuiz();
   const questions = publishedQuiz
@@ -19,7 +29,11 @@ export default async function PracticeQuizPage() {
     : demoQuizQuestions;
   const passingScore = publishedQuiz?.passingScore ?? 80;
   const saveAttempt = publishedQuiz
-    ? saveQuizAttemptAction.bind(null, publishedQuiz.quizHash)
+    ? saveQuizAttemptAction.bind(
+        null,
+        publishedQuiz.quizHash,
+        assignmentId,
+      )
     : undefined;
 
   return (

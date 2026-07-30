@@ -8,11 +8,19 @@ import { startScenarioAction } from "../actions";
 
 export default async function ScenarioDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ scenarioId: string }>;
+  searchParams?: Promise<{ assignment?: string }>;
 }) {
   await requireUser();
   const { scenarioId } = await params;
+  const assignmentInput = (await searchParams)?.assignment;
+  const assignmentId =
+    assignmentInput &&
+    /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(assignmentInput)
+      ? assignmentInput
+      : undefined;
   const scenario =
     await getScenarioTemplateStore().getPublishedById(scenarioId);
   if (!scenario) {
@@ -59,6 +67,13 @@ export default async function ScenarioDetailPage({
 
           <form action={startScenarioAction} className="mt-8">
             <input name="scenarioId" type="hidden" value={scenario.id} />
+            {assignmentId ? (
+              <input
+                name="assignmentId"
+                type="hidden"
+                value={assignmentId}
+              />
+            ) : null}
             <button
               className="min-h-12 w-full rounded-2xl bg-[#6c8bea] px-6 font-black text-white shadow-[0_4px_0_#526fc6] active:translate-y-1 active:shadow-none"
               type="submit"

@@ -19,7 +19,22 @@ export default async function PracticePage() {
           <SignOutButton />
         </header>
 
-        <section className="mt-12 grid gap-5 md:grid-cols-2">
+        <section className="mt-12 grid gap-5 md:grid-cols-3">
+          <article className="rounded-[28px] border-2 border-[#f0dfb5] bg-white p-7">
+            <p className="text-sm font-bold text-[#9a641f]">管理员下发</p>
+            <h2 className="mt-2 text-2xl font-black text-[#21312a]">
+              我的任务
+            </h2>
+            <p className="mt-3 leading-7 text-[#68786f]">
+              集中查看待完成、进行中和已完成的正式训练。
+            </p>
+            <Link
+              className="mt-6 inline-flex min-h-12 items-center justify-center rounded-2xl bg-[#e6a948] px-5 font-black text-white shadow-[0_4px_0_#bb7d25]"
+              href="/practice/assignments"
+            >
+              查看任务
+            </Link>
+          </article>
           <article className="rounded-[28px] border-2 border-[#cfe5d4] bg-white p-7 shadow-[0_7px_0_#cfe5d4]">
             <p className="text-sm font-bold text-[#399a57]">5题 · 约3分钟</p>
             <h2 className="mt-2 text-2xl font-black text-[#21312a]">

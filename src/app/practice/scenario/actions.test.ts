@@ -53,10 +53,18 @@ describe("scenario server actions", () => {
     mocks.start.mockResolvedValue({ id: sessionId });
     const formData = new FormData();
     formData.set("scenarioId", scenarioId);
+    formData.set(
+      "assignmentId",
+      "00000000-0000-4000-8000-000000000090",
+    );
 
     await startScenarioAction(formData);
 
-    expect(mocks.start).toHaveBeenCalledWith({ learnerId, scenarioId });
+    expect(mocks.start).toHaveBeenCalledWith({
+      learnerId,
+      scenarioId,
+      assignmentId: "00000000-0000-4000-8000-000000000090",
+    });
     expect(mocks.redirect).toHaveBeenCalledWith(
       `/practice/scenario/session/${sessionId}`,
     );

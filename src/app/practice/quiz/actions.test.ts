@@ -62,7 +62,7 @@ describe("saveQuizAttemptAction", () => {
   });
 
   it("rechecks answers on the server and stores them under the session user", async () => {
-    await saveQuizAttemptAction(quizHash, attemptId, [
+    await saveQuizAttemptAction(quizHash, undefined, attemptId, [
       {
         questionId: `qq_${"1".repeat(24)}`,
         selected: "答案一",
@@ -77,6 +77,7 @@ describe("saveQuizAttemptAction", () => {
       attemptId,
       learnerId,
       quizHash,
+      assignmentId: undefined,
       passingScore: 80,
       answers: [
         {
@@ -96,7 +97,7 @@ describe("saveQuizAttemptAction", () => {
 
   it("rejects answers that do not belong to the active published quiz", async () => {
     await expect(
-      saveQuizAttemptAction(quizHash, attemptId, [
+      saveQuizAttemptAction(quizHash, undefined, attemptId, [
         {
           questionId: `qq_${"f".repeat(24)}`,
           selected: "答案一",
@@ -105,5 +106,21 @@ describe("saveQuizAttemptAction", () => {
     ).rejects.toThrow("题目不属于当前已发布题组");
 
     expect(mocks.saveQuizAttemptForLearner).not.toHaveBeenCalled();
+  });
+
+  it("attaches a valid learner assignment to the saved attempt", async () => {
+    const assignmentId =
+      "00000000-0000-4000-8000-000000000090";
+
+    await saveQuizAttemptAction(quizHash, assignmentId, attemptId, [
+      {
+        questionId: `qq_${"1".repeat(24)}`,
+        selected: "答案一",
+      },
+    ]);
+
+    expect(mocks.saveQuizAttemptForLearner).toHaveBeenCalledWith(
+      expect.objectContaining({ assignmentId }),
+    );
   });
 });

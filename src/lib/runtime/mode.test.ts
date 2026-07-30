@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readFile, readdir } from "node:fs/promises";
+import { join, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -38,18 +38,7 @@ describe("runtime mode", () => {
   });
 
   it("keeps application routes free of concrete persistence imports", async () => {
-    const files = [
-      "src/app/admin/questions/actions.ts",
-      "src/app/admin/questions/page.tsx",
-      "src/app/practice/quiz/actions.ts",
-      "src/app/practice/quiz/page.tsx",
-      "src/app/practice/history/page.tsx",
-      "src/app/practice/scenario/actions.ts",
-      "src/app/practice/scenario/page.tsx",
-      "src/app/practice/scenario/[scenarioId]/page.tsx",
-      "src/app/practice/scenario/session/[sessionId]/page.tsx",
-      "src/app/practice/scenario/report/[sessionId]/page.tsx",
-    ];
+    const files = await collectApplicationFiles("src/app");
     const forbidden = [
       "LocalQuiz",
       "LocalScenario",
@@ -69,3 +58,23 @@ describe("runtime mode", () => {
     }
   });
 });
+
+async function collectApplicationFiles(root: string): Promise<string[]> {
+  const entries = await readdir(resolve(process.cwd(), root), {
+    withFileTypes: true,
+  });
+  const nested = await Promise.all(
+    entries.map(async (entry) => {
+      const path = join(root, entry.name);
+      if (entry.isDirectory()) {
+        return collectApplicationFiles(path);
+      }
+      return /\.(ts|tsx)$/.test(entry.name) &&
+        !entry.name.endsWith(".test.ts") &&
+        !entry.name.endsWith(".test.tsx")
+        ? [path]
+        : [];
+    }),
+  );
+  return nested.flat();
+}

@@ -19,6 +19,7 @@ class MemoryAssignmentStore implements AssignmentStore {
       assignmentType: input.assignmentType,
       targetId: input.targetId,
       targetLabel: "正式训练内容",
+      launchHref: "/practice/scenario/test",
       status: "assigned" as const,
       ...(input.dueAt ? { dueAt: input.dueAt } : {}),
       createdAt: input.createdAt,

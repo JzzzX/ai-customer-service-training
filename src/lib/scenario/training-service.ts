@@ -30,6 +30,7 @@ export class ScenarioTrainingService {
   async start(input: {
     learnerId: string;
     scenarioId: string;
+    assignmentId?: string;
   }): Promise<ScenarioSession> {
     const scenario = await this.templates.getPublishedById(
       input.scenarioId,
@@ -40,6 +41,7 @@ export class ScenarioTrainingService {
     return this.store.startSession({
       learnerId: input.learnerId,
       scenario,
+      assignmentId: input.assignmentId,
     });
   }
 

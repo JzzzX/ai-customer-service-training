@@ -28,11 +28,15 @@ export type QuizAnswerSubmission = z.infer<typeof submittedAnswerSchema>;
 
 export async function saveQuizAttemptAction(
   quizHash: string,
+  assignmentIdInput: string | undefined,
   attemptIdInput: string,
   submittedAnswers: QuizAnswerSubmission[],
 ): Promise<void> {
   const user = await requireUser();
   const attemptId = z.string().uuid().parse(attemptIdInput);
+  const assignmentId = assignmentIdInput
+    ? z.string().uuid().parse(assignmentIdInput)
+    : undefined;
   const answers = submittedAnswersSchema.parse(submittedAnswers);
   const publishedQuiz = await loadPublishedQuiz();
 
@@ -61,6 +65,7 @@ export async function saveQuizAttemptAction(
     attemptId,
     learnerId: user.id,
     quizHash,
+    assignmentId,
     passingScore: publishedQuiz.passingScore,
     answers: checkedAnswers,
   });

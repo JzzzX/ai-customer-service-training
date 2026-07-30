@@ -38,6 +38,7 @@ export const trainingAssignmentSchema = z.object({
   assignmentType: assignmentTypeSchema,
   targetId: z.string().uuid(),
   targetLabel: z.string().trim().min(1),
+  launchHref: z.string().startsWith("/practice/"),
   status: assignmentStatusSchema,
   dueAt: z.string().datetime().optional(),
   startedAt: z.string().datetime().optional(),

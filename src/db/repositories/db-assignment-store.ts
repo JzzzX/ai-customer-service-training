@@ -27,6 +27,7 @@ type AssignmentRow = {
   quizTitle: string | null;
   scenarioVersionId: string | null;
   scenarioTitle: string | null;
+  scenarioKey: string | null;
   status: "assigned" | "in_progress" | "completed";
   dueAt: Date | null;
   startedAt: Date | null;
@@ -168,6 +169,7 @@ export class DbAssignmentStore implements AssignmentStore {
         quizTitle: quizSets.title,
         scenarioVersionId: assignments.scenarioVersionId,
         scenarioTitle: scenarios.title,
+        scenarioKey: scenarios.scenarioKey,
         status: assignments.status,
         dueAt: assignments.dueAt,
         startedAt: assignments.startedAt,
@@ -194,7 +196,11 @@ function mapAssignment(row: AssignmentRow): TrainingAssignment {
   const isQuiz = row.assignmentType === "quiz";
   const targetId = isQuiz ? row.quizSetId : row.scenarioVersionId;
   const targetLabel = isQuiz ? row.quizTitle : row.scenarioTitle;
-  if (!targetId || !targetLabel) {
+  if (
+    !targetId ||
+    !targetLabel ||
+    (!isQuiz && !row.scenarioKey)
+  ) {
     throw new Error("训练任务目标数据不完整。");
   }
 
@@ -206,6 +212,10 @@ function mapAssignment(row: AssignmentRow): TrainingAssignment {
     assignmentType: row.assignmentType,
     targetId,
     targetLabel,
+    launchHref:
+      row.assignmentType === "quiz"
+        ? `/practice/quiz?assignment=${row.id}`
+        : `/practice/scenario/${row.scenarioKey}?assignment=${row.id}`,
     status: row.status,
     ...(row.dueAt ? { dueAt: row.dueAt.toISOString() } : {}),
     ...(row.startedAt

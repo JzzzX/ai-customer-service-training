@@ -7,6 +7,8 @@ import { DbAssignmentStore } from "@/db/repositories/db-assignment-store";
 import { DbReviewStore } from "@/db/repositories/db-review-store";
 import { DbScenarioSessionStore } from "@/db/repositories/db-scenario-session-store";
 import { DbScenarioTemplateStore } from "@/db/repositories/db-scenario-template-store";
+import { DbTrainingCatalogStore } from "@/db/repositories/db-training-catalog-store";
+import { DbKnowledgeQueryStore } from "@/db/repositories/db-knowledge-query-store";
 import { LocalQuizAttemptStore } from "@/lib/quiz/local-attempt-store";
 import { LocalQuizReviewStore } from "@/lib/quiz/local-review-store";
 import type { QuizAttemptStore } from "@/lib/quiz/attempt-store";
@@ -22,8 +24,16 @@ import {
   getScenarioTemplate,
   scenarioTemplates,
 } from "@/lib/scenario/templates";
+import {
+  EmptyKnowledgeQueryStore,
+  type KnowledgeQueryStore,
+} from "@/lib/knowledge/query-store";
 import { AssignmentService } from "@/lib/training/assignment-service";
 import type { AssignmentStore } from "@/lib/training/assignment-store";
+import {
+  EmptyTrainingCatalogStore,
+  type TrainingCatalogStore,
+} from "@/lib/training/catalog-store";
 import {
   LocalReadonlyAssignmentStore,
   LocalReadonlyReviewStore,
@@ -82,6 +92,24 @@ export function createReviewStore(
   return new DbReviewStore(input.databaseFactory());
 }
 
+export function createTrainingCatalogStore(
+  input: StoreCompositionInput,
+): TrainingCatalogStore {
+  if (runtimeMode(input) === "local_demo") {
+    return new EmptyTrainingCatalogStore();
+  }
+  return new DbTrainingCatalogStore(input.databaseFactory());
+}
+
+export function createKnowledgeQueryStore(
+  input: StoreCompositionInput,
+): KnowledgeQueryStore {
+  if (runtimeMode(input) === "local_demo") {
+    return new EmptyKnowledgeQueryStore();
+  }
+  return new DbKnowledgeQueryStore(input.databaseFactory());
+}
+
 export function createAssignmentService(
   input: StoreCompositionInput,
 ): AssignmentService {
@@ -118,6 +146,14 @@ export function getAssignmentService(): AssignmentService {
 
 export function getReviewService(): ReviewService {
   return createReviewService(defaultCompositionInput());
+}
+
+export function getTrainingCatalogStore(): TrainingCatalogStore {
+  return createTrainingCatalogStore(defaultCompositionInput());
+}
+
+export function getKnowledgeQueryStore(): KnowledgeQueryStore {
+  return createKnowledgeQueryStore(defaultCompositionInput());
 }
 
 export function createScenarioTrainingService(
