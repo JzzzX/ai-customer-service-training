@@ -225,7 +225,9 @@ const inputs: TemplateInput[] = [
     ],
     referenceReply:
       "理解您担心幼犬换粮后肠胃不适。可以先确认当前主粮和软便频率，再按7天换粮法逐步过渡，并结合预算推荐适龄主粮；搭配产品只在确有需要时说明。",
-    sources: [source("销售场景(2).md", "售前/产品推荐")],
+    sources: [
+      source("销售场景.md", "h:销售场景/正确推荐产品"),
+    ],
   },
   {
     id: `st_${"2".repeat(24)}`,
@@ -241,7 +243,12 @@ const inputs: TemplateInput[] = [
     ],
     referenceReply:
       "理解您担心适口性和浪费。先确认猫咪当前饮食，再说明与需求相关的产品特点，并只介绍当前有效活动；如需考虑，可约定后续跟进。",
-    sources: [source("销售场景(2).md", "售前/价格异议")],
+    sources: [
+      source(
+        "销售场景.md",
+        "h:销售场景/客户谈价格，怎么正确回应",
+      ),
+    ],
   },
   {
     id: `st_${"3".repeat(24)}`,
@@ -257,7 +264,7 @@ const inputs: TemplateInput[] = [
     ],
     referenceReply:
       "先核实订单号和最后物流节点，再联系快递查询。不能保证具体到达时间，但会说明预计反馈节点，并在异常确认后按流程继续处理。",
-    sources: [source("客服服务流程(1).md", "物流/在途异常")],
+    sources: [source("销售场景.md", "h:销售场景/正确跟单")],
   },
   {
     id: `st_${"4".repeat(24)}`,
@@ -273,7 +280,7 @@ const inputs: TemplateInput[] = [
     ],
     referenceReply:
       "先确认订单和物流状态，再按规则尝试联系快递拦截或改址，但不承诺一定成功；同时说明失败后的签收协调路径和跟进节点。",
-    sources: [source("客服服务流程(1).md", "物流/改址拦截")],
+    sources: [source("销售场景.md", "h:销售场景/正确跟单")],
   },
   {
     id: `st_${"5".repeat(24)}`,
@@ -289,7 +296,13 @@ const inputs: TemplateInput[] = [
     ],
     referenceReply:
       "先核对订单明细，再收集外箱、面单、箱内商品和开箱视频；完成仓库核查后按规则提供补发或售后方案，并说明反馈节点。",
-    sources: [source("客服服务流程(1).md", "售后/错发漏发")],
+    sources: [
+      excelSource(
+        "售前_客诉接待问题划分. xlsx",
+        37,
+        "缺斤少量（包装无破损，重量不足）",
+      ),
+    ],
   },
   {
     id: `st_${"6".repeat(24)}`,
@@ -305,7 +318,13 @@ const inputs: TemplateInput[] = [
     ],
     referenceReply:
       "先安抚并确认破损范围，收集外箱、面单和商品照片；提醒不要喂食漏液产品，再按核实结果提供补发或售后方案。",
-    sources: [source("客服服务流程(1).md", "售后/破损")],
+    sources: [
+      excelSource(
+        "售前_客诉接待问题划分. xlsx",
+        22,
+        "包装破损/包装变形/包装不规则",
+      ),
+    ],
   },
   {
     id: `st_${"7".repeat(24)}`,
@@ -321,7 +340,13 @@ const inputs: TemplateInput[] = [
     ],
     referenceReply:
       "理解您担心猫咪突然拒食。先确认换粮方式、精神状态和其他症状，避免直接判断产品问题；可按情况调整过渡，并在持续拒食或状态异常时及时就医。",
-    sources: [source("售前客服接待问题.md", "客诉/拒食")],
+    sources: [
+      excelSource(
+        "售前_客诉接待问题划分. xlsx",
+        1,
+        "不吃（退货运费）",
+      ),
+    ],
   },
   {
     id: `st_${"8".repeat(24)}`,
@@ -337,7 +362,13 @@ const inputs: TemplateInput[] = [
     ],
     referenceReply:
       "先接纳顾客情绪并确认宠物、喂食量、症状和持续时间。不能做确定性诊断；出现连续呕吐和精神不佳时应建议停止喂食并及时就医，同时按客诉流程升级跟进。",
-    sources: [source("售前客服接待问题.md", "客诉/呕吐软便")],
+    sources: [
+      excelSource(
+        "售前_客诉接待问题划分. xlsx",
+        5,
+        "食后呕吐腹泻",
+      ),
+    ],
   },
 ];
 
@@ -363,6 +394,21 @@ function source(sourcePath: string, anchor: string) {
     sourcePath,
     kind: "markdown" as const,
     anchor,
-    path: anchor.split("/"),
+    path: anchor.replace(/^h:/u, "").split("/"),
+  };
+}
+
+function excelSource(
+  sourcePath: string,
+  row: number,
+  title: string,
+) {
+  return {
+    sourcePath,
+    kind: "excel" as const,
+    anchor: `sheet:Sheet1/row:${row}`,
+    sheet: "Sheet1",
+    row,
+    path: ["Sheet1", title],
   };
 }
