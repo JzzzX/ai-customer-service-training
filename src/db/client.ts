@@ -2,6 +2,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 
 import * as schema from "./schema";
+import { validateRuntimeEnvironment } from "@/lib/runtime/env";
 
 type Environment = Record<string, string | undefined>;
 
@@ -28,6 +29,7 @@ export type DatabaseClient = ReturnType<typeof createDatabaseClient>;
 let database: ReturnType<typeof createDatabaseClient> | undefined;
 
 export function getDatabase() {
+  validateRuntimeEnvironment();
   database ??= createDatabaseClient(requireDatabaseUrl());
   return database;
 }
