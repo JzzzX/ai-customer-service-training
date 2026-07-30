@@ -141,6 +141,10 @@ export function publishQuizReview(review: QuizReview): QuizPublishedPack {
   });
 }
 
+export function hashQuizQuestion(question: QuizQuestionDraft): string {
+  return digest(quizQuestionDraftSchema.parse(question));
+}
+
 function digest(value: unknown): string {
   return createHash("sha256")
     .update(JSON.stringify(value))

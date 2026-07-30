@@ -23,6 +23,8 @@ export function createDatabaseClient(databaseUrl: string) {
   return drizzle({ client, schema });
 }
 
+export type DatabaseClient = ReturnType<typeof createDatabaseClient>;
+
 let database: ReturnType<typeof createDatabaseClient> | undefined;
 
 export function getDatabase() {
