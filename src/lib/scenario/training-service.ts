@@ -3,25 +3,26 @@ import type {
   EvaluationProvider,
 } from "./providers";
 import type { ScenarioSession, ScenarioTemplate } from "./schema";
-import { LocalScenarioSessionStore } from "./local-session-store";
-import { getScenarioTemplate } from "./templates";
-
-type SessionIdentity = {
-  learnerId: string;
-  sessionId: string;
-};
+import type {
+  ScenarioSessionStore,
+  SessionIdentity,
+} from "./session-store";
+import type { ScenarioTemplateStore } from "./template-store";
 
 export class ScenarioTrainingService {
-  private readonly store: LocalScenarioSessionStore;
+  private readonly store: ScenarioSessionStore;
+  private readonly templates: ScenarioTemplateStore;
   private readonly conversationProvider: ConversationProvider;
   private readonly evaluationProvider: EvaluationProvider;
 
   constructor(input: {
-    store: LocalScenarioSessionStore;
+    store: ScenarioSessionStore;
+    templates: ScenarioTemplateStore;
     conversationProvider: ConversationProvider;
     evaluationProvider: EvaluationProvider;
   }) {
     this.store = input.store;
+    this.templates = input.templates;
     this.conversationProvider = input.conversationProvider;
     this.evaluationProvider = input.evaluationProvider;
   }
@@ -30,7 +31,9 @@ export class ScenarioTrainingService {
     learnerId: string;
     scenarioId: string;
   }): Promise<ScenarioSession> {
-    const scenario = getScenarioTemplate(input.scenarioId);
+    const scenario = await this.templates.getPublishedById(
+      input.scenarioId,
+    );
     if (!scenario || scenario.status !== "published") {
       throw new Error("场景不存在或未发布。");
     }
@@ -42,7 +45,7 @@ export class ScenarioTrainingService {
 
   async load(input: SessionIdentity): Promise<ScenarioSession> {
     const session = await this.store.loadSession(input);
-    this.templateForSession(session);
+    await this.templateForSession(session);
     return session;
   }
 
@@ -56,7 +59,7 @@ export class ScenarioTrainingService {
     if (session.status === "completed") {
       throw new Error("已完成的训练不能继续发送消息。");
     }
-    const scenario = this.templateForSession(session);
+    const scenario = await this.templateForSession(session);
     const customerChunks: string[] = [];
     const messages = [
       ...session.messages.map(({ role, content }) => ({ role, content })),
@@ -91,7 +94,7 @@ export class ScenarioTrainingService {
     if (session.status === "completed") {
       return session;
     }
-    const scenario = this.templateForSession(session);
+    const scenario = await this.templateForSession(session);
     const report = await this.evaluationProvider.evaluate({
       scenario,
       learnerMessages: session.messages
@@ -109,8 +112,12 @@ export class ScenarioTrainingService {
     });
   }
 
-  private templateForSession(session: ScenarioSession): ScenarioTemplate {
-    const scenario = getScenarioTemplate(session.scenarioId);
+  private async templateForSession(
+    session: ScenarioSession,
+  ): Promise<ScenarioTemplate> {
+    const scenario = await this.templates.getPublishedById(
+      session.scenarioId,
+    );
     if (
       !scenario ||
       scenario.versionId !== session.scenarioVersionId ||

@@ -19,7 +19,11 @@ import {
   quizDraftPackSchema,
   quizPublishedPackSchema,
 } from "./schema";
-import type { QuizPublishedPack, QuizQuestionDraft } from "./schema";
+import type { QuizPublishedPack } from "./schema";
+import type {
+  ApproveStoredQuestionInput,
+  QuizReviewStore,
+} from "./review-store";
 
 const draftPointerSchema = z.object({
   schemaVersion: z.literal(1),
@@ -37,20 +41,7 @@ const publishedPointerSchema = z.object({
   publishedFile: z.string().trim().min(1),
 });
 
-interface ApproveStoredQuestionInput {
-  questionId: string;
-  reviewerId: string;
-  changes?: {
-    prompt?: string;
-    options?: string[];
-    correctAnswer?: string;
-    explanation?: string;
-    category?: string;
-    difficulty?: QuizQuestionDraft["difficulty"];
-  };
-}
-
-export class LocalQuizReviewStore {
+export class LocalQuizReviewStore implements QuizReviewStore {
   private readonly outputDir: string;
 
   constructor(outputDir: string) {

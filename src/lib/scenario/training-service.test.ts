@@ -10,7 +10,7 @@ import {
   MockEvaluationProvider,
 } from "./mock-providers";
 import { ScenarioTrainingService } from "./training-service";
-import { scenarioTemplates } from "./templates";
+import { getScenarioTemplate, scenarioTemplates } from "./templates";
 
 const learnerId = "00000000-0000-4000-8000-000000000002";
 
@@ -23,6 +23,14 @@ describe("ScenarioTrainingService", () => {
     );
     service = new ScenarioTrainingService({
       store: new LocalScenarioSessionStore(outputDir),
+      templates: {
+        async listPublished() {
+          return scenarioTemplates;
+        },
+        async getPublishedById(scenarioId) {
+          return getScenarioTemplate(scenarioId) ?? null;
+        },
+      },
       conversationProvider: new MockConversationProvider(),
       evaluationProvider: new MockEvaluationProvider(),
     });

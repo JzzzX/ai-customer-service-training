@@ -2,19 +2,11 @@ import { join } from "node:path";
 
 import { shouldUseLocalTestAccounts } from "@/lib/auth/local-test-accounts";
 
-import {
-  LocalQuizAttemptStore,
-  type QuizAttemptRecord,
-} from "./local-attempt-store";
-
-type SaveQuizAttemptInput = {
-  learnerId: string;
-  quizHash: string;
-  passingScore: number;
-  correctCount: number;
-  totalQuestions: number;
-  missedQuestionIds: string[];
-};
+import type {
+  QuizAttemptRecord,
+  SaveQuizAttemptInput,
+} from "./attempt-store";
+import { LocalQuizAttemptStore } from "./local-attempt-store";
 
 export async function saveQuizAttemptForLearner(
   input: SaveQuizAttemptInput,

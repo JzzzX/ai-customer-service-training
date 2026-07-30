@@ -6,43 +6,25 @@ import { join, resolve } from "node:path";
 import { z } from "zod";
 
 import { finishQuizAttempt } from "./attempt";
-
-const questionIdSchema = z.string().regex(/^qq_[a-f0-9]{24}$/);
-
-export const quizAttemptRecordSchema = z.object({
-  id: z.string().uuid(),
-  learnerId: z.string().uuid(),
-  quizHash: z.string().regex(/^[a-f0-9]{64}$/),
-  status: z.enum(["passed", "needs_retry"]),
-  correctCount: z.number().int().min(0),
-  totalQuestions: z.number().int().positive(),
-  score: z.number().int().min(0).max(100),
-  missedQuestionIds: z.array(questionIdSchema),
-  completedAt: z.string().datetime(),
-});
+import {
+  quizAttemptRecordSchema,
+  type QuizAttemptRecord,
+  type QuizAttemptStore,
+  type SaveQuizAttemptInput,
+} from "./attempt-store";
 
 const quizAttemptRecordsSchema = z.array(quizAttemptRecordSchema);
 
-export type QuizAttemptRecord = z.infer<typeof quizAttemptRecordSchema>;
-
-type SaveAttemptInput = {
-  learnerId: string;
-  quizHash: string;
-  passingScore: number;
-  correctCount: number;
-  totalQuestions: number;
-  missedQuestionIds: string[];
-  completedAt?: string;
-};
-
-export class LocalQuizAttemptStore {
+export class LocalQuizAttemptStore implements QuizAttemptStore {
   private readonly outputDir: string;
 
   constructor(outputDir: string) {
     this.outputDir = resolve(outputDir);
   }
 
-  async saveAttempt(input: SaveAttemptInput): Promise<QuizAttemptRecord> {
+  async saveAttempt(
+    input: SaveQuizAttemptInput,
+  ): Promise<QuizAttemptRecord> {
     const learnerId = z.string().uuid().parse(input.learnerId);
     const outcome = finishQuizAttempt(input);
     const record = quizAttemptRecordSchema.parse({

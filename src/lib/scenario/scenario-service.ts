@@ -7,7 +7,18 @@ import {
   MockConversationProvider,
   MockEvaluationProvider,
 } from "./mock-providers";
+import type { ScenarioTemplateStore } from "./template-store";
 import { ScenarioTrainingService } from "./training-service";
+import { getScenarioTemplate, scenarioTemplates } from "./templates";
+
+const localScenarioTemplates: ScenarioTemplateStore = {
+  async listPublished() {
+    return scenarioTemplates;
+  },
+  async getPublishedById(scenarioId) {
+    return getScenarioTemplate(scenarioId) ?? null;
+  },
+};
 
 export function getLocalScenarioTrainingService(): ScenarioTrainingService {
   if (!shouldUseLocalTestAccounts()) {
@@ -19,6 +30,7 @@ export function getLocalScenarioTrainingService(): ScenarioTrainingService {
     store: new LocalScenarioSessionStore(
       join(process.cwd(), "artifacts", "scenario"),
     ),
+    templates: localScenarioTemplates,
     conversationProvider: new MockConversationProvider(),
     evaluationProvider: new MockEvaluationProvider(),
   });

@@ -9,28 +9,26 @@ import {
   scenarioSessionSchema,
 } from "./schema";
 import type {
-  ScenarioEvaluationReport,
   ScenarioSession,
-  ScenarioTemplate,
 } from "./schema";
+import type {
+  AppendScenarioExchangeInput,
+  CompleteScenarioSessionInput,
+  ScenarioSessionStore,
+  SessionIdentity,
+  StartScenarioSessionInput,
+} from "./session-store";
 
-type SessionIdentity = {
-  learnerId: string;
-  sessionId: string;
-};
-
-export class LocalScenarioSessionStore {
+export class LocalScenarioSessionStore implements ScenarioSessionStore {
   private readonly outputDir: string;
 
   constructor(outputDir: string) {
     this.outputDir = resolve(outputDir);
   }
 
-  async startSession(input: {
-    learnerId: string;
-    scenario: ScenarioTemplate;
-    startedAt?: string;
-  }): Promise<ScenarioSession> {
+  async startSession(
+    input: StartScenarioSessionInput,
+  ): Promise<ScenarioSession> {
     const learnerId = z.string().uuid().parse(input.learnerId);
     const startedAt = input.startedAt ?? new Date().toISOString();
     const session = scenarioSessionSchema.parse({
@@ -73,11 +71,7 @@ export class LocalScenarioSessionStore {
   }
 
   async appendExchange(
-    input: SessionIdentity & {
-      learnerMessage: string;
-      customerReply: string;
-      updatedAt?: string;
-    },
+    input: AppendScenarioExchangeInput,
   ): Promise<ScenarioSession> {
     const session = await this.loadSession(input);
     if (session.status === "completed") {
@@ -120,10 +114,7 @@ export class LocalScenarioSessionStore {
   }
 
   async completeSession(
-    input: SessionIdentity & {
-      report: ScenarioEvaluationReport;
-      completedAt?: string;
-    },
+    input: CompleteScenarioSessionInput,
   ): Promise<ScenarioSession> {
     const session = await this.loadSession(input);
     if (session.status === "completed") {
