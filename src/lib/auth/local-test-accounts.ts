@@ -1,6 +1,8 @@
 import { hash } from "bcryptjs";
 import { z } from "zod";
 
+import { resolveRuntimeMode } from "@/lib/runtime/mode";
+
 import type { StoredUserAccount, UserRole } from "./credentials";
 
 type Environment = Record<string, string | undefined>;
@@ -24,9 +26,10 @@ export function shouldUseLocalTestAccounts(
   nodeEnvironment = process.env.NODE_ENV,
 ): boolean {
   return (
-    nodeEnvironment !== "production" &&
-    environment.LOCAL_TEST_AUTH_ENABLED?.trim().toLowerCase() === "true" &&
-    !environment.DATABASE_URL?.trim()
+    resolveRuntimeMode({
+      ...environment,
+      NODE_ENV: nodeEnvironment,
+    }) === "local_demo"
   );
 }
 

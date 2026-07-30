@@ -5,7 +5,6 @@ import { DbQuizAttemptStore } from "@/db/repositories/db-quiz-attempt-store";
 import { DbQuizReviewStore } from "@/db/repositories/db-quiz-review-store";
 import { DbScenarioSessionStore } from "@/db/repositories/db-scenario-session-store";
 import { DbScenarioTemplateStore } from "@/db/repositories/db-scenario-template-store";
-import { shouldUseLocalTestAccounts } from "@/lib/auth/local-test-accounts";
 import { LocalQuizAttemptStore } from "@/lib/quiz/local-attempt-store";
 import { LocalQuizReviewStore } from "@/lib/quiz/local-review-store";
 import type { QuizAttemptStore } from "@/lib/quiz/attempt-store";
@@ -22,6 +21,8 @@ import {
   scenarioTemplates,
 } from "@/lib/scenario/templates";
 
+import { resolveRuntimeMode } from "./mode";
+
 type Environment = Record<string, string | undefined>;
 
 type StoreCompositionInput = {
@@ -34,12 +35,7 @@ type StoreCompositionInput = {
 export function createQuizReviewStore(
   input: StoreCompositionInput,
 ): QuizReviewStore {
-  if (
-    shouldUseLocalTestAccounts(
-      input.environment,
-      input.nodeEnvironment,
-    )
-  ) {
+  if (runtimeMode(input) === "local_demo") {
     return new LocalQuizReviewStore(
       join(input.projectRoot, "artifacts", "quiz"),
     );
@@ -50,12 +46,7 @@ export function createQuizReviewStore(
 export function createQuizAttemptStore(
   input: StoreCompositionInput,
 ): QuizAttemptStore {
-  if (
-    shouldUseLocalTestAccounts(
-      input.environment,
-      input.nodeEnvironment,
-    )
-  ) {
+  if (runtimeMode(input) === "local_demo") {
     return new LocalQuizAttemptStore(
       join(input.projectRoot, "artifacts", "quiz"),
     );
@@ -84,10 +75,7 @@ export function getQuizAttemptStore(): QuizAttemptStore {
 export function createScenarioTrainingService(
   input: StoreCompositionInput,
 ): ScenarioTrainingService {
-  const isLocal = shouldUseLocalTestAccounts(
-    input.environment,
-    input.nodeEnvironment,
-  );
+  const isLocal = runtimeMode(input) === "local_demo";
   const database = isLocal ? null : input.databaseFactory();
   const templates = createScenarioTemplateStore({
     ...input,
@@ -109,12 +97,7 @@ export function createScenarioTrainingService(
 export function createScenarioTemplateStore(
   input: StoreCompositionInput,
 ): ScenarioTemplateStore {
-  if (
-    shouldUseLocalTestAccounts(
-      input.environment,
-      input.nodeEnvironment,
-    )
-  ) {
+  if (runtimeMode(input) === "local_demo") {
     return {
       async listPublished() {
         return scenarioTemplates;
@@ -142,5 +125,12 @@ export function getScenarioTemplateStore(): ScenarioTemplateStore {
     nodeEnvironment: process.env.NODE_ENV,
     projectRoot: process.cwd(),
     databaseFactory: getDatabase,
+  });
+}
+
+function runtimeMode(input: StoreCompositionInput) {
+  return resolveRuntimeMode({
+    ...input.environment,
+    NODE_ENV: input.nodeEnvironment,
   });
 }
