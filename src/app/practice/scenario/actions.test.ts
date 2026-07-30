@@ -13,8 +13,8 @@ vi.mock("@/lib/auth/guards", () => ({
   requireUser: mocks.requireUser,
 }));
 
-vi.mock("@/lib/scenario/scenario-service", () => ({
-  getLocalScenarioTrainingService: () => ({
+vi.mock("@/lib/runtime/services", () => ({
+  getScenarioTrainingService: () => ({
     start: mocks.start,
     sendMessage: mocks.sendMessage,
     complete: mocks.complete,

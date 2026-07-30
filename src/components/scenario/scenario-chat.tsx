@@ -6,17 +6,14 @@ import {
   completeScenarioAction,
   sendScenarioMessageAction,
 } from "@/app/practice/scenario/actions";
-import type {
-  ScenarioSession,
-  ScenarioTemplate,
-} from "@/lib/scenario/schema";
+import type { ScenarioSession } from "@/lib/scenario/schema";
 
 export function ScenarioChat({
   initialSession,
-  scenario,
+  scenarioTitle,
 }: {
   initialSession: ScenarioSession;
-  scenario: ScenarioTemplate;
+  scenarioTitle: string;
 }) {
   const [session, setSession] = useState(initialSession);
   const [content, setContent] = useState("");
@@ -68,7 +65,7 @@ export function ScenarioChat({
           <span className="text-[#5c7cdb]">
             第 {session.learnerTurnCount} / {session.maxTurns} 轮
           </span>
-          <span className="text-[#7a8981]">{scenario.title}</span>
+          <span className="text-[#7a8981]">{scenarioTitle}</span>
         </div>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#e9edf5]">
           <div

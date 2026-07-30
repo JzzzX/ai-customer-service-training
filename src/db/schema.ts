@@ -19,7 +19,10 @@ import {
 
 import type { SourceLocator } from "@/lib/knowledge/schema";
 import type { QuizQuestionDraft } from "@/lib/quiz/schema";
-import type { ScenarioTemplate } from "@/lib/scenario/schema";
+import type {
+  ScenarioEvaluationReport,
+  ScenarioTemplate,
+} from "@/lib/scenario/schema";
 
 export const userRoleEnum = pgEnum("user_role", ["admin", "learner"]);
 export const knowledgeSourceKindEnum = pgEnum("knowledge_source_kind", [
@@ -558,7 +561,7 @@ export const evaluationReports = pgTable(
     totalScore: integer("total_score").notNull(),
     verdict: evaluationVerdictEnum("verdict").notNull(),
     dimensions: jsonb("dimensions")
-      .$type<Record<string, number>>()
+      .$type<ScenarioEvaluationReport["dimensions"]>()
       .notNull(),
     strengths: jsonb("strengths").$type<string[]>().notNull(),
     omissions: jsonb("omissions").$type<string[]>().notNull(),

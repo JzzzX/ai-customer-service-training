@@ -3,11 +3,24 @@ import { join } from "node:path";
 import { getDatabase, type DatabaseClient } from "@/db/client";
 import { DbQuizAttemptStore } from "@/db/repositories/db-quiz-attempt-store";
 import { DbQuizReviewStore } from "@/db/repositories/db-quiz-review-store";
+import { DbScenarioSessionStore } from "@/db/repositories/db-scenario-session-store";
+import { DbScenarioTemplateStore } from "@/db/repositories/db-scenario-template-store";
 import { shouldUseLocalTestAccounts } from "@/lib/auth/local-test-accounts";
 import { LocalQuizAttemptStore } from "@/lib/quiz/local-attempt-store";
 import { LocalQuizReviewStore } from "@/lib/quiz/local-review-store";
 import type { QuizAttemptStore } from "@/lib/quiz/attempt-store";
 import type { QuizReviewStore } from "@/lib/quiz/review-store";
+import { LocalScenarioSessionStore } from "@/lib/scenario/local-session-store";
+import {
+  MockConversationProvider,
+  MockEvaluationProvider,
+} from "@/lib/scenario/mock-providers";
+import type { ScenarioTemplateStore } from "@/lib/scenario/template-store";
+import { ScenarioTrainingService } from "@/lib/scenario/training-service";
+import {
+  getScenarioTemplate,
+  scenarioTemplates,
+} from "@/lib/scenario/templates";
 
 type Environment = Record<string, string | undefined>;
 
@@ -61,6 +74,70 @@ export function getQuizReviewStore(): QuizReviewStore {
 
 export function getQuizAttemptStore(): QuizAttemptStore {
   return createQuizAttemptStore({
+    environment: process.env,
+    nodeEnvironment: process.env.NODE_ENV,
+    projectRoot: process.cwd(),
+    databaseFactory: getDatabase,
+  });
+}
+
+export function createScenarioTrainingService(
+  input: StoreCompositionInput,
+): ScenarioTrainingService {
+  const isLocal = shouldUseLocalTestAccounts(
+    input.environment,
+    input.nodeEnvironment,
+  );
+  const database = isLocal ? null : input.databaseFactory();
+  const templates = createScenarioTemplateStore({
+    ...input,
+    databaseFactory: () => database!,
+  });
+
+  return new ScenarioTrainingService({
+    store: isLocal
+      ? new LocalScenarioSessionStore(
+          join(input.projectRoot, "artifacts", "scenario"),
+        )
+      : new DbScenarioSessionStore(database!),
+    templates,
+    conversationProvider: new MockConversationProvider(),
+    evaluationProvider: new MockEvaluationProvider(),
+  });
+}
+
+export function createScenarioTemplateStore(
+  input: StoreCompositionInput,
+): ScenarioTemplateStore {
+  if (
+    shouldUseLocalTestAccounts(
+      input.environment,
+      input.nodeEnvironment,
+    )
+  ) {
+    return {
+      async listPublished() {
+        return scenarioTemplates;
+      },
+      async getPublishedById(scenarioId) {
+        return getScenarioTemplate(scenarioId) ?? null;
+      },
+    };
+  }
+  return new DbScenarioTemplateStore(input.databaseFactory());
+}
+
+export function getScenarioTrainingService(): ScenarioTrainingService {
+  return createScenarioTrainingService({
+    environment: process.env,
+    nodeEnvironment: process.env.NODE_ENV,
+    projectRoot: process.cwd(),
+    databaseFactory: getDatabase,
+  });
+}
+
+export function getScenarioTemplateStore(): ScenarioTemplateStore {
+  return createScenarioTemplateStore({
     environment: process.env,
     nodeEnvironment: process.env.NODE_ENV,
     projectRoot: process.cwd(),

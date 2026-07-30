@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { requireUser } from "@/lib/auth/guards";
-import { getLocalScenarioTrainingService } from "@/lib/scenario/scenario-service";
-import { getScenarioTemplate } from "@/lib/scenario/templates";
+import {
+  getScenarioTemplateStore,
+  getScenarioTrainingService,
+} from "@/lib/runtime/services";
 
 import { restartScenarioAction } from "../../actions";
 
@@ -18,7 +20,10 @@ export default async function ScenarioReportPage({
   if (session.status === "active") {
     redirect(`/practice/scenario/session/${session.id}`);
   }
-  const scenario = getScenarioTemplate(session.scenarioId);
+  const scenario =
+    await getScenarioTemplateStore().getPublishedById(
+      session.scenarioId,
+    );
   const report = session.report;
   if (
     !scenario ||
@@ -183,7 +188,7 @@ function ReportCard({
 
 async function loadSession(learnerId: string, sessionId: string) {
   try {
-    return await getLocalScenarioTrainingService().load({
+    return await getScenarioTrainingService().load({
       learnerId,
       sessionId,
     });

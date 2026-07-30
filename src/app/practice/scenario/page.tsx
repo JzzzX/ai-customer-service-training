@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 import { requireUser } from "@/lib/auth/guards";
+import { getScenarioTemplateStore } from "@/lib/runtime/services";
 import type { ScenarioCategory } from "@/lib/scenario/schema";
-import { scenarioTemplates } from "@/lib/scenario/templates";
 
 const categories: Array<{
   id: ScenarioCategory;
@@ -33,6 +33,8 @@ const categories: Array<{
 
 export default async function ScenarioListPage() {
   await requireUser();
+  const scenarioTemplates =
+    await getScenarioTemplateStore().listPublished();
 
   return (
     <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">

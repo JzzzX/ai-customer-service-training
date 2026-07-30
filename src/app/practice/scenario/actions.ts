@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth/guards";
-import { getLocalScenarioTrainingService } from "@/lib/scenario/scenario-service";
+import { getScenarioTrainingService } from "@/lib/runtime/services";
 
 const scenarioIdSchema = z.string().regex(/^st_[a-f0-9]{24}$/);
 const sessionIdSchema = z.string().uuid();
@@ -12,7 +12,7 @@ const messageSchema = z.string().trim().min(1).max(1000);
 
 type SendMessageResult = Awaited<
   ReturnType<
-    ReturnType<typeof getLocalScenarioTrainingService>["sendMessage"]
+    ReturnType<typeof getScenarioTrainingService>["sendMessage"]
   >
 >;
 
@@ -26,7 +26,7 @@ export async function startScenarioAction(
 ): Promise<void> {
   const user = await requireUser();
   const scenarioId = scenarioIdSchema.parse(formData.get("scenarioId"));
-  const session = await getLocalScenarioTrainingService().start({
+  const session = await getScenarioTrainingService().start({
     learnerId: user.id,
     scenarioId,
   });
@@ -45,7 +45,7 @@ export async function sendScenarioMessageAction(
   }
 
   try {
-    const result = await getLocalScenarioTrainingService().sendMessage({
+    const result = await getScenarioTrainingService().sendMessage({
       learnerId: user.id,
       sessionId,
       content: content.data,
@@ -66,7 +66,7 @@ export async function completeScenarioAction(
 ): Promise<void> {
   const user = await requireUser();
   const sessionId = sessionIdSchema.parse(formData.get("sessionId"));
-  const session = await getLocalScenarioTrainingService().complete({
+  const session = await getScenarioTrainingService().complete({
     learnerId: user.id,
     sessionId,
   });
@@ -78,7 +78,7 @@ export async function restartScenarioAction(
 ): Promise<void> {
   const user = await requireUser();
   const sessionId = sessionIdSchema.parse(formData.get("sessionId"));
-  const session = await getLocalScenarioTrainingService().restart({
+  const session = await getScenarioTrainingService().restart({
     learnerId: user.id,
     sessionId,
   });

@@ -77,6 +77,9 @@ export class LocalScenarioSessionStore implements ScenarioSessionStore {
     if (session.status === "completed") {
       throw new Error("已完成的训练不能继续发送消息。");
     }
+    if (session.learnerTurnCount !== input.expectedTurnCount) {
+      throw new Error("会话已更新，请刷新后重试。");
+    }
     if (session.learnerTurnCount >= session.maxTurns) {
       throw new Error("训练已达到最大轮次。");
     }

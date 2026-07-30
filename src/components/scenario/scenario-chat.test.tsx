@@ -77,7 +77,7 @@ describe("ScenarioChat", () => {
     render(
       <ScenarioChat
         initialSession={initialSession}
-        scenario={scenarioTemplates[0]}
+        scenarioTitle={scenarioTemplates[0].title}
       />,
     );
     fireEvent.change(screen.getByLabelText("回复顾客"), {
@@ -98,7 +98,7 @@ describe("ScenarioChat", () => {
     render(
       <ScenarioChat
         initialSession={initialSession}
-        scenario={scenarioTemplates[0]}
+        scenarioTitle={scenarioTemplates[0].title}
       />,
     );
 

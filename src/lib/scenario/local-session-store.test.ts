@@ -61,6 +61,7 @@ describe("LocalScenarioSessionStore", () => {
     const updated = await store.appendExchange({
       learnerId: learnerA,
       sessionId: session.id,
+      expectedTurnCount: 0,
       learnerMessage: "请问狗狗多大、体重多少？",
       customerReply: "刚满3个月，体重大概2.1公斤。",
       updatedAt: "2026-07-29T08:01:00.000Z",
@@ -113,6 +114,7 @@ describe("LocalScenarioSessionStore", () => {
       store.appendExchange({
         learnerId: learnerA,
         sessionId: session.id,
+        expectedTurnCount: 0,
         learnerMessage: "继续",
         customerReply: "继续",
       }),

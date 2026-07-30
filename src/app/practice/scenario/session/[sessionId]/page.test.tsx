@@ -6,6 +6,7 @@ import { scenarioTemplates } from "@/lib/scenario/templates";
 
 const mocks = vi.hoisted(() => ({
   load: vi.fn(),
+  getPublishedById: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/guards", () => ({
@@ -17,9 +18,12 @@ vi.mock("@/lib/auth/guards", () => ({
   }),
 }));
 
-vi.mock("@/lib/scenario/scenario-service", () => ({
-  getLocalScenarioTrainingService: () => ({
+vi.mock("@/lib/runtime/services", () => ({
+  getScenarioTrainingService: () => ({
     load: mocks.load,
+  }),
+  getScenarioTemplateStore: () => ({
+    getPublishedById: mocks.getPublishedById,
   }),
 }));
 
@@ -49,6 +53,7 @@ describe("ScenarioSessionPage", () => {
       updatedAt: "2026-07-29T08:00:00.000Z",
     };
     mocks.load.mockResolvedValue(session);
+    mocks.getPublishedById.mockResolvedValue(scenario);
 
     render(
       await ScenarioSessionPage({

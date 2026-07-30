@@ -3,8 +3,10 @@ import { notFound, redirect } from "next/navigation";
 
 import { ScenarioChat } from "@/components/scenario/scenario-chat";
 import { requireUser } from "@/lib/auth/guards";
-import { getLocalScenarioTrainingService } from "@/lib/scenario/scenario-service";
-import { getScenarioTemplate } from "@/lib/scenario/templates";
+import {
+  getScenarioTemplateStore,
+  getScenarioTrainingService,
+} from "@/lib/runtime/services";
 
 export default async function ScenarioSessionPage({
   params,
@@ -17,7 +19,10 @@ export default async function ScenarioSessionPage({
   if (session.status === "completed") {
     redirect(`/practice/scenario/report/${session.id}`);
   }
-  const scenario = getScenarioTemplate(session.scenarioId);
+  const scenario =
+    await getScenarioTemplateStore().getPublishedById(
+      session.scenarioId,
+    );
   if (!scenario || scenario.versionId !== session.scenarioVersionId) {
     notFound();
   }
@@ -49,7 +54,10 @@ export default async function ScenarioSessionPage({
         </header>
 
         <div className="mt-7">
-          <ScenarioChat initialSession={session} scenario={scenario} />
+          <ScenarioChat
+            initialSession={session}
+            scenarioTitle={scenario.title}
+          />
         </div>
       </div>
     </main>
@@ -58,7 +66,7 @@ export default async function ScenarioSessionPage({
 
 async function loadSession(learnerId: string, sessionId: string) {
   try {
-    return await getLocalScenarioTrainingService().load({
+    return await getScenarioTrainingService().load({
       learnerId,
       sessionId,
     });

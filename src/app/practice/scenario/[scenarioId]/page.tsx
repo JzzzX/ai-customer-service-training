@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requireUser } from "@/lib/auth/guards";
-import { getScenarioTemplate } from "@/lib/scenario/templates";
+import { getScenarioTemplateStore } from "@/lib/runtime/services";
 
 import { startScenarioAction } from "../actions";
 
@@ -13,7 +13,8 @@ export default async function ScenarioDetailPage({
 }) {
   await requireUser();
   const { scenarioId } = await params;
-  const scenario = getScenarioTemplate(scenarioId);
+  const scenario =
+    await getScenarioTemplateStore().getPublishedById(scenarioId);
   if (!scenario) {
     notFound();
   }

@@ -77,6 +77,7 @@ export class ScenarioTrainingService {
     let updated = await this.store.appendExchange({
       learnerId: input.learnerId,
       sessionId: input.sessionId,
+      expectedTurnCount: session.learnerTurnCount,
       learnerMessage: input.content,
       customerReply: customerChunks.join(""),
     });

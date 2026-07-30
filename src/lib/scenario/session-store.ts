@@ -12,10 +12,12 @@ export type SessionIdentity = {
 export type StartScenarioSessionInput = {
   learnerId: string;
   scenario: ScenarioTemplate;
+  assignmentId?: string;
   startedAt?: string;
 };
 
 export type AppendScenarioExchangeInput = SessionIdentity & {
+  expectedTurnCount: number;
   learnerMessage: string;
   customerReply: string;
   updatedAt?: string;

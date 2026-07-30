@@ -1,12 +1,20 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { scenarioTemplates } from "@/lib/scenario/templates";
+
 vi.mock("@/lib/auth/guards", () => ({
   requireUser: vi.fn().mockResolvedValue({
     id: "00000000-0000-4000-8000-000000000002",
     name: "测试学员",
     email: "learner@example.test",
     role: "learner",
+  }),
+}));
+
+vi.mock("@/lib/runtime/services", () => ({
+  getScenarioTemplateStore: () => ({
+    listPublished: vi.fn().mockResolvedValue(scenarioTemplates),
   }),
 }));
 
