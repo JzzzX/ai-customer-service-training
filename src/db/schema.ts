@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   check,
   index,
@@ -17,6 +18,8 @@ import {
 } from "drizzle-orm/pg-core";
 
 import type { SourceLocator } from "@/lib/knowledge/schema";
+import type { QuizQuestionDraft } from "@/lib/quiz/schema";
+import type { ScenarioTemplate } from "@/lib/scenario/schema";
 
 export const userRoleEnum = pgEnum("user_role", ["admin", "learner"]);
 export const knowledgeSourceKindEnum = pgEnum("knowledge_source_kind", [
@@ -183,16 +186,23 @@ export const quizSets = pgTable(
   "quiz_sets",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    knowledgeVersionId: uuid("knowledge_version_id")
+      .notNull()
+      .references(() => knowledgeVersions.id, { onDelete: "restrict" }),
+    quizHash: text("quiz_hash").notNull(),
+    sourceQuizHash: text("source_quiz_hash"),
     title: text("title").notNull(),
     description: text("description"),
     status: lifecycleStatusEnum("status").default("draft").notNull(),
     passingScore: integer("passing_score").default(80).notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
     createdById: uuid("created_by_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
     ...auditTimestamps(),
   },
   (table) => [
+    unique("quiz_sets_hash_unique").on(table.quizHash),
     check(
       "quiz_sets_passing_score_check",
       sql`${table.passingScore} between 0 and 100`,
@@ -210,6 +220,7 @@ export const questions = pgTable(
     knowledgeUnitId: uuid("knowledge_unit_id")
       .notNull()
       .references(() => knowledgeUnits.id, { onDelete: "restrict" }),
+    questionKey: text("question_key").notNull(),
     type: questionTypeEnum("type").notNull(),
     prompt: text("prompt").notNull(),
     options: jsonb("options").$type<string[]>().notNull(),
@@ -224,8 +235,40 @@ export const questions = pgTable(
     ...auditTimestamps(),
   },
   (table) => [
+    unique("questions_version_key_unique").on(
+      table.knowledgeVersionId,
+      table.questionKey,
+    ),
     index("questions_knowledge_unit_idx").on(table.knowledgeUnitId),
     index("questions_status_category_idx").on(table.status, table.category),
+  ],
+);
+
+export const questionReviews = pgTable(
+  "question_reviews",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    questionId: uuid("question_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "restrict" }),
+    reviewerId: uuid("reviewer_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    contentHash: text("content_hash").notNull(),
+    snapshot: jsonb("snapshot").$type<QuizQuestionDraft>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("question_reviews_question_hash_unique").on(
+      table.questionId,
+      table.contentHash,
+    ),
+    index("question_reviews_reviewer_created_idx").on(
+      table.reviewerId,
+      table.createdAt,
+    ),
   ],
 );
 
@@ -257,6 +300,10 @@ export const quizAttempts = pgTable(
   "quiz_attempts",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    assignmentId: uuid("assignment_id").references(
+      (): AnyPgColumn => assignments.id,
+      { onDelete: "set null" },
+    ),
     quizSetId: uuid("quiz_set_id")
       .notNull()
       .references(() => quizSets.id, { onDelete: "restrict" }),
@@ -311,16 +358,23 @@ export const quizAnswers = pgTable(
   ],
 );
 
-export const scenarios = pgTable("scenarios", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  title: text("title").notNull(),
-  category: text("category").notNull(),
-  status: lifecycleStatusEnum("status").default("draft").notNull(),
-  createdById: uuid("created_by_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "restrict" }),
-  ...auditTimestamps(),
-});
+export const scenarios = pgTable(
+  "scenarios",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    scenarioKey: text("scenario_key").notNull(),
+    title: text("title").notNull(),
+    category: text("category").notNull(),
+    status: lifecycleStatusEnum("status").default("draft").notNull(),
+    createdById: uuid("created_by_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    ...auditTimestamps(),
+  },
+  (table) => [
+    unique("scenarios_key_unique").on(table.scenarioKey),
+  ],
+);
 
 export const scenarioVersions = pgTable(
   "scenario_versions",
@@ -329,25 +383,35 @@ export const scenarioVersions = pgTable(
     scenarioId: uuid("scenario_id")
       .notNull()
       .references(() => scenarios.id, { onDelete: "restrict" }),
+    versionKey: text("version_key").notNull(),
     version: integer("version").notNull(),
     knowledgeVersionId: uuid("knowledge_version_id")
       .notNull()
       .references(() => knowledgeVersions.id, { onDelete: "restrict" }),
     background: text("background").notNull(),
+    summary: text("summary").notNull(),
     firstCustomerMessage: text("first_customer_message").notNull(),
     controlledVariables: jsonb("controlled_variables")
       .$type<Record<string, unknown>>()
       .notNull(),
-    hiddenFacts: jsonb("hidden_facts")
-      .$type<Record<string, unknown>>()
-      .notNull(),
+    hiddenFacts: jsonb("hidden_facts").$type<string[]>().notNull(),
+    customerTurns: jsonb("customer_turns").$type<string[]>().notNull(),
     checkpoints: jsonb("checkpoints").$type<string[]>().notNull(),
     prohibitions: jsonb("prohibitions").$type<string[]>().notNull(),
     scoringWeights: jsonb("scoring_weights")
       .$type<Record<string, number>>()
       .notNull(),
+    scoringDimensions: jsonb("scoring_dimensions")
+      .$type<ScenarioTemplate["scoringDimensions"]>()
+      .notNull(),
+    criticalRisks: jsonb("critical_risks")
+      .$type<ScenarioTemplate["criticalRisks"]>()
+      .notNull(),
+    referenceFlow: jsonb("reference_flow").$type<string[]>().notNull(),
     referenceReply: text("reference_reply").notNull(),
+    sources: jsonb("sources").$type<SourceLocator[]>().notNull(),
     maxTurns: integer("max_turns").default(12).notNull(),
+    mockMode: boolean("mock_mode").default(true).notNull(),
     status: lifecycleStatusEnum("status").default("draft").notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     createdById: uuid("created_by_id")
@@ -358,6 +422,7 @@ export const scenarioVersions = pgTable(
       .notNull(),
   },
   (table) => [
+    unique("scenario_versions_key_unique").on(table.versionKey),
     unique("scenario_versions_number_unique").on(
       table.scenarioId,
       table.version,
@@ -365,6 +430,10 @@ export const scenarioVersions = pgTable(
     check(
       "scenario_versions_max_turns_check",
       sql`${table.maxTurns} between 8 and 16`,
+    ),
+    check(
+      "scenario_versions_mock_mode_check",
+      sql`${table.mockMode} = true`,
     ),
   ],
 );
@@ -430,6 +499,7 @@ export const trainingSessions = pgTable(
     status: trainingSessionStatusEnum("status")
       .default("in_progress")
       .notNull(),
+    mode: text("mode").default("mock").notNull(),
     turnCount: integer("turn_count").default(0).notNull(),
     lastError: text("last_error"),
     startedAt: timestamp("started_at", { withTimezone: true })
@@ -444,6 +514,10 @@ export const trainingSessions = pgTable(
     index("training_sessions_learner_started_idx").on(
       table.learnerId,
       table.startedAt,
+    ),
+    check(
+      "training_sessions_mock_mode_check",
+      sql`${table.mode} = 'mock'`,
     ),
   ],
 );
@@ -489,6 +563,7 @@ export const evaluationReports = pgTable(
     strengths: jsonb("strengths").$type<string[]>().notNull(),
     omissions: jsonb("omissions").$type<string[]>().notNull(),
     risks: jsonb("risks").$type<string[]>().notNull(),
+    recommendations: jsonb("recommendations").$type<string[]>().notNull(),
     turnFeedback: jsonb("turn_feedback")
       .$type<Array<Record<string, unknown>>>()
       .notNull(),
@@ -554,6 +629,7 @@ export const mvpTables = {
   knowledgeUnits,
   quizSets,
   questions,
+  questionReviews,
   quizSetQuestions,
   quizAttempts,
   quizAnswers,

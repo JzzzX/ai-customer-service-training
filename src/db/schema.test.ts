@@ -7,6 +7,12 @@ import {
   knowledgeUnits,
   knowledgeVersions,
   mvpTables,
+  questions,
+  questionReviews,
+  quizAttempts,
+  quizSets,
+  scenarios,
+  scenarioVersions,
   trainingSessions,
   users,
 } from "./schema";
@@ -31,6 +37,7 @@ describe("MVP database schema", () => {
         "knowledge_units",
         "knowledge_versions",
         "questions",
+        "question_reviews",
         "quiz_answers",
         "quiz_attempts",
         "quiz_set_questions",
@@ -43,6 +50,75 @@ describe("MVP database schema", () => {
         "users",
       ].sort(),
     );
+  });
+
+  it("binds mutable authoring rows to stable external identities", () => {
+    expect(columnNames(questions)).toEqual(
+      expect.arrayContaining(["knowledge_version_id", "question_key"]),
+    );
+    expect(columnNames(quizSets)).toEqual(
+      expect.arrayContaining([
+        "knowledge_version_id",
+        "quiz_hash",
+        "source_quiz_hash",
+        "published_at",
+      ]),
+    );
+    expect(columnNames(scenarios)).toContain("scenario_key");
+    expect(columnNames(scenarioVersions)).toEqual(
+      expect.arrayContaining([
+        "version_key",
+        "summary",
+        "customer_turns",
+        "scoring_dimensions",
+        "critical_risks",
+        "reference_flow",
+        "sources",
+        "mock_mode",
+      ]),
+    );
+  });
+
+  it("records content-hash approvals instead of mutating audit history", () => {
+    expect(mvpTables.questionReviews).toBe(questionReviews);
+    expect(columnNames(questionReviews)).toEqual(
+      expect.arrayContaining([
+        "question_id",
+        "reviewer_id",
+        "content_hash",
+        "snapshot",
+        "created_at",
+      ]),
+    );
+
+    const questionConfig = getTableConfig(questions);
+    const reviewConfig = getTableConfig(questionReviews);
+    expect(
+      questionConfig.uniqueConstraints.map((item) => item.name),
+    ).toContain("questions_version_key_unique");
+    expect(
+      reviewConfig.uniqueConstraints.map((item) => item.name),
+    ).toContain("question_reviews_question_hash_unique");
+  });
+
+  it("links attempts and mock sessions to durable workflow state", () => {
+    expect(columnNames(quizAttempts)).toContain("assignment_id");
+    expect(columnNames(trainingSessions)).toContain("mode");
+    expect(columnNames(evaluationReports)).toContain("recommendations");
+
+    expect(
+      getTableConfig(quizSets).uniqueConstraints.map((item) => item.name),
+    ).toContain("quiz_sets_hash_unique");
+    expect(
+      getTableConfig(scenarios).uniqueConstraints.map(
+        (item) => item.name,
+      ),
+    ).toContain("scenarios_key_unique");
+    expect(
+      getTableConfig(scenarioVersions).uniqueConstraints.map(
+        (item) => item.name,
+      ),
+    ).toContain("scenario_versions_key_unique");
   });
 
   it("keeps credentials, roles and traceable version bindings explicit", () => {
