@@ -28,9 +28,11 @@ export type QuizAnswerSubmission = z.infer<typeof submittedAnswerSchema>;
 
 export async function saveQuizAttemptAction(
   quizHash: string,
+  attemptIdInput: string,
   submittedAnswers: QuizAnswerSubmission[],
 ): Promise<void> {
   const user = await requireUser();
+  const attemptId = z.string().uuid().parse(attemptIdInput);
   const answers = submittedAnswersSchema.parse(submittedAnswers);
   const publishedQuiz = await loadPublishedQuiz();
 
@@ -48,23 +50,19 @@ export async function saveQuizAttemptAction(
     }
     return {
       questionId: answer.questionId,
+      selectedAnswers: [answer.selected],
       isCorrect: evaluateAnswer(
         [answer.selected],
         question.correctAnswers,
       ),
     };
   });
-  const missedQuestionIds = checkedAnswers
-    .filter((answer) => !answer.isCorrect)
-    .map((answer) => answer.questionId);
-
   await saveQuizAttemptForLearner({
+    attemptId,
     learnerId: user.id,
     quizHash,
     passingScore: publishedQuiz.passingScore,
-    correctCount: checkedAnswers.length - missedQuestionIds.length,
-    totalQuestions: checkedAnswers.length,
-    missedQuestionIds,
+    answers: checkedAnswers,
   });
   revalidatePath("/practice/history");
 }

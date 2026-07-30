@@ -8,6 +8,7 @@ import { z } from "zod";
 import { finishQuizAttempt } from "./attempt";
 import {
   quizAttemptRecordSchema,
+  saveQuizAttemptInputSchema,
   type QuizAttemptRecord,
   type QuizAttemptStore,
   type SaveQuizAttemptInput,
@@ -23,23 +24,44 @@ export class LocalQuizAttemptStore implements QuizAttemptStore {
   }
 
   async saveAttempt(
-    input: SaveQuizAttemptInput,
+    inputValue: SaveQuizAttemptInput,
   ): Promise<QuizAttemptRecord> {
-    const learnerId = z.string().uuid().parse(input.learnerId);
-    const outcome = finishQuizAttempt(input);
-    const record = quizAttemptRecordSchema.parse({
-      id: randomUUID(),
-      learnerId,
-      quizHash: input.quizHash,
-      status: outcome.status,
-      correctCount: input.correctCount,
-      totalQuestions: input.totalQuestions,
-      score: outcome.score,
-      missedQuestionIds: input.missedQuestionIds,
-      completedAt: input.completedAt ?? new Date().toISOString(),
-    });
+    const input = saveQuizAttemptInputSchema.parse(inputValue);
+    const learnerId = input.learnerId;
     const path = this.attemptsPath(learnerId);
     const attempts = await this.readAttempts(path);
+    const existing = attempts.find(
+      (attempt) => attempt.id === input.attemptId,
+    );
+    if (existing) {
+      return existing;
+    }
+
+    const correctCount = input.answers.filter(
+      (answer) => answer.isCorrect,
+    ).length;
+    const missedQuestionIds = input.answers
+      .filter((answer) => !answer.isCorrect)
+      .map((answer) => answer.questionId);
+    const outcome = finishQuizAttempt({
+      passingScore: input.passingScore,
+      correctCount,
+      totalQuestions: input.answers.length,
+    });
+    const record = quizAttemptRecordSchema.parse({
+      id: input.attemptId,
+      learnerId,
+      quizHash: input.quizHash,
+      ...(input.assignmentId
+        ? { assignmentId: input.assignmentId }
+        : {}),
+      status: outcome.status,
+      correctCount,
+      totalQuestions: input.answers.length,
+      score: outcome.score,
+      missedQuestionIds,
+      completedAt: input.completedAt ?? new Date().toISOString(),
+    });
 
     await writeJsonAtomically(path, [...attempts, record]);
     return record;

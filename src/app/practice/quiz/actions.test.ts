@@ -26,6 +26,7 @@ vi.mock("next/cache", () => ({
 import { saveQuizAttemptAction } from "./actions";
 
 const learnerId = "00000000-0000-4000-8000-000000000002";
+const attemptId = "00000000-0000-4000-8000-000000000050";
 const quizHash = "a".repeat(64);
 
 describe("saveQuizAttemptAction", () => {
@@ -61,7 +62,7 @@ describe("saveQuizAttemptAction", () => {
   });
 
   it("rechecks answers on the server and stores them under the session user", async () => {
-    await saveQuizAttemptAction(quizHash, [
+    await saveQuizAttemptAction(quizHash, attemptId, [
       {
         questionId: `qq_${"1".repeat(24)}`,
         selected: "答案一",
@@ -73,19 +74,29 @@ describe("saveQuizAttemptAction", () => {
     ]);
 
     expect(mocks.saveQuizAttemptForLearner).toHaveBeenCalledWith({
+      attemptId,
       learnerId,
       quizHash,
       passingScore: 80,
-      correctCount: 1,
-      totalQuestions: 2,
-      missedQuestionIds: [`qq_${"2".repeat(24)}`],
+      answers: [
+        {
+          questionId: `qq_${"1".repeat(24)}`,
+          selectedAnswers: ["答案一"],
+          isCorrect: true,
+        },
+        {
+          questionId: `qq_${"2".repeat(24)}`,
+          selectedAnswers: ["错误"],
+          isCorrect: false,
+        },
+      ],
     });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/practice/history");
   });
 
   it("rejects answers that do not belong to the active published quiz", async () => {
     await expect(
-      saveQuizAttemptAction(quizHash, [
+      saveQuizAttemptAction(quizHash, attemptId, [
         {
           questionId: `qq_${"f".repeat(24)}`,
           selected: "答案一",

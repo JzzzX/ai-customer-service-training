@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { DbQuizReviewStore } from "@/db/repositories/db-quiz-review-store";
+import { DbQuizAttemptStore } from "@/db/repositories/db-quiz-attempt-store";
 import type { DatabaseClient } from "@/db/client";
+import { LocalQuizAttemptStore } from "@/lib/quiz/local-attempt-store";
 import { LocalQuizReviewStore } from "@/lib/quiz/local-review-store";
 
-import { createQuizReviewStore } from "./services";
+import {
+  createQuizAttemptStore,
+  createQuizReviewStore,
+} from "./services";
 
 describe("runtime service composition", () => {
   it("uses the local review adapter only for explicit local demo mode", () => {
@@ -34,5 +39,24 @@ describe("runtime service composition", () => {
     });
 
     expect(store).toBeInstanceOf(DbQuizReviewStore);
+  });
+
+  it("selects local and database attempt adapters from the same runtime boundary", () => {
+    const database = {} as DatabaseClient;
+    const local = createQuizAttemptStore({
+      environment: { LOCAL_TEST_AUTH_ENABLED: "true" },
+      nodeEnvironment: "development",
+      projectRoot: "/tmp/ai-training-test",
+      databaseFactory: () => database,
+    });
+    const production = createQuizAttemptStore({
+      environment: { LOCAL_TEST_AUTH_ENABLED: "true" },
+      nodeEnvironment: "production",
+      projectRoot: "/tmp/ai-training-test",
+      databaseFactory: () => database,
+    });
+
+    expect(local).toBeInstanceOf(LocalQuizAttemptStore);
+    expect(production).toBeInstanceOf(DbQuizAttemptStore);
   });
 });

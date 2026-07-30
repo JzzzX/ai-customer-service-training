@@ -6,9 +6,11 @@ import { evaluateAnswer, finishQuizAttempt } from "@/lib/quiz/attempt";
 import type { QuizQuestion } from "@/lib/quiz/schema";
 
 interface QuizRunnerProps {
+  attemptId: string;
   questions: QuizQuestion[];
   passingScore?: number;
   onComplete?: (
+    attemptId: string,
     answers: Array<{ questionId: string; selected: string }>,
   ) => Promise<void>;
 }
@@ -20,11 +22,13 @@ type AnswerRecord = {
 };
 
 export function QuizRunner({
+  attemptId,
   questions,
   passingScore = 80,
   onComplete,
 }: QuizRunnerProps) {
   const [activeQuestions, setActiveQuestions] = useState(questions);
+  const [activeAttemptId, setActiveAttemptId] = useState(attemptId);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState("");
   const [feedback, setFeedback] = useState<AnswerRecord | null>(null);
@@ -134,6 +138,7 @@ export function QuizRunner({
         setSaveWarning(false);
         try {
           await onComplete(
+            activeAttemptId,
             answers.map(({ questionId, selected: answerSelected }) => ({
               questionId,
               selected: answerSelected,
@@ -154,6 +159,9 @@ export function QuizRunner({
   }
 
   function restart(nextQuestions: QuizQuestion[]) {
+    if (onComplete) {
+      setActiveAttemptId(globalThis.crypto.randomUUID());
+    }
     setActiveQuestions(nextQuestions);
     setCurrentIndex(0);
     setSelected("");

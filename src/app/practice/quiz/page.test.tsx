@@ -22,17 +22,20 @@ vi.mock("@/lib/quiz/review-service", () => ({
 
 vi.mock("@/components/quiz/quiz-runner", () => ({
   QuizRunner: ({
+    attemptId,
     onComplete,
     passingScore,
     questions,
   }: {
+    attemptId: string;
     onComplete?: () => Promise<void>;
     passingScore: number;
     questions: QuizPublishedPack["questions"];
   }) => (
     <div data-testid="quiz-runner">
       {questions.length}|{passingScore}|{questions[0]?.status}|
-      {onComplete ? "recorded" : "not-recorded"}
+      {onComplete ? "recorded" : "not-recorded"}|
+      {attemptId ? "attempt-id" : "missing-id"}
     </div>
   ),
 }));

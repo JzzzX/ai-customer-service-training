@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import Link from "next/link";
 
 import { QuizRunner } from "@/components/quiz/quiz-runner";
@@ -10,6 +12,7 @@ import { saveQuizAttemptAction } from "./actions";
 
 export default async function PracticeQuizPage() {
   await requireUser();
+  const attemptId = randomUUID();
   const publishedQuiz = await loadPublishedQuiz();
   const questions = publishedQuiz
     ? selectQuestionGroup(publishedQuiz.questions)
@@ -49,6 +52,7 @@ export default async function PracticeQuizPage() {
 
         <div className="mt-8">
           <QuizRunner
+            attemptId={attemptId}
             onComplete={saveAttempt}
             passingScore={passingScore}
             questions={questions}

@@ -45,10 +45,17 @@ const questions: QuizQuestionDraft[] = [
     sources: [source],
   },
 ];
+const initialAttemptId = "00000000-0000-4000-8000-000000000050";
 
 describe("QuizRunner", () => {
   it("shows one question at a time with immediate feedback and a result", () => {
-    render(<QuizRunner passingScore={80} questions={questions} />);
+    render(
+      <QuizRunner
+        attemptId={initialAttemptId}
+        passingScore={80}
+        questions={questions}
+      />,
+    );
 
     expect(screen.getByText("第 1 / 2 题")).toBeInTheDocument();
     expect(screen.queryByText("第二题判断题")).not.toBeInTheDocument();
@@ -70,7 +77,13 @@ describe("QuizRunner", () => {
   });
 
   it("restarts with only missed questions", () => {
-    render(<QuizRunner passingScore={80} questions={questions} />);
+    render(
+      <QuizRunner
+        attemptId={initialAttemptId}
+        passingScore={80}
+        questions={questions}
+      />,
+    );
 
     fireEvent.click(screen.getByLabelText("选项B"));
     fireEvent.click(screen.getByRole("button", { name: "提交答案" }));
@@ -85,9 +98,11 @@ describe("QuizRunner", () => {
   });
 
   it("submits the completed answer set before showing the result", async () => {
+    const attemptId = "00000000-0000-4000-8000-000000000050";
     const onComplete = vi.fn().mockResolvedValue(undefined);
     render(
       <QuizRunner
+        attemptId={attemptId}
         onComplete={onComplete}
         passingScore={80}
         questions={questions}
@@ -102,16 +117,19 @@ describe("QuizRunner", () => {
     fireEvent.click(screen.getByRole("button", { name: "查看结果" }));
 
     await waitFor(() =>
-      expect(onComplete).toHaveBeenCalledWith([
-        {
-          questionId: questions[0].id,
-          selected: "选项A",
-        },
-        {
-          questionId: questions[1].id,
-          selected: "正确",
-        },
-      ]),
+      expect(onComplete).toHaveBeenCalledWith(
+        attemptId,
+        [
+          {
+            questionId: questions[0].id,
+            selected: "选项A",
+          },
+          {
+            questionId: questions[1].id,
+            selected: "正确",
+          },
+        ],
+      ),
     );
     expect(
       screen.getByRole("heading", { name: "这组需要再练一次" }),

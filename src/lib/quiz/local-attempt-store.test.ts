@@ -20,15 +20,11 @@ describe("LocalQuizAttemptStore", () => {
     const store = new LocalQuizAttemptStore(outputDir);
 
     const saved = await store.saveAttempt({
+      attemptId: "00000000-0000-4000-8000-000000000010",
       learnerId: learnerA,
       quizHash: "a".repeat(64),
       passingScore: 80,
-      correctCount: 8,
-      totalQuestions: 10,
-      missedQuestionIds: [
-        `qq_${"1".repeat(24)}`,
-        `qq_${"2".repeat(24)}`,
-      ],
+      answers: answerSet(10, 8),
       completedAt: "2026-07-29T08:00:00.000Z",
     });
 
@@ -46,24 +42,19 @@ describe("LocalQuizAttemptStore", () => {
   it("persists attempts atomically and returns newest first", async () => {
     const store = new LocalQuizAttemptStore(outputDir);
     await store.saveAttempt({
+      attemptId: "00000000-0000-4000-8000-000000000011",
       learnerId: learnerA,
       quizHash: "a".repeat(64),
       passingScore: 80,
-      correctCount: 4,
-      totalQuestions: 5,
-      missedQuestionIds: [`qq_${"1".repeat(24)}`],
+      answers: answerSet(5, 4),
       completedAt: "2026-07-29T08:00:00.000Z",
     });
     await store.saveAttempt({
+      attemptId: "00000000-0000-4000-8000-000000000012",
       learnerId: learnerA,
       quizHash: "a".repeat(64),
       passingScore: 80,
-      correctCount: 3,
-      totalQuestions: 5,
-      missedQuestionIds: [
-        `qq_${"2".repeat(24)}`,
-        `qq_${"3".repeat(24)}`,
-      ],
+      answers: answerSet(5, 3),
       completedAt: "2026-07-29T09:00:00.000Z",
     });
 
@@ -85,3 +76,11 @@ describe("LocalQuizAttemptStore", () => {
     expect(stored).toHaveLength(2);
   });
 });
+
+function answerSet(total: number, correct: number) {
+  return Array.from({ length: total }, (_, index) => ({
+    questionId: `qq_${index.toString(16).padStart(24, "0")}`,
+    selectedAnswers: [index < correct ? "正确" : "错误"],
+    isCorrect: index < correct,
+  }));
+}
