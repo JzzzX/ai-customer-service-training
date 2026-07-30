@@ -65,9 +65,11 @@ async function main(): Promise<void> {
   );
 }
 
-main().catch(() => {
+main().catch((error: unknown) => {
   console.error(
-    "场景发布失败。请检查数据库连接、迁移、管理员种子、知识版本和来源定位。",
+    error instanceof Error
+      ? error.message
+      : "场景发布失败。请检查数据库连接、迁移、管理员种子、知识版本和来源定位。",
   );
   process.exitCode = 1;
 });

@@ -1,5 +1,5 @@
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import { drizzle } from "drizzle-orm/neon-serverless";
+import ws from "ws";
 
 import * as schema from "./schema";
 import { validateRuntimeEnvironment } from "@/lib/runtime/env";
@@ -20,8 +20,11 @@ export function requireDatabaseUrl(
 }
 
 export function createDatabaseClient(databaseUrl: string) {
-  const client = neon(databaseUrl);
-  return drizzle({ client, schema });
+  return drizzle({
+    connection: databaseUrl,
+    ws,
+    schema,
+  });
 }
 
 export type DatabaseClient = ReturnType<typeof createDatabaseClient>;

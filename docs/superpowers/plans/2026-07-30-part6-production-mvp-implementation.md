@@ -2,6 +2,12 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **2026-07-30 范围调整：** 用户要求停止继续扩展数据库、账号和 E2E 基础设施，
+> 优先完成可交接的 Vercel 技术 Demo。本计划保留为原始实施记录；当前有效收口范围
+> 只有：必要生产修复、Neon 临时演示数据、Vercel Production 部署、最小验收和架构
+> 交接。未执行的增强项不再作为本次交付阻塞条件，后续状态以 `docs/ROADMAP.md` 和
+> `docs/2026-07-30-PART6-VERCEL-HANDOFF.md` 为准。
+
 **Goal:** 将当前本地可演示应用生产化为部署在 Vercel、使用 Neon 持久化、具备完整基础管理闭环并通过架构审计的 `v0.1.0`。
 
 **Architecture:** 保留 Next.js 16 App Router 全栈单体和现有领域逻辑，在领域服务与存储之间建立显式 Port；本地 Store 仅服务测试与本地 Demo，生产通过 Drizzle Repository 写入 Neon。Vercel 承载 Web 与 Server Actions，可信本机 CLI 负责把知识、题库草稿和 8 场景版本发布到 Neon。

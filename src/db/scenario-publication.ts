@@ -293,17 +293,23 @@ function matchesScenarioVersion(
     stored.background === prepared.background &&
     stored.summary === prepared.summary &&
     stored.firstCustomerMessage === prepared.firstCustomerMessage &&
-    equalJson(stored.controlledVariables, prepared.controlledVariables) &&
-    equalJson(stored.hiddenFacts, prepared.hiddenFacts) &&
-    equalJson(stored.customerTurns, prepared.customerTurns) &&
-    equalJson(stored.checkpoints, prepared.checkpoints) &&
-    equalJson(stored.prohibitions, prepared.prohibitions) &&
-    equalJson(stored.scoringWeights, prepared.scoringWeights) &&
-    equalJson(stored.scoringDimensions, prepared.scoringDimensions) &&
-    equalJson(stored.criticalRisks, prepared.criticalRisks) &&
-    equalJson(stored.referenceFlow, prepared.referenceFlow) &&
+    jsonValuesEqual(
+      stored.controlledVariables,
+      prepared.controlledVariables,
+    ) &&
+    jsonValuesEqual(stored.hiddenFacts, prepared.hiddenFacts) &&
+    jsonValuesEqual(stored.customerTurns, prepared.customerTurns) &&
+    jsonValuesEqual(stored.checkpoints, prepared.checkpoints) &&
+    jsonValuesEqual(stored.prohibitions, prepared.prohibitions) &&
+    jsonValuesEqual(stored.scoringWeights, prepared.scoringWeights) &&
+    jsonValuesEqual(
+      stored.scoringDimensions,
+      prepared.scoringDimensions,
+    ) &&
+    jsonValuesEqual(stored.criticalRisks, prepared.criticalRisks) &&
+    jsonValuesEqual(stored.referenceFlow, prepared.referenceFlow) &&
     stored.referenceReply === prepared.referenceReply &&
-    equalJson(stored.sources, prepared.sources) &&
+    jsonValuesEqual(stored.sources, prepared.sources) &&
     stored.maxTurns === prepared.maxTurns &&
     stored.mockMode === prepared.mockMode
   );
@@ -313,6 +319,26 @@ function sourceKey(source: SourceLocator): string {
   return `${source.sourcePath}\u0000${source.anchor}`;
 }
 
-function equalJson(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+export function jsonValuesEqual(
+  left: unknown,
+  right: unknown,
+): boolean {
+  return JSON.stringify(canonicalJson(left)) ===
+    JSON.stringify(canonicalJson(right));
+}
+
+function canonicalJson(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalJson);
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([leftKey], [rightKey]) =>
+          leftKey.localeCompare(rightKey),
+        )
+        .map(([key, child]) => [key, canonicalJson(child)]),
+    );
+  }
+  return value;
 }

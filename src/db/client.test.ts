@@ -12,11 +12,13 @@ describe("Neon database client", () => {
     );
   });
 
-  it("creates a lazy Neon HTTP client without opening a connection", () => {
+  it("creates a lazy Neon WebSocket client with transaction support", () => {
     const databaseUrl =
       "postgresql://training:test@example.neon.tech/training?sslmode=require";
 
     expect(requireDatabaseUrl({ DATABASE_URL: databaseUrl })).toBe(databaseUrl);
-    expect(createDatabaseClient(databaseUrl)).toBeDefined();
+    const database = createDatabaseClient(databaseUrl);
+    expect(database).toBeDefined();
+    expect(database.transaction).toBeTypeOf("function");
   });
 });

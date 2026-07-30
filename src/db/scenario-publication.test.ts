@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  jsonValuesEqual,
   publishScenarioTemplatesToStore,
   type PreparedScenarioPublication,
   type ResolvedScenarioKnowledge,
@@ -43,6 +44,15 @@ class MemoryScenarioPublicationStore
 }
 
 describe("scenario database publication", () => {
+  it("compares JSONB values independently of object key order", () => {
+    expect(
+      jsonValuesEqual(
+        { second: 2, first: { beta: true, alpha: true } },
+        { first: { alpha: true, beta: true }, second: 2 },
+      ),
+    ).toBe(true);
+  });
+
   it("publishes exactly eight stable scenario versions idempotently", async () => {
     const store = new MemoryScenarioPublicationStore();
 

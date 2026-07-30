@@ -5,10 +5,10 @@ export const projectKnowledgeOutputDirectory = "artifacts/knowledge";
 
 export const projectExpectedCoverage: ExpectedCoverage = {
   sourceFiles: 8,
-  markdownFiles: 6,
-  workbookFiles: 2,
+  markdownFiles: 4,
+  workbookFiles: 4,
   mindmapFiles: 0,
-  workbookSheets: 9,
+  workbookSheets: 11,
   mindmapNodes: 0,
   skippedImages: 133,
 };
