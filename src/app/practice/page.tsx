@@ -35,16 +35,16 @@ export default async function PracticePage() {
           </article>
 
           <article className="rounded-[var(--radius-card)] border-2 border-brand-border bg-surface p-7 shadow-[var(--shadow-card)]">
-            <p className="text-sm font-bold text-brand">5题 · 约3分钟</p>
+            <p className="text-sm font-bold text-brand">5 个专题 · 230+ 道题</p>
             <h2 className="mt-2 text-2xl font-black text-ink">知识小测</h2>
             <p className="mt-3 leading-7 text-ink-soft">
-              逐题练习并立即查看解释，完成后可以只重练错题。
+              按专题分类练习，每次随机抽 10 题，完成后可重练错题。
             </p>
             <Link
               className="mt-6 inline-flex min-h-12 items-center justify-center rounded-2xl bg-brand px-5 font-black text-white shadow-[var(--shadow-btn)] transition-transform active:translate-y-1 active:shadow-none"
-              href="/practice/quiz"
+              href="/practice/quiz/topics"
             >
-              开始练习
+              选择专题
             </Link>
           </article>
 

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import type { QuizQuestionPublished } from "./schema";
-import { selectQuestionGroup } from "./select-question-group";
+import type { QuizQuestion, QuizQuestionPublished } from "./schema";
+import {
+  selectQuestionGroup,
+  selectQuestionGroupByTopic,
+} from "./select-question-group";
 
 function question(
   idDigit: string,
@@ -18,6 +21,33 @@ function question(
     category: "日常问答",
     difficulty: "easy",
     status: "published",
+    sources: [
+      {
+        sourcePath: "问答.md",
+        kind: "markdown",
+        anchor: `heading:${idDigit}`,
+        path: ["问答"],
+      },
+    ],
+  };
+}
+
+function draftQuestion(
+  idDigit: string,
+  category: string,
+  difficulty: QuizQuestion["difficulty"],
+): QuizQuestion {
+  return {
+    id: `qq_${idDigit.padStart(24, "0")}`,
+    knowledgeUnitId: `ku_${idDigit.padStart(24, "0")}`,
+    type: "single_choice",
+    prompt: `题目 ${idDigit}`,
+    options: ["答案", "干扰项"],
+    correctAnswers: ["答案"],
+    explanation: "答案解释",
+    category,
+    difficulty,
+    status: "draft",
     sources: [
       {
         sourcePath: "问答.md",
@@ -75,5 +105,84 @@ describe("selectQuestionGroup", () => {
       questions[1],
       questions[2],
     ]);
+  });
+});
+
+describe("selectQuestionGroupByTopic", () => {
+  it("filters by category and returns up to 10 questions", () => {
+    const questions = [
+      ...Array.from({ length: 10 }, (_, index) =>
+        draftQuestion(`${index + 1}`, "产品属性及卖点", "easy"),
+      ),
+      ...Array.from({ length: 10 }, (_, index) =>
+        draftQuestion(`${index + 11}`, "活动促销", "easy"),
+      ),
+    ];
+
+    const selected = selectQuestionGroupByTopic(questions, "产品属性及卖点");
+
+    expect(selected).toHaveLength(10);
+    expect(
+      selected.every((item) => item.category === "产品属性及卖点"),
+    ).toBe(true);
+  });
+
+  it("respects difficulty quotas when enough questions exist", () => {
+    const questions = [
+      ...Array.from({ length: 5 }, (_, index) =>
+        draftQuestion(`e${index + 1}`, "产品属性及卖点", "easy"),
+      ),
+      ...Array.from({ length: 5 }, (_, index) =>
+        draftQuestion(`m${index + 1}`, "产品属性及卖点", "medium"),
+      ),
+      ...Array.from({ length: 5 }, (_, index) =>
+        draftQuestion(`h${index + 1}`, "产品属性及卖点", "hard"),
+      ),
+    ];
+
+    const selected = selectQuestionGroupByTopic(questions, "产品属性及卖点");
+
+    expect(selected).toHaveLength(10);
+    expect(
+      selected.filter((item) => item.difficulty === "easy"),
+    ).toHaveLength(4);
+    expect(
+      selected.filter((item) => item.difficulty === "medium"),
+    ).toHaveLength(4);
+    expect(
+      selected.filter((item) => item.difficulty === "hard"),
+    ).toHaveLength(2);
+  });
+
+  it("returns empty array when topic has no questions", () => {
+    const questions = [
+      draftQuestion("1", "产品属性及卖点", "easy"),
+      draftQuestion("2", "活动促销", "easy"),
+    ];
+
+    expect(selectQuestionGroupByTopic(questions, "不存在的专题")).toEqual([]);
+  });
+
+  it("fills from leftovers when a difficulty bucket is insufficient", () => {
+    const questions = [
+      ...Array.from({ length: 8 }, (_, index) =>
+        draftQuestion(`e${index + 1}`, "产品属性及卖点", "easy"),
+      ),
+      draftQuestion("m1", "产品属性及卖点", "medium"),
+      draftQuestion("h1", "产品属性及卖点", "hard"),
+    ];
+
+    const selected = selectQuestionGroupByTopic(questions, "产品属性及卖点");
+
+    expect(selected).toHaveLength(10);
+    expect(
+      selected.filter((item) => item.difficulty === "easy"),
+    ).toHaveLength(8);
+    expect(
+      selected.filter((item) => item.difficulty === "medium"),
+    ).toHaveLength(1);
+    expect(
+      selected.filter((item) => item.difficulty === "hard"),
+    ).toHaveLength(1);
   });
 });

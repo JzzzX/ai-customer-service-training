@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { QuizPublishedPack } from "@/lib/quiz/schema";
+import type { QuizPublishedPack, QuizQuestion } from "@/lib/quiz/schema";
 
 const mocks = vi.hoisted(() => ({
   loadPublishedQuiz: vi.fn(),
@@ -30,10 +30,11 @@ vi.mock("@/components/quiz/quiz-runner", () => ({
     attemptId: string;
     onComplete?: () => Promise<void>;
     passingScore: number;
-    questions: QuizPublishedPack["questions"];
+    questions: QuizQuestion[];
   }) => (
     <div data-testid="quiz-runner">
       {questions.length}|{passingScore}|{questions[0]?.status}|
+      {questions[0]?.category}|
       {onComplete ? "recorded" : "not-recorded"}|
       {attemptId ? "attempt-id" : "missing-id"}
     </div>
@@ -91,7 +92,7 @@ describe("PracticeQuizPage", () => {
 
     expect(screen.getByText("正式题组")).toBeInTheDocument();
     expect(screen.getByTestId("quiz-runner")).toHaveTextContent(
-      "10|80|published|recorded",
+      "10|80|published|日常问答|recorded",
     );
   });
 
@@ -102,7 +103,36 @@ describe("PracticeQuizPage", () => {
 
     expect(screen.getByText("交互演示题")).toBeInTheDocument();
     expect(screen.getByTestId("quiz-runner")).toHaveTextContent(
-      "5|80|draft|not-recorded",
+      "5|80|draft|日常问答|not-recorded",
+    );
+  });
+
+  it("uses topic question bank when topic searchParam is provided", async () => {
+    mocks.loadPublishedQuiz.mockResolvedValue(null);
+
+    render(
+      await PracticeQuizPage({
+        searchParams: Promise.resolve({ topic: "产品属性及卖点" }),
+      }),
+    );
+
+    expect(screen.getByText("专题练习")).toBeInTheDocument();
+    const runner = screen.getByTestId("quiz-runner");
+    expect(runner).toHaveTextContent(/^10\|80\|draft\|产品属性及卖点\|recorded\|attempt-id$/);
+  });
+
+  it("falls back to published quiz when topic is invalid", async () => {
+    mocks.loadPublishedQuiz.mockResolvedValue(publishedQuiz());
+
+    render(
+      await PracticeQuizPage({
+        searchParams: Promise.resolve({ topic: "不存在的专题" }),
+      }),
+    );
+
+    expect(screen.getByText("正式题组")).toBeInTheDocument();
+    expect(screen.getByTestId("quiz-runner")).toHaveTextContent(
+      "10|80|published|日常问答|recorded",
     );
   });
 });

@@ -43,6 +43,9 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
     inputValue: SaveQuizAttemptInput,
   ): Promise<QuizAttemptRecord> {
     const input = saveQuizAttemptInputSchema.parse(inputValue);
+    if (input.topicId) {
+      throw new Error("专题练习记录暂不支持生产数据库模式，请使用本地演示模式。");
+    }
     const [existing] = await this.database
       .select({
         id: quizAttempts.id,

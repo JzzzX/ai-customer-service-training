@@ -1,11 +1,14 @@
 "use server";
 
+import { createHash } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth/guards";
 import { evaluateAnswer } from "@/lib/quiz/attempt";
 import { saveQuizAttemptForLearner } from "@/lib/quiz/attempt-service";
+import { topicQuizQuestions } from "@/lib/quiz/question-bank";
 import { loadPublishedQuiz } from "@/lib/quiz/review-service";
 
 const submittedAnswerSchema = z.object({
@@ -67,6 +70,46 @@ export async function saveQuizAttemptAction(
     quizHash,
     assignmentId,
     passingScore: publishedQuiz.passingScore,
+    answers: checkedAnswers,
+  });
+  revalidatePath("/practice/history");
+}
+
+export async function saveTopicQuizAttemptAction(
+  topicId: string,
+  attemptIdInput: string,
+  submittedAnswers: QuizAnswerSubmission[],
+): Promise<void> {
+  const user = await requireUser();
+  const topic = z.string().trim().min(1).parse(topicId);
+  const attemptId = z.string().uuid().parse(attemptIdInput);
+  const answers = submittedAnswersSchema.parse(submittedAnswers);
+
+  const questionsById = new Map(
+    topicQuizQuestions.map((question) => [question.id, question]),
+  );
+  const checkedAnswers = answers.map((answer) => {
+    const question = questionsById.get(answer.questionId);
+    if (!question) {
+      throw new Error("题目不属于当前专题题库。");
+    }
+    return {
+      questionId: answer.questionId,
+      selectedAnswers: [answer.selected],
+      isCorrect: evaluateAnswer([answer.selected], question.correctAnswers),
+    };
+  });
+
+  const quizHash = createHash("sha256")
+    .update(`topic:${topic}`)
+    .digest("hex");
+
+  await saveQuizAttemptForLearner({
+    attemptId,
+    learnerId: user.id,
+    quizHash,
+    topicId: topic,
+    passingScore: 80,
     answers: checkedAnswers,
   });
   revalidatePath("/practice/history");
