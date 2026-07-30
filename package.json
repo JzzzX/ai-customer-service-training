@@ -20,6 +20,7 @@
     "quiz:build": "tsx scripts/quiz.ts build",
     "quiz:publish:db": "tsx scripts/publish-quiz-to-db.ts",
     "scenario:publish:db": "tsx scripts/publish-scenarios-to-db.ts",
+    "production:verify:data": "tsx scripts/verify-production-data.ts",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

@@ -113,6 +113,24 @@ pnpm scenario:publish:db
 发布器要求每个来源定位都能命中当前活动知识版本，且对应知识不得存在冲突或被
 禁止用于场景；相同场景版本键如果出现不同内容会拒绝覆盖。
 
+## 生产初始化与验收
+
+空数据库按以下顺序初始化；所有发布命令均可安全重复执行：
+
+```bash
+pnpm db:migrate
+pnpm db:seed
+pnpm knowledge:publish:db
+pnpm quiz:publish:db
+pnpm scenario:publish:db
+pnpm production:verify:data
+```
+
+默认验收“技术可用版”：一个活动知识版本、40道草稿题、8个已发布场景、启用中的
+管理员与学员账号，且不存在跨知识版本引用。知识负责人完成40/40逐题审核并发布
+正式题组后，再运行 `pnpm production:verify:data --formal`；未通过该严格门禁时，
+版本只能称为技术验收版，不能称为正式培训内容版。
+
 所有页面和报告均明确标识“演示模式”或“演示评分”，不把Mock结果计入真实AI可信度
 验收。会话保存在不进入Git的 `artifacts/scenario`；未来接入真实模型和企业存储时，
 替换Provider与服务适配层即可，页面流程和会话契约保持不变。
