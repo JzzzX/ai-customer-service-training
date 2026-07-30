@@ -9,7 +9,7 @@ export function SignOutButton() {
       }}
     >
       <button
-        className="rounded-xl border-2 border-[#dce8df] bg-white px-4 py-2 text-sm font-bold text-[#4d6758]"
+        className="rounded-[var(--radius-control)] border-2 border-brand-border bg-surface px-4 py-2 text-sm font-bold text-ink-soft"
         type="submit"
       >
         退出登录
