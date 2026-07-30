@@ -4,8 +4,8 @@
 
 ## 当前状态
 
-- 当前阶段：Part 6 — 生产化、管理端补全与部署（设计复核中）
-- 当前目标：确认Vercel生产化规格后，完成Neon持久化、管理闭环、E2E与真实部署
+- 当前阶段：Part 6 — 生产化、管理端补全与部署（实施中）
+- 当前目标：按已复核实施计划完成Neon持久化、管理闭环、E2E、真实部署与基础架构审计
 - GitHub：`JzzzX/ai-customer-service-training`（Private）
 - 部署：Vercel + Neon；使用 `.vercel.app` 作为本周MVP交付地址
 - AI：`v0.1.0` 使用Mock Provider，真实模型接入延期
@@ -19,7 +19,7 @@
 | 3 | Neon数据模型与测试账号认证 | 已完成 |
 | 4 | 40题知识小测闭环 | 实现完成，内容审核中 |
 | 5 | 8场景Mock情景实战 | 已完成 |
-| 6 | 管理端、端到端测试、Vercel部署 | 设计复核中 |
+| 6 | 管理端、端到端测试、Vercel部署 | 实施中 |
 | Deferred | 真实AI Provider与可信度验收 | 暂缓 |
 
 ## Part 1 检查清单
