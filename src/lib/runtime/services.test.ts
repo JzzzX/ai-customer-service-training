@@ -2,13 +2,19 @@ import { describe, expect, it } from "vitest";
 
 import { DbQuizReviewStore } from "@/db/repositories/db-quiz-review-store";
 import { DbQuizAttemptStore } from "@/db/repositories/db-quiz-attempt-store";
+import { DbAssignmentStore } from "@/db/repositories/db-assignment-store";
+import { DbReviewStore } from "@/db/repositories/db-review-store";
 import type { DatabaseClient } from "@/db/client";
 import { LocalQuizAttemptStore } from "@/lib/quiz/local-attempt-store";
 import { LocalQuizReviewStore } from "@/lib/quiz/local-review-store";
 
 import {
+  createAssignmentService,
+  createAssignmentStore,
   createQuizAttemptStore,
   createQuizReviewStore,
+  createReviewService,
+  createReviewStore,
 } from "./services";
 
 describe("runtime service composition", () => {
@@ -58,5 +64,36 @@ describe("runtime service composition", () => {
 
     expect(local).toBeInstanceOf(LocalQuizAttemptStore);
     expect(production).toBeInstanceOf(DbQuizAttemptStore);
+  });
+
+  it("composes production assignment and review services with database adapters", () => {
+    const database = {} as DatabaseClient;
+    const input = {
+      environment: {},
+      nodeEnvironment: "production" as const,
+      projectRoot: "/tmp/ai-training-test",
+      databaseFactory: () => database,
+    };
+
+    expect(createAssignmentStore(input)).toBeInstanceOf(
+      DbAssignmentStore,
+    );
+    expect(createReviewStore(input)).toBeInstanceOf(DbReviewStore);
+  });
+
+  it("keeps local demo administration read-only", async () => {
+    const input = {
+      environment: { LOCAL_TEST_AUTH_ENABLED: "true" },
+      nodeEnvironment: "development" as const,
+      projectRoot: "/tmp/ai-training-test",
+      databaseFactory: () => {
+        throw new Error("local mode must not initialize the database");
+      },
+    };
+    const assignments = createAssignmentService(input);
+    const reviews = createReviewService(input);
+
+    await expect(assignments.listForAdmin()).resolves.toEqual([]);
+    await expect(reviews.listPending()).resolves.toEqual([]);
   });
 });

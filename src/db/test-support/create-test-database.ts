@@ -11,6 +11,7 @@ export async function createTestDatabase() {
   for (const migration of [
     "drizzle/0000_tiresome_rocket_racer.sql",
     "drizzle/0001_brave_steve_rogers.sql",
+    "drizzle/0002_nervous_captain_flint.sql",
   ]) {
     await client.exec(
       await readFile(resolve(process.cwd(), migration), "utf8"),

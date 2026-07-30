@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { getDatabase, type DatabaseClient } from "@/db/client";
 import { DbQuizAttemptStore } from "@/db/repositories/db-quiz-attempt-store";
 import { DbQuizReviewStore } from "@/db/repositories/db-quiz-review-store";
+import { DbAssignmentStore } from "@/db/repositories/db-assignment-store";
+import { DbReviewStore } from "@/db/repositories/db-review-store";
 import { DbScenarioSessionStore } from "@/db/repositories/db-scenario-session-store";
 import { DbScenarioTemplateStore } from "@/db/repositories/db-scenario-template-store";
 import { LocalQuizAttemptStore } from "@/lib/quiz/local-attempt-store";
@@ -20,6 +22,14 @@ import {
   getScenarioTemplate,
   scenarioTemplates,
 } from "@/lib/scenario/templates";
+import { AssignmentService } from "@/lib/training/assignment-service";
+import type { AssignmentStore } from "@/lib/training/assignment-store";
+import {
+  LocalReadonlyAssignmentStore,
+  LocalReadonlyReviewStore,
+} from "@/lib/training/local-readonly-stores";
+import { ReviewService } from "@/lib/training/review-service";
+import type { ReviewStore } from "@/lib/training/review-store";
 
 import { resolveRuntimeMode } from "./mode";
 
@@ -54,6 +64,36 @@ export function createQuizAttemptStore(
   return new DbQuizAttemptStore(input.databaseFactory());
 }
 
+export function createAssignmentStore(
+  input: StoreCompositionInput,
+): AssignmentStore {
+  if (runtimeMode(input) === "local_demo") {
+    return new LocalReadonlyAssignmentStore();
+  }
+  return new DbAssignmentStore(input.databaseFactory());
+}
+
+export function createReviewStore(
+  input: StoreCompositionInput,
+): ReviewStore {
+  if (runtimeMode(input) === "local_demo") {
+    return new LocalReadonlyReviewStore();
+  }
+  return new DbReviewStore(input.databaseFactory());
+}
+
+export function createAssignmentService(
+  input: StoreCompositionInput,
+): AssignmentService {
+  return new AssignmentService(createAssignmentStore(input));
+}
+
+export function createReviewService(
+  input: StoreCompositionInput,
+): ReviewService {
+  return new ReviewService(createReviewStore(input));
+}
+
 export function getQuizReviewStore(): QuizReviewStore {
   return createQuizReviewStore({
     environment: process.env,
@@ -70,6 +110,14 @@ export function getQuizAttemptStore(): QuizAttemptStore {
     projectRoot: process.cwd(),
     databaseFactory: getDatabase,
   });
+}
+
+export function getAssignmentService(): AssignmentService {
+  return createAssignmentService(defaultCompositionInput());
+}
+
+export function getReviewService(): ReviewService {
+  return createReviewService(defaultCompositionInput());
 }
 
 export function createScenarioTrainingService(
@@ -111,21 +159,20 @@ export function createScenarioTemplateStore(
 }
 
 export function getScenarioTrainingService(): ScenarioTrainingService {
-  return createScenarioTrainingService({
-    environment: process.env,
-    nodeEnvironment: process.env.NODE_ENV,
-    projectRoot: process.cwd(),
-    databaseFactory: getDatabase,
-  });
+  return createScenarioTrainingService(defaultCompositionInput());
 }
 
 export function getScenarioTemplateStore(): ScenarioTemplateStore {
-  return createScenarioTemplateStore({
+  return createScenarioTemplateStore(defaultCompositionInput());
+}
+
+function defaultCompositionInput(): StoreCompositionInput {
+  return {
     environment: process.env,
     nodeEnvironment: process.env.NODE_ENV,
     projectRoot: process.cwd(),
     databaseFactory: getDatabase,
-  });
+  };
 }
 
 function runtimeMode(input: StoreCompositionInput) {

@@ -11,6 +11,7 @@ import {
   questionReviews,
   quizAttempts,
   quizSets,
+  reviewDecisions,
   scenarios,
   scenarioVersions,
   trainingSessions,
@@ -119,6 +120,14 @@ describe("MVP database schema", () => {
         (item) => item.name,
       ),
     ).toContain("scenario_versions_key_unique");
+  });
+
+  it("allows only one final review decision per evaluation report", () => {
+    expect(
+      getTableConfig(reviewDecisions).uniqueConstraints.map(
+        (item) => item.name,
+      ),
+    ).toContain("review_decisions_report_unique");
   });
 
   it("keeps credentials, roles and traceable version bindings explicit", () => {

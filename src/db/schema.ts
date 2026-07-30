@@ -614,6 +614,9 @@ export const reviewDecisions = pgTable(
       .notNull(),
   },
   (table) => [
+    unique("review_decisions_report_unique").on(
+      table.evaluationReportId,
+    ),
     index("review_decisions_report_created_idx").on(
       table.evaluationReportId,
       table.createdAt,
