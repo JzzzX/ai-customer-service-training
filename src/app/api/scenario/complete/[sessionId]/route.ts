@@ -36,6 +36,8 @@ export async function GET(
           encoder.encode(`data: ${JSON.stringify(data)}\n\n`),
         );
       };
+      // 立即发送 SSE 注释行，确保生产模式下响应头不被缓冲
+      controller.enqueue(encoder.encode(": stream-open\n\n"));
       try {
         for await (const chunk of service.completeStream({
           learnerId: session.user.id,

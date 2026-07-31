@@ -49,6 +49,7 @@ export function StreamingReport({
   });
 
   useEffect(() => {
+    const controller = new AbortController();
     let cancelled = false;
     let accumulated = "";
 
@@ -56,6 +57,7 @@ export function StreamingReport({
       try {
         const response = await fetch(
           `/api/scenario/complete/${sessionId}`,
+          { signal: controller.signal },
         );
         if (!response.ok || !response.body) {
           throw new Error(
@@ -111,20 +113,20 @@ export function StreamingReport({
           }
         }
       } catch (error) {
-        if (!cancelled) {
-          setState({
-            phase: "error",
-            message:
-              error instanceof Error
-                ? error.message
-                : "报告生成失败，请稍后重试。",
-          });
-        }
+        if (cancelled || controller.signal.aborted) return;
+        setState({
+          phase: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "报告生成失败，请稍后重试。",
+        });
       }
     })();
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [sessionId, router]);
 
