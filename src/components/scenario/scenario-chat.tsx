@@ -1,11 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import {
-  completeScenarioAction,
-  sendScenarioMessageAction,
-} from "@/app/practice/scenario/actions";
+import { sendScenarioMessageAction } from "@/app/practice/scenario/actions";
 import type { LiveRiskAlert, ScenarioSession } from "@/lib/scenario/schema";
 
 export function ScenarioChat({
@@ -21,6 +19,7 @@ export function ScenarioChat({
   const [streamingReply, setStreamingReply] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const router = useRouter();
   const reachedLimit = session.learnerTurnCount >= session.maxTurns;
 
   async function submitMessage(event: React.FormEvent<HTMLFormElement>) {
@@ -146,16 +145,18 @@ export function ScenarioChat({
           </form>
         )}
 
-        <form action={completeScenarioAction} className="mt-4">
-          <input name="sessionId" type="hidden" value={session.id} />
-          <button
-            className="min-h-11 w-full rounded-2xl border-2 border-[#d7deea] px-5 font-bold text-[#5f6f67] disabled:opacity-50"
-            disabled={pending}
-            type="submit"
-          >
-            结束并查看报告
-          </button>
-        </form>
+        <button
+          className="mt-4 min-h-11 w-full rounded-2xl border-2 border-[#d7deea] px-5 font-bold text-[#5f6f67] disabled:opacity-50"
+          disabled={pending}
+          onClick={() =>
+            router.push(
+              `/practice/scenario/report/${session.id}?streaming=1`,
+            )
+          }
+          type="button"
+        >
+          结束并查看报告
+        </button>
       </div>
     </section>
   );

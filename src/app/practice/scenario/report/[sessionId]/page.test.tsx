@@ -92,6 +92,7 @@ describe("ScenarioReportPage", () => {
     render(
       await ScenarioReportPage({
         params: Promise.resolve({ sessionId: session.id }),
+        searchParams: Promise.resolve({}),
       }),
     );
 

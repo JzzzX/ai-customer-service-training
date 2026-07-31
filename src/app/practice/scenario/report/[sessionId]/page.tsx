@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { StreamingReport } from "@/components/scenario/streaming-report";
 import { requireUser } from "@/lib/auth/guards";
 import {
   getScenarioTemplateStore,
@@ -11,12 +12,32 @@ import { restartScenarioAction } from "../../actions";
 
 export default async function ScenarioReportPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ sessionId: string }>;
+  searchParams: Promise<{ streaming?: string }>;
 }) {
   const user = await requireUser();
   const { sessionId } = await params;
+  const { streaming } = await searchParams;
   const session = await loadSession(user.id, sessionId);
+
+  if (streaming === "1" && session.status === "active") {
+    const scenario = await getScenarioTemplateStore().getPublishedById(
+      session.scenarioId,
+    );
+    if (!scenario || scenario.versionId !== session.scenarioVersionId) {
+      notFound();
+    }
+    return (
+      <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
+        <div className="mx-auto max-w-4xl">
+          <StreamingReport sessionId={session.id} scenario={scenario} />
+        </div>
+      </main>
+    );
+  }
+
   if (session.status === "active") {
     redirect(`/practice/scenario/session/${session.id}`);
   }

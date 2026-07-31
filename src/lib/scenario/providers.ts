@@ -15,11 +15,19 @@ export interface ConversationProvider {
   }): AsyncIterable<string>;
 }
 
+export type EvaluationStreamChunk =
+  | { delta: string }
+  | { report: ScenarioEvaluationReport };
+
 export interface EvaluationProvider {
   evaluate(input: {
     scenario: ScenarioTemplate;
     learnerMessages: string[];
   }): Promise<ScenarioEvaluationReport>;
+  evaluateStream(input: {
+    scenario: ScenarioTemplate;
+    learnerMessages: string[];
+  }): AsyncIterable<EvaluationStreamChunk>;
 }
 
 export interface LiveRiskProvider {

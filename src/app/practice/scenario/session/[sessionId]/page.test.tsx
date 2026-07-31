@@ -27,6 +27,22 @@ vi.mock("@/lib/runtime/services", () => ({
   }),
 }));
 
+vi.mock("next/navigation", async (importActual) => {
+  const actual =
+    await importActual<typeof import("next/navigation")>();
+  return {
+    ...actual,
+    useRouter: () => ({
+      push: vi.fn(),
+      replace: vi.fn(),
+      back: vi.fn(),
+      forward: vi.fn(),
+      refresh: vi.fn(),
+      prefetch: vi.fn(),
+    }),
+  };
+});
+
 import ScenarioSessionPage from "./page";
 
 describe("ScenarioSessionPage", () => {

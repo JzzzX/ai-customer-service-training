@@ -19,6 +19,16 @@ import type {
   KnowledgeQueryStore,
 } from "@/lib/knowledge/query-store";
 
+const SCENARIO_UNIT_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type CachedScenarioUnits = {
+  units: KnowledgeUnit[];
+  versionId: string;
+  expireAt: number;
+};
+
+const scenarioUnitCache = new Map<ScenarioCategory, CachedScenarioUnits>();
+
 export class DbKnowledgeQueryStore implements KnowledgeQueryStore {
   constructor(private readonly database: DatabaseClient) {}
 
@@ -108,6 +118,12 @@ export class DbKnowledgeQueryStore implements KnowledgeQueryStore {
     category: ScenarioCategory,
     limit = 5,
   ): Promise<KnowledgeUnit[]> {
+    const now = Date.now();
+    const cached = scenarioUnitCache.get(category);
+    if (cached && cached.expireAt > now) {
+      return selectKnowledgeUnitsForCategory(cached.units, category, limit);
+    }
+
     const [version] = await this.database
       .select({ id: knowledgeVersions.id })
       .from(knowledgeVersions)
@@ -146,6 +162,11 @@ export class DbKnowledgeQueryStore implements KnowledgeQueryStore {
         sources: row.sources,
       }),
     );
+    scenarioUnitCache.set(category, {
+      units,
+      versionId: version.id,
+      expireAt: now + SCENARIO_UNIT_CACHE_TTL_MS,
+    });
     return selectKnowledgeUnitsForCategory(units, category, limit);
   }
 }

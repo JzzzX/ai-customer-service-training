@@ -131,56 +131,59 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
 
   async loadSession(inputValue: SessionIdentity): Promise<ScenarioSession> {
     const input = sessionIdentitySchema.parse(inputValue);
-    const [session] = await this.database
-      .select({
-        id: trainingSessions.id,
-        learnerId: trainingSessions.learnerId,
-        scenarioId: scenarios.scenarioKey,
-        scenarioVersionId: scenarioVersions.versionKey,
-        status: trainingSessions.status,
-        mode: trainingSessions.mode,
-        turnCount: trainingSessions.turnCount,
-        maxTurns: scenarioVersions.maxTurns,
-        startedAt: trainingSessions.startedAt,
-        updatedAt: trainingSessions.updatedAt,
-        completedAt: trainingSessions.completedAt,
-      })
-      .from(trainingSessions)
-      .innerJoin(
-        scenarioVersions,
-        eq(trainingSessions.scenarioVersionId, scenarioVersions.id),
-      )
-      .innerJoin(
-        scenarios,
-        eq(scenarioVersions.scenarioId, scenarios.id),
-      )
-      .where(
-        and(
-          eq(trainingSessions.id, input.sessionId),
-          eq(trainingSessions.learnerId, input.learnerId),
-        ),
-      )
-      .limit(1);
+    const [sessionRows, messages, reportRows] = await Promise.all([
+      this.database
+        .select({
+          id: trainingSessions.id,
+          learnerId: trainingSessions.learnerId,
+          scenarioId: scenarios.scenarioKey,
+          scenarioVersionId: scenarioVersions.versionKey,
+          status: trainingSessions.status,
+          mode: trainingSessions.mode,
+          turnCount: trainingSessions.turnCount,
+          maxTurns: scenarioVersions.maxTurns,
+          startedAt: trainingSessions.startedAt,
+          updatedAt: trainingSessions.updatedAt,
+          completedAt: trainingSessions.completedAt,
+        })
+        .from(trainingSessions)
+        .innerJoin(
+          scenarioVersions,
+          eq(trainingSessions.scenarioVersionId, scenarioVersions.id),
+        )
+        .innerJoin(
+          scenarios,
+          eq(scenarioVersions.scenarioId, scenarios.id),
+        )
+        .where(
+          and(
+            eq(trainingSessions.id, input.sessionId),
+            eq(trainingSessions.learnerId, input.learnerId),
+          ),
+        )
+        .limit(1),
+      this.database
+        .select({
+          id: trainingMessages.id,
+          role: trainingMessages.sender,
+          content: trainingMessages.content,
+          createdAt: trainingMessages.createdAt,
+          metadata: trainingMessages.metadata,
+        })
+        .from(trainingMessages)
+        .where(eq(trainingMessages.trainingSessionId, input.sessionId))
+        .orderBy(asc(trainingMessages.position)),
+      this.database
+        .select()
+        .from(evaluationReports)
+        .where(eq(evaluationReports.trainingSessionId, input.sessionId))
+        .limit(1),
+    ]);
+    const session = sessionRows[0];
     if (!session) {
       throw new Error("无权访问该训练会话。");
     }
-
-    const messages = await this.database
-      .select({
-        id: trainingMessages.id,
-        role: trainingMessages.sender,
-        content: trainingMessages.content,
-        createdAt: trainingMessages.createdAt,
-        metadata: trainingMessages.metadata,
-      })
-      .from(trainingMessages)
-      .where(eq(trainingMessages.trainingSessionId, session.id))
-      .orderBy(asc(trainingMessages.position));
-    const [storedReport] = await this.database
-      .select()
-      .from(evaluationReports)
-      .where(eq(evaluationReports.trainingSessionId, session.id))
-      .limit(1);
+    const storedReport = reportRows[0];
     const report = storedReport
       ? scenarioEvaluationReportSchema.parse({
           mode: session.mode as "mock" | "real",
@@ -327,9 +330,21 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
     const completedAt = inputValue.completedAt
       ? new Date(inputValue.completedAt)
       : new Date();
-    const existing = await this.loadSession(identity);
-    if (existing.status === "completed") {
-      return existing;
+    const [existing] = await this.database
+      .select({ status: trainingSessions.status })
+      .from(trainingSessions)
+      .where(
+        and(
+          eq(trainingSessions.id, identity.sessionId),
+          eq(trainingSessions.learnerId, identity.learnerId),
+        ),
+      )
+      .limit(1);
+    if (!existing) {
+      throw new Error("无权访问该训练会话。");
+    }
+    if (existing.status !== "in_progress") {
+      return this.loadSession(identity);
     }
 
     await this.database.transaction(async (transaction) => {

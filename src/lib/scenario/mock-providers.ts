@@ -1,6 +1,7 @@
 import type {
   ConversationProvider,
   EvaluationProvider,
+  EvaluationStreamChunk,
   LiveRiskProvider,
 } from "./providers";
 import {
@@ -99,6 +100,13 @@ export class MockEvaluationProvider implements EvaluationProvider {
       referenceReply: input.scenario.referenceReply,
       lowConfidence: input.learnerMessages.length < 3,
     });
+  }
+
+  async *evaluateStream(
+    input: Parameters<EvaluationProvider["evaluateStream"]>[0],
+  ): AsyncIterable<EvaluationStreamChunk> {
+    const report = await this.evaluate(input);
+    yield { report };
   }
 }
 

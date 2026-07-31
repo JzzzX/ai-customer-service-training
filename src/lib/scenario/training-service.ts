@@ -2,10 +2,12 @@ import type { KnowledgeUnit } from "@/lib/knowledge/schema";
 import type {
   ConversationProvider,
   EvaluationProvider,
+  EvaluationStreamChunk,
   LiveRiskProvider,
 } from "./providers";
 import type {
   LiveRiskAlert,
+  ScenarioEvaluationReport,
   ScenarioSession,
   ScenarioTemplate,
 } from "./schema";
@@ -62,9 +64,16 @@ export class ScenarioTrainingService {
   }
 
   async load(input: SessionIdentity): Promise<ScenarioSession> {
-    const session = await this.store.loadSession(input);
-    await this.templateForSession(session);
+    const { session } = await this.loadWithScenario(input);
     return session;
+  }
+
+  private async loadWithScenario(
+    input: SessionIdentity,
+  ): Promise<{ session: ScenarioSession; scenario: ScenarioTemplate }> {
+    const session = await this.store.loadSession(input);
+    const scenario = await this.templateForSession(session);
+    return { session, scenario };
   }
 
   async sendMessage(
@@ -74,11 +83,10 @@ export class ScenarioTrainingService {
     customerChunks: string[];
     riskAlert: LiveRiskAlert | null;
   }> {
-    const session = await this.load(input);
+    const { session, scenario } = await this.loadWithScenario(input);
     if (session.status === "completed") {
       throw new Error("已完成的训练不能继续发送消息。");
     }
-    const scenario = await this.templateForSession(session);
     const customerChunks: string[] = [];
     const messages = [
       ...session.messages.map(({ role, content }) => ({ role, content })),
@@ -124,11 +132,10 @@ export class ScenarioTrainingService {
   }
 
   async complete(input: SessionIdentity): Promise<ScenarioSession> {
-    const session = await this.load(input);
+    const { session, scenario } = await this.loadWithScenario(input);
     if (session.status === "completed") {
       return session;
     }
-    const scenario = await this.templateForSession(session);
     const report = await this.evaluationProvider.evaluate({
       scenario,
       learnerMessages: session.messages
@@ -136,6 +143,35 @@ export class ScenarioTrainingService {
         .map((message) => message.content),
     });
     return this.store.completeSession({ ...input, report });
+  }
+
+  async *completeStream(
+    input: SessionIdentity,
+  ): AsyncIterable<EvaluationStreamChunk | { session: ScenarioSession }> {
+    const { session, scenario } = await this.loadWithScenario(input);
+    if (session.status === "completed" && session.report) {
+      yield { report: session.report };
+      yield { session };
+      return;
+    }
+    const learnerMessages = session.messages
+      .filter((message) => message.role === "learner")
+      .map((message) => message.content);
+    let report: ScenarioEvaluationReport | undefined;
+    for await (const chunk of this.evaluationProvider.evaluateStream({
+      scenario,
+      learnerMessages,
+    })) {
+      yield chunk;
+      if ("report" in chunk) {
+        report = chunk.report;
+      }
+    }
+    if (!report) {
+      throw new Error("AI 评测结果解析失败，请稍后重试。");
+    }
+    const completed = await this.store.completeSession({ ...input, report });
+    yield { session: completed };
   }
 
   async restart(input: SessionIdentity): Promise<ScenarioSession> {

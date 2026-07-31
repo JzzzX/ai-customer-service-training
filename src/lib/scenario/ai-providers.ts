@@ -7,9 +7,15 @@ import {
   buildEvaluationUserPrompt,
   buildLiveRiskPrompt,
 } from "./prompt-templates";
+import {
+  EVALUATION_TIMEOUT_MS,
+  type DoubaoNonStreamingChatParams,
+  type DoubaoStreamingChatParams,
+} from "./ai-client";
 import type {
   ConversationProvider,
   EvaluationProvider,
+  EvaluationStreamChunk,
   LiveRiskProvider,
 } from "./providers";
 import {
@@ -94,7 +100,8 @@ export class OpenAIConversationProvider implements ConversationProvider {
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-    });
+      thinking: { type: "disabled" },
+    } as DoubaoStreamingChatParams);
     let yielded = false;
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta?.content;
@@ -109,6 +116,71 @@ export class OpenAIConversationProvider implements ConversationProvider {
   }
 }
 
+function parseEvaluationReport(
+  parsed: LlmEvaluation,
+  scenario: Parameters<EvaluationProvider["evaluate"]>[0]["scenario"],
+  learnerMessageCount: number,
+): ScenarioEvaluationReport {
+  const llmDimensions = new Map<string, LlmDimension>();
+  if (Array.isArray(parsed.dimensions)) {
+    for (const dimension of parsed.dimensions) {
+      const name = String(dimension?.name ?? "").trim();
+      if (name) {
+        llmDimensions.set(name, dimension);
+      }
+    }
+  }
+  const dimensions = scenario.scoringDimensions.map((dimension) => {
+    const llm = llmDimensions.get(dimension.name);
+    const evidence = Array.isArray(llm?.evidence)
+      ? llm.evidence.map(String).filter((value) => value.trim().length > 0)
+      : [];
+    return {
+      name: dimension.name,
+      score: Math.max(0, Math.round(Number(llm?.score ?? 0))),
+      maxScore: dimension.weight,
+      evidence: evidence.slice(0, 2),
+    };
+  });
+  const totalScore = Math.min(
+    100,
+    Math.max(0, dimensions.reduce((total, dimension) => total + dimension.score, 0)),
+  );
+  const risks = Array.isArray(parsed.risks)
+    ? parsed.risks.map(String).filter((value) => value.trim().length > 0)
+    : [];
+  const status = totalScore >= 80 && risks.length === 0 ? "passed" : "needs_retry";
+  const strengths = dimensions
+    .filter((dimension) => dimension.score / dimension.maxScore >= 0.8)
+    .map((dimension) => dimension.name);
+  const missedSteps = dimensions
+    .filter((dimension) => dimension.score / dimension.maxScore < 0.8)
+    .map((dimension) => dimension.name);
+  const confidence = Math.min(1, Math.max(0, Number(parsed.confidence ?? 0)));
+  const recommendations = parseRecommendations(
+    parsed.recommendations,
+    scenario.referenceFlow,
+  );
+  const lowConfidence =
+    Boolean(parsed.lowConfidence) ||
+    confidence < 0.6 ||
+    learnerMessageCount < 3;
+
+  return scenarioEvaluationReportSchema.parse({
+    mode: "real",
+    totalScore,
+    status,
+    confidence,
+    dimensions,
+    strengths,
+    missedSteps,
+    risks,
+    recommendations,
+    referenceReply: scenario.referenceReply,
+    lowConfidence,
+  });
+}
+
 export class OpenAIEvaluationProvider implements EvaluationProvider {
   constructor(
     private readonly client: OpenAI,
@@ -118,88 +190,53 @@ export class OpenAIEvaluationProvider implements EvaluationProvider {
   async evaluate(
     input: Parameters<EvaluationProvider["evaluate"]>[0],
   ): Promise<ScenarioEvaluationReport> {
+    let report: ScenarioEvaluationReport | undefined;
+    for await (const chunk of this.evaluateStream(input)) {
+      if ("report" in chunk) {
+        report = chunk.report;
+      }
+    }
+    if (!report) {
+      throw new Error("AI 评测结果解析失败，请稍后重试。");
+    }
+    return report;
+  }
+
+  async *evaluateStream(
+    input: Parameters<EvaluationProvider["evaluateStream"]>[0],
+  ): AsyncIterable<EvaluationStreamChunk> {
     const systemPrompt = buildEvaluationSystemPrompt(input.scenario);
     const userPrompt = buildEvaluationUserPrompt(input.learnerMessages);
-    const completion = await this.client.chat.completions.create({
+    const stream = await this.client.chat.completions.create({
       model: this.model,
+      stream: true,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
       response_format: { type: "json_object" },
-    });
-    const content = completion.choices[0]?.message?.content ?? "";
+    } as DoubaoStreamingChatParams, { timeout: EVALUATION_TIMEOUT_MS });
+    let accumulated = "";
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content;
+      if (delta) {
+        accumulated += delta;
+        yield { delta };
+      }
+    }
     let parsed: LlmEvaluation;
     try {
-      parsed = JSON.parse(content) as LlmEvaluation;
+      parsed = JSON.parse(accumulated) as LlmEvaluation;
     } catch {
       throw new Error("AI 评测结果解析失败，请稍后重试。");
     }
-
-    const dimensionWeights = new Map(
-      input.scenario.scoringDimensions.map((dimension) => [
-        dimension.name,
-        dimension.weight,
-      ]),
-    );
-    const llmDimensions = new Map<string, LlmDimension>();
-    if (Array.isArray(parsed.dimensions)) {
-      for (const dimension of parsed.dimensions) {
-        const name = String(dimension?.name ?? "").trim();
-        if (name) {
-          llmDimensions.set(name, dimension);
-        }
-      }
-    }
-    const dimensions = input.scenario.scoringDimensions.map((dimension) => {
-      const llm = llmDimensions.get(dimension.name);
-      const evidence = Array.isArray(llm?.evidence)
-        ? llm.evidence.map(String).filter((value) => value.trim().length > 0)
-        : [];
-      return {
-        name: dimension.name,
-        score: Math.max(0, Math.round(Number(llm?.score ?? 0))),
-        maxScore: dimension.weight,
-        evidence: evidence.slice(0, 2),
-      };
-    });
-    const totalScore = Math.min(
-      100,
-      Math.max(0, dimensions.reduce((total, dimension) => total + dimension.score, 0)),
-    );
-    const risks = Array.isArray(parsed.risks)
-      ? parsed.risks.map(String).filter((value) => value.trim().length > 0)
-      : [];
-    const status = totalScore >= 80 && risks.length === 0 ? "passed" : "needs_retry";
-    const strengths = dimensions
-      .filter((dimension) => dimension.score / dimension.maxScore >= 0.8)
-      .map((dimension) => dimension.name);
-    const missedSteps = dimensions
-      .filter((dimension) => dimension.score / dimension.maxScore < 0.8)
-      .map((dimension) => dimension.name);
-    const confidence = Math.min(1, Math.max(0, Number(parsed.confidence ?? 0)));
-    const recommendations = parseRecommendations(
-      parsed.recommendations,
-      input.scenario.referenceFlow,
-    );
-    const lowConfidence =
-      Boolean(parsed.lowConfidence) ||
-      confidence < 0.6 ||
-      input.learnerMessages.length < 3;
-
-    return scenarioEvaluationReportSchema.parse({
-      mode: "real",
-      totalScore,
-      status,
-      confidence,
-      dimensions,
-      strengths,
-      missedSteps,
-      risks,
-      recommendations,
-      referenceReply: input.scenario.referenceReply,
-      lowConfidence,
-    });
+    yield {
+      report: parseEvaluationReport(
+        parsed,
+        input.scenario,
+        input.learnerMessages.length,
+      ),
+    };
   }
 }
 
@@ -238,7 +275,8 @@ export class OpenAILiveRiskProvider implements LiveRiskProvider {
         { role: "user", content: user },
       ],
       response_format: { type: "json_object" },
-    });
+      thinking: { type: "disabled" },
+    } as DoubaoNonStreamingChatParams);
     const content = completion.choices[0]?.message?.content ?? "";
     let parsed: unknown;
     try {

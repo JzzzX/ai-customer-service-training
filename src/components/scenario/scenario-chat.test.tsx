@@ -19,6 +19,17 @@ vi.mock("@/app/practice/scenario/actions", () => ({
   completeScenarioAction: mocks.completeScenarioAction,
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}));
+
 import { ScenarioChat } from "./scenario-chat";
 
 const sessionId = "00000000-0000-4000-8000-000000000010";

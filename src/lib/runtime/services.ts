@@ -21,7 +21,7 @@ import {
 } from "@/lib/scenario/mock-providers";
 import { createOpenAIProviders } from "@/lib/scenario/ai-providers";
 import {
-  createOpenAIClient,
+  getOpenAIClient,
   resolveOpenAiModel,
   resolveScenarioAiMode,
 } from "@/lib/scenario/ai-client";
@@ -176,7 +176,7 @@ export function createScenarioTrainingService(
   const useRealAi = aiMode === "real";
   const providers = useRealAi
     ? createOpenAIProviders(
-        createOpenAIClient(input.environment),
+        getOpenAIClient(input.environment),
         resolveOpenAiModel(input.environment),
       )
     : {
