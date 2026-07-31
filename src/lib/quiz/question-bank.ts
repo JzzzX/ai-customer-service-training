@@ -1808,7 +1808,7 @@ const petHealthQuestions: QuizQuestionDraft[] = [
   },
   {
     id: "qq_b00000000000000000000041",
-    knowledgeUnitId: "ku_b0000000000000000000003b",
+    knowledgeUnitId: "ku_b00000000000000000000041",
     type: "true_false",
     prompt: "宠物出现换粮应激时，可以喂食益生菌帮助调理肠道，延长换粮周期。",
     options: ["正确", "错误"],
@@ -1820,7 +1820,7 @@ const petHealthQuestions: QuizQuestionDraft[] = [
     sources: [mind("客服服务流程.md", "换新粮有过渡不耐受", ["客诉接待处理流程和标准", "病理问题", "处理流程", "换新粮有过渡不耐受"])],
   },
   {
-    id: "qq_b0000000000000000000003c",
+    id: "qq_b00000000000000000000042",
     knowledgeUnitId: "ku_b00000000000000000000042",
     type: "true_false",
     prompt: "奶粉勺子上的小孔是为了平衡罐内和勺子内外的气压，让勺子能顺畅进出，并确保舀出标准量。",
@@ -1834,7 +1834,7 @@ const petHealthQuestions: QuizQuestionDraft[] = [
   },
   {
     id: "qq_b00000000000000000000043",
-    knowledgeUnitId: "ku_b0000000000000000000003d",
+    knowledgeUnitId: "ku_b00000000000000000000043",
     type: "true_false",
     prompt: "换新粮时不需要过渡，可以直接更换，宠物肠胃能自动适应。",
     options: ["正确", "错误"],
@@ -1846,7 +1846,7 @@ const petHealthQuestions: QuizQuestionDraft[] = [
     sources: [mind("客服服务流程.md", "换新粮未过渡", ["客诉接待处理流程和标准", "病理问题", "处理流程", "换新粮未过渡"])],
   },
   {
-    id: "qq_b0000000000000000000003e",
+    id: "qq_b00000000000000000000044",
     knowledgeUnitId: "ku_b00000000000000000000044",
     type: "true_false",
     prompt: "湿粮可以无限量喂食，不需要控制喂食量，对宠物健康更有益。",
@@ -1860,7 +1860,7 @@ const petHealthQuestions: QuizQuestionDraft[] = [
   },
   {
     id: "qq_b00000000000000000000045",
-    knowledgeUnitId: "ku_b0000000000000000000003f",
+    knowledgeUnitId: "ku_b00000000000000000000045",
     type: "true_false",
     prompt: "夏季猫咪换毛较多，舔毛时吞入的毛发增加，容易形成毛球堵塞肠道，引发便秘。",
     options: ["正确", "错误"],
@@ -1872,8 +1872,8 @@ const petHealthQuestions: QuizQuestionDraft[] = [
     sources: [mind("客服服务流程.md", "毛球症", ["客诉接待处理流程和标准", "病理问题", "未就医", "毛球症"])],
   },
   {
-    id: "qq_b00000000000000000000040",
-    knowledgeUnitId: "ku_b00000000000000000000040",
+    id: "qq_b00000000000000000000046",
+    knowledgeUnitId: "ku_b00000000000000000000046",
     type: "true_false",
     prompt: "冬季开空调地暖空气干燥，狗狗饮水量下降，可搭配湿粮喂食预防便秘和泌尿道结石。",
     options: ["正确", "错误"],
@@ -1885,8 +1885,8 @@ const petHealthQuestions: QuizQuestionDraft[] = [
     sources: [md("客服侧提转化.md", "冬季推荐", ["季节类场景", "冬季推荐"])],
   },
   {
-    id: "qq_b00000000000000000000041",
-    knowledgeUnitId: "ku_b00000000000000000000041",
+    id: "qq_b00000000000000000000047",
+    knowledgeUnitId: "ku_b00000000000000000000047",
     type: "true_false",
     prompt: "犬只患胰腺炎后只需药物治疗，不需要调整饮食，可继续正常喂食。",
     options: ["正确", "错误"],
@@ -1898,8 +1898,8 @@ const petHealthQuestions: QuizQuestionDraft[] = [
     sources: [mind("客服服务流程.md", "胰腺炎", ["售后接待场景", "犬猫吃了不适", "胰腺炎"])],
   },
   {
-    id: "qq_b00000000000000000000042",
-    knowledgeUnitId: "ku_b00000000000000000000042",
+    id: "qq_b00000000000000000000048",
+    knowledgeUnitId: "ku_b00000000000000000000048",
     type: "true_false",
     prompt: "宠物出现便血情况后应第一时间去医院就诊，确定病因，遵医嘱治疗。",
     options: ["正确", "错误"],
@@ -1911,8 +1911,8 @@ const petHealthQuestions: QuizQuestionDraft[] = [
     sources: [mind("客服服务流程.md", "便血", ["售后接待场景", "犬猫吃了不适", "便血"])],
   },
   {
-    id: "qq_b00000000000000000000043",
-    knowledgeUnitId: "ku_b00000000000000000000043",
+    id: "qq_b00000000000000000000049",
+    knowledgeUnitId: "ku_b00000000000000000000049",
     type: "true_false",
     prompt: "处理病理性客诉问题时，不需要客户提供诊断证明，客服可直接判断病因并赔偿。",
     options: ["正确", "错误"],
