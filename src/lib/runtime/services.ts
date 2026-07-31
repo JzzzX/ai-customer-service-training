@@ -192,6 +192,12 @@ export function createScenarioTrainingService(
     templates,
     conversationProvider: providers.conversation,
     evaluationProvider: providers.evaluation,
+    knowledgeUnitLoader: async (scenario) => {
+      const queryStore = isLocal
+        ? new EmptyKnowledgeQueryStore()
+        : new DbKnowledgeQueryStore(database!);
+      return queryStore.listUnitsForScenario(scenario.category);
+    },
   });
 }
 

@@ -1,3 +1,6 @@
+import type { ScenarioCategory } from "@/lib/scenario/schema";
+import type { KnowledgeUnit } from "./schema";
+
 export type KnowledgeHealth = {
   versionId: string;
   versionHash: string;
@@ -14,6 +17,10 @@ export type KnowledgeHealth = {
 
 export interface KnowledgeQueryStore {
   loadActiveHealth(): Promise<KnowledgeHealth | null>;
+  listUnitsForScenario(
+    category: ScenarioCategory,
+    limit?: number,
+  ): Promise<KnowledgeUnit[]>;
 }
 
 export class EmptyKnowledgeQueryStore
@@ -21,5 +28,9 @@ export class EmptyKnowledgeQueryStore
 {
   async loadActiveHealth(): Promise<KnowledgeHealth | null> {
     return null;
+  }
+
+  async listUnitsForScenario(): Promise<KnowledgeUnit[]> {
+    return [];
   }
 }

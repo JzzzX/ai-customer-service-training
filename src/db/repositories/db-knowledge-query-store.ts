@@ -1,4 +1,6 @@
-import { and, count, eq } from "drizzle-orm";
+import { createHash } from "node:crypto";
+
+import { and, asc, count, eq } from "drizzle-orm";
 
 import type { DatabaseClient } from "../client";
 import {
@@ -9,6 +11,9 @@ import {
   quizSets,
   scenarioVersions,
 } from "../schema";
+import { selectKnowledgeUnitsForCategory } from "@/lib/scenario/knowledge-matching";
+import type { ScenarioCategory } from "@/lib/scenario/schema";
+import { knowledgeUnitSchema, type KnowledgeUnit } from "@/lib/knowledge/schema";
 import type {
   KnowledgeHealth,
   KnowledgeQueryStore,
@@ -98,4 +103,54 @@ export class DbKnowledgeQueryStore implements KnowledgeQueryStore {
       publishedScenarioCount: scenarioSummary?.value ?? 0,
     };
   }
+
+  async listUnitsForScenario(
+    category: ScenarioCategory,
+    limit = 5,
+  ): Promise<KnowledgeUnit[]> {
+    const [version] = await this.database
+      .select({ id: knowledgeVersions.id })
+      .from(knowledgeVersions)
+      .where(eq(knowledgeVersions.isActive, true))
+      .limit(1);
+    if (!version) {
+      return [];
+    }
+    const rows = await this.database
+      .select({
+        unitKey: knowledgeUnits.unitKey,
+        title: knowledgeUnits.title,
+        content: knowledgeUnits.content,
+        categoryPath: knowledgeUnits.categoryPath,
+        semanticKey: knowledgeUnits.semanticKey,
+        contentHash: knowledgeUnits.contentHash,
+        sources: knowledgeUnits.sources,
+      })
+      .from(knowledgeUnits)
+      .where(
+        and(
+          eq(knowledgeUnits.knowledgeVersionId, version.id),
+          eq(knowledgeUnits.canUseForScenario, true),
+        ),
+      )
+      .orderBy(asc(knowledgeUnits.title))
+      .limit(50);
+    const units = rows.map((row) =>
+      knowledgeUnitSchema.parse({
+        id: toUnitId(row.unitKey),
+        title: row.title,
+        content: row.content,
+        categoryPath: row.categoryPath,
+        semanticKey: row.semanticKey ?? undefined,
+        contentHash: row.contentHash,
+        sources: row.sources,
+      }),
+    );
+    return selectKnowledgeUnitsForCategory(units, category, limit);
+  }
+}
+
+function toUnitId(unitKey: string): string {
+  const hash = createHash("sha256").update(unitKey).digest("hex");
+  return `ku_${hash.slice(0, 24)}`;
 }
