@@ -27,7 +27,6 @@ describe("AI client routing", () => {
     const environment = {
       AI_GATEWAY_ENABLED: "true",
       AI_GATEWAY_MODEL: "bytedance/seed-1.8",
-      VERCEL_OIDC_TOKEN: "oidc-token",
     };
 
     expect(isAiGatewayEnabled(environment)).toBe(true);

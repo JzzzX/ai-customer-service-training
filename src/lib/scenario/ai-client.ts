@@ -2,6 +2,7 @@ import type {
   ChatCompletionCreateParamsNonStreaming,
   ChatCompletionCreateParamsStreaming,
 } from "openai/resources/chat/completions";
+import { headers } from "next/headers";
 import OpenAI from "openai";
 
 import type { ScenarioMode } from "./schema";
@@ -41,19 +42,18 @@ export function createOpenAIClient(
   environment: Environment = process.env,
 ): OpenAI {
   const useGateway = isAiGatewayEnabled(environment);
-  const apiKey = useGateway
+  const gatewayCredential = useGateway
     ? environment.AI_GATEWAY_API_KEY?.trim() ||
       environment.VERCEL_OIDC_TOKEN?.trim()
+    : undefined;
+  const apiKey = useGateway
+    ? gatewayCredential || "vercel-request-oidc"
     : environment.OPENAI_API_KEY?.trim();
   const baseURL = useGateway
     ? AI_GATEWAY_BASE_URL
     : environment.OPENAI_BASE_URL?.trim();
   if (!apiKey) {
-    throw new Error(
-      useGateway
-        ? "Vercel AI Gateway 身份未配置，无法启用真实 AI 模式。"
-        : "OPENAI_API_KEY 未配置，无法启用真实 AI 模式。",
-    );
+    throw new Error("OPENAI_API_KEY 未配置，无法启用真实 AI 模式。");
   }
   if (!baseURL) {
     throw new Error("OPENAI_BASE_URL 未配置，无法启用真实 AI 模式。");
@@ -63,6 +63,26 @@ export function createOpenAIClient(
     baseURL,
     timeout: 60_000,
     maxRetries: 1,
+    ...(useGateway
+      ? {
+          fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+            const token =
+              gatewayCredential ||
+              (await headers()).get("x-vercel-oidc-token");
+            if (!token) {
+              throw new Error(
+                "Vercel AI Gateway 身份未配置，无法启用真实 AI 模式。",
+              );
+            }
+            const requestHeaders = new Headers(init?.headers);
+            requestHeaders.set("authorization", `Bearer ${token}`);
+            return globalThis.fetch(input, {
+              ...init,
+              headers: requestHeaders,
+            });
+          },
+        }
+      : {}),
   });
 }
 
