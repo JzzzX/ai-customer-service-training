@@ -20,6 +20,13 @@ const DANGER_KEYWORDS = [
   "神经病",
 ];
 
+const MOCK_CLOSING_TURNS = [
+  "嗯嗯，那我先考虑一下，你还有什么要补充的吗？",
+  "好的，我没有其他问题了，你帮我看看怎么下单吧。",
+  "行，那就按你说的来吧。",
+  "嗯，我大概了解了，再帮我确认下价格就行。",
+];
+
 export class MockConversationProvider implements ConversationProvider {
   async *streamCustomerReply(
     input: Parameters<ConversationProvider["streamCustomerReply"]>[0],
@@ -27,11 +34,14 @@ export class MockConversationProvider implements ConversationProvider {
     input.messages.forEach((message) =>
       scenarioMessageInputSchema.parse(message),
     );
-    const turnIndex = Math.min(
-      Math.max(0, input.learnerTurnCount),
-      input.scenario.customerTurns.length - 1,
-    );
-    const reply = input.scenario.customerTurns[turnIndex];
+    const turns = input.scenario.customerTurns;
+    const reply =
+      input.learnerTurnCount < turns.length
+        ? turns[input.learnerTurnCount]
+        : MOCK_CLOSING_TURNS[
+            (input.learnerTurnCount - turns.length) %
+              MOCK_CLOSING_TURNS.length
+          ];
     const characters = Array.from(reply);
 
     for (let index = 0; index < characters.length; index += 6) {
