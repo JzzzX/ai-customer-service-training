@@ -24,6 +24,7 @@ describe("LocalScenarioSessionStore", () => {
     const session = await store.startSession({
       learnerId: learnerA,
       scenario,
+      mode: "mock",
       startedAt: "2026-07-29T08:00:00.000Z",
     });
 
@@ -50,11 +51,26 @@ describe("LocalScenarioSessionStore", () => {
     ).resolves.toEqual(session);
   });
 
+  it("records the runtime provider mode instead of the template mock flag", async () => {
+    const scenario = scenarioTemplates[0];
+    expect(scenario.mockMode).toBe(true);
+    const session = await new LocalScenarioSessionStore(
+      outputDir,
+    ).startSession({
+      learnerId: learnerA,
+      scenario,
+      mode: "real",
+    });
+
+    expect(session.mode).toBe("real");
+  });
+
   it("atomically appends one learner/customer exchange", async () => {
     const store = new LocalScenarioSessionStore(outputDir);
     const session = await store.startSession({
       learnerId: learnerA,
       scenario: scenarioTemplates[0],
+      mode: "mock",
       startedAt: "2026-07-29T08:00:00.000Z",
     });
 
@@ -88,6 +104,7 @@ describe("LocalScenarioSessionStore", () => {
     const session = await store.startSession({
       learnerId: learnerA,
       scenario: scenarioTemplates[0],
+      mode: "mock",
       startedAt: "2026-07-29T08:00:00.000Z",
     });
     const riskAlert = {
@@ -120,6 +137,7 @@ describe("LocalScenarioSessionStore", () => {
     const session = await store.startSession({
       learnerId: learnerA,
       scenario,
+      mode: "mock",
       startedAt: "2026-07-29T08:00:00.000Z",
     });
     const report = await new MockEvaluationProvider().evaluate({

@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import { describe, expect, it } from "vitest";
 
 import { DbQuizReviewStore } from "@/db/repositories/db-quiz-review-store";
@@ -15,7 +17,9 @@ import {
   createQuizReviewStore,
   createReviewService,
   createReviewStore,
+  createScenarioTrainingService,
 } from "./services";
+import { scenarioTemplates } from "@/lib/scenario/templates";
 
 describe("runtime service composition", () => {
   it("uses the local review adapter only for explicit local demo mode", () => {
@@ -95,5 +99,30 @@ describe("runtime service composition", () => {
 
     await expect(assignments.listForAdmin()).resolves.toEqual([]);
     await expect(reviews.listPending()).resolves.toEqual([]);
+  });
+
+  it("records real mode when the runtime uses real AI with a legacy mock template", async () => {
+    const service = createScenarioTrainingService({
+      environment: {
+        LOCAL_TEST_AUTH_ENABLED: "true",
+        SCENARIO_AI_MODE: "real",
+        OPENAI_API_KEY: "test-key",
+        OPENAI_BASE_URL: "https://example.test/v1",
+        OPENAI_MODEL: "test-model",
+      },
+      nodeEnvironment: "development",
+      projectRoot: "/tmp/ai-training-real-mode-test",
+      databaseFactory: () => {
+        throw new Error("local mode must not initialize the database");
+      },
+    });
+
+    const session = await service.start({
+      learnerId: "00000000-0000-4000-8000-000000000002",
+      scenarioId: scenarioTemplates[0].id,
+    });
+
+    expect(scenarioTemplates[0].mockMode).toBe(true);
+    expect(session.mode).toBe("real");
   });
 });

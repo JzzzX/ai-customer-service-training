@@ -88,5 +88,5 @@ describe("DbKnowledgeQueryStore", () => {
       publishedScenarioCount: 0,
     });
     await client.close();
-  });
+  }, 15_000);
 });

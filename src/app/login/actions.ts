@@ -3,7 +3,7 @@
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 
-import { auth, signIn } from "@/auth";
+import { signIn } from "@/auth";
 
 export interface LoginState {
   error?: string;
@@ -26,6 +26,5 @@ export async function loginAction(
     throw error;
   }
 
-  const session = await auth();
-  redirect(session?.user?.role === "admin" ? "/admin" : "/practice");
+  redirect("/login/continue");
 }

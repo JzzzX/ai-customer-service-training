@@ -83,9 +83,7 @@ export class OpenAIConversationProvider implements ConversationProvider {
     input.messages.forEach((message) =>
       scenarioMessageInputSchema.parse(message),
     );
-    const currentTurn =
-      input.messages.filter((message) => message.role === "learner").length +
-      1;
+    const currentTurn = input.learnerTurnCount + 1;
     const systemPrompt = buildConversationSystemPrompt(
       input.scenario,
       input.knowledgeUnits ?? [],
@@ -97,27 +95,57 @@ export class OpenAIConversationProvider implements ConversationProvider {
         content: message.content,
       })),
     );
-    const stream = await this.client.chat.completions.create({
-      model: this.model,
-      stream: true,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      thinking: { type: "disabled" },
-    } as DoubaoStreamingChatParams);
-    let yielded = false;
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content;
-      if (delta) {
-        yielded = true;
-        yield delta;
+    const previousCustomerMessages = new Set(
+      input.messages
+        .filter((message) => message.role === "customer")
+        .map((message) => normalizeReply(message.content)),
+    );
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const completion = await this.client.chat.completions.create({
+        model: this.model,
+        stream: false,
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content:
+              attempt === 0
+                ? userPrompt
+                : `${userPrompt}\n\n上一次候选回复与顾客之前说过的话重复。请直接重新生成一条不同的回复，并优先回答客服的最新问题。`,
+          },
+        ],
+        thinking: { type: "disabled" },
+      } as DoubaoNonStreamingChatParams);
+      const reply = (completion.choices[0]?.message?.content ?? "").trim();
+      if (!reply) {
+        throw new Error("AI 未返回有效回复，请稍后重试。");
       }
-    }
-    if (!yielded) {
-      throw new Error("AI 未返回有效回复，请稍后重试。");
+      if (previousCustomerMessages.has(normalizeReply(reply))) {
+        if (attempt === 0) {
+          continue;
+        }
+        throw new Error("AI 顾客回复重复，请重新发送消息。");
+      }
+      for (const chunk of splitReplyForDisplay(reply)) {
+        yield chunk;
+      }
+      return;
     }
   }
+}
+
+function normalizeReply(reply: string): string {
+  return reply.trim().replace(/\s+/g, " ");
+}
+
+function splitReplyForDisplay(reply: string, chunkSize = 12): string[] {
+  const characters = Array.from(reply);
+  const chunks: string[] = [];
+  for (let index = 0; index < characters.length; index += chunkSize) {
+    chunks.push(characters.slice(index, index + chunkSize).join(""));
+  }
+  return chunks;
 }
 
 function parseEvaluationReport(

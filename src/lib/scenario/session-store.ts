@@ -1,6 +1,7 @@
 import type {
   LiveRiskAlert,
   ScenarioEvaluationReport,
+  ScenarioMode,
   ScenarioSession,
   ScenarioTemplate,
 } from "./schema";
@@ -13,6 +14,7 @@ export type SessionIdentity = {
 export type StartScenarioSessionInput = {
   learnerId: string;
   scenario: ScenarioTemplate;
+  mode: ScenarioMode;
   assignmentId?: string;
   startedAt?: string;
 };

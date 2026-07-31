@@ -1,7 +1,13 @@
 import Link from "next/link";
 
+import { PageHeader } from "@/components/ui/page-header";
+import { SoftBadge } from "@/components/ui/soft-badge";
+import { SoftCard } from "@/components/ui/soft-card";
 import { requireUser } from "@/lib/auth/guards";
-import { getScenarioTemplateStore } from "@/lib/runtime/services";
+import {
+  getScenarioAiMode,
+  getScenarioTemplateStore,
+} from "@/lib/runtime/services";
 import type { ScenarioCategory } from "@/lib/scenario/schema";
 
 const categories: Array<{
@@ -35,50 +41,31 @@ export default async function ScenarioListPage() {
   await requireUser();
   const scenarioTemplates =
     await getScenarioTemplateStore().listPublished();
-  const hasRealScenario = scenarioTemplates.some(
-    (scenario) => !scenario.mockMode,
-  );
+  const isRealMode = getScenarioAiMode() === "real";
 
   return (
     <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-5xl">
-        <header className="flex items-start justify-between gap-5">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-bold text-[#5c7cdb]">对话训练</p>
-              {hasRealScenario ? (
-                <span className="rounded-full bg-[#eaf7ed] px-3 py-1 text-xs font-bold text-[#399a57]">
-                  AI 实战
-                </span>
-              ) : (
-                <span className="rounded-full bg-[#eef3ff] px-3 py-1 text-xs font-bold text-[#5c7cdb]">
-                  演示模式
-                </span>
-              )}
-            </div>
-            <h1 className="mt-2 text-3xl font-black text-[#21312a]">
-              情景实战
-            </h1>
-            <p className="mt-2 max-w-2xl leading-7 text-[#68786f]">
-              选择一个常见客服场景，用文字和模拟顾客连续对话，完成训练后获得评分报告。
-            </p>
-          </div>
-          <Link
-            className="shrink-0 font-bold text-[#65756d]"
-            href="/practice"
-          >
-            返回
-          </Link>
-        </header>
+        <PageHeader
+          action={
+            <SoftBadge variant={isRealMode ? "success" : "scenario"}>
+              {isRealMode ? "AI 实战" : "演示模式"}
+            </SoftBadge>
+          }
+          backHref="/practice"
+          description="选择一个常见客服场景，用文字和模拟顾客连续对话，完成训练后获得评分报告。"
+          label="对话训练"
+          title="情景实战"
+        />
 
-        <div className="mt-10 space-y-10">
-          {categories.map((category) => (
+        <div className="mt-10 space-y-12 animate-fade-in-up stagger-1">
+          {categories.map((category, categoryIndex) => (
             <section key={category.id}>
               <div>
-                <h2 className="text-xl font-black text-[#21312a]">
+                <h2 className="text-xl font-black text-ink">
                   {category.label}
                 </h2>
-                <p className="mt-1 text-sm text-[#7a8981]">
+                <p className="mt-1 text-sm text-ink-faint">
                   {category.description}
                 </p>
               </div>
@@ -87,27 +74,32 @@ export default async function ScenarioListPage() {
                   .filter(
                     (scenario) => scenario.category === category.id,
                   )
-                  .map((scenario) => (
-                    <article
-                      className="rounded-[24px] border-2 border-[#dde4ef] bg-white p-6"
+                  .map((scenario, index) => (
+                    <SoftCard
+                      className="animate-fade-in-up"
+                      gradient
+                      hover
                       key={scenario.id}
+                      style={{
+                        animationDelay: `${(categoryIndex * 2 + index) * 60}ms`,
+                      }}
                     >
-                      <p className="text-xs font-bold text-[#6a82cf]">
+                      <SoftBadge variant="scenario">
                         最多 {scenario.maxTurns} 轮
-                      </p>
-                      <h3 className="mt-2 text-lg font-black text-[#21312a]">
+                      </SoftBadge>
+                      <h3 className="mt-3 text-lg font-black text-ink">
                         {scenario.title}
                       </h3>
-                      <p className="mt-2 min-h-14 leading-7 text-[#68786f]">
+                      <p className="mt-2 min-h-14 text-sm leading-6 text-ink-soft">
                         {scenario.summary}
                       </p>
                       <Link
-                        className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-[#6c8bea] px-5 font-black text-white shadow-[0_4px_0_#526fc6] active:translate-y-1 active:shadow-none"
+                        className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-[var(--radius-control)] bg-scenario px-5 font-bold text-white shadow-[0_4px_14px_rgba(138,160,200,0.28)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(138,160,200,0.35)] active:scale-95"
                         href={`/practice/scenario/${scenario.id}`}
                       >
                         开始训练
                       </Link>
-                    </article>
+                    </SoftCard>
                   ))}
               </div>
             </section>

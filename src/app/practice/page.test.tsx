@@ -21,11 +21,14 @@ describe("PracticePage", () => {
     render(await PracticePage());
 
     expect(
-      screen.getByRole("link", { name: "开始练习" }),
-    ).toHaveAttribute("href", "/practice/quiz");
+      screen.getByRole("link", { name: "选择专题" }),
+    ).toHaveAttribute("href", "/practice/quiz/topics");
     expect(
       screen.getByRole("link", { name: "开始实战" }),
     ).toHaveAttribute("href", "/practice/scenario");
+    expect(
+      screen.getByRole("link", { name: "查看任务" }),
+    ).toHaveAttribute("href", "/practice/assignments");
     expect(
       screen.getByRole("link", { name: "查看练习记录" }),
     ).toHaveAttribute("href", "/practice/history");

@@ -2,6 +2,8 @@
 
 import { useActionState, useState } from "react";
 
+import { SoftButton } from "@/components/ui/soft-button";
+
 import { loginAction } from "./actions";
 
 type LoginRole = "learner" | "admin";
@@ -14,12 +16,12 @@ export function LoginForm() {
 
   return (
     <form action={action} className="mt-8 space-y-6">
-      <div className="grid grid-cols-2 gap-2 rounded-2xl border-2 border-brand-border bg-canvas p-1.5">
+      <div className="grid grid-cols-2 gap-2 rounded-2xl bg-surface-muted p-1.5">
         <button
           aria-pressed={isLearner}
           className={`rounded-xl py-2.5 text-sm font-bold transition-all ${
             isLearner
-              ? "bg-surface text-brand-ink shadow-sm"
+              ? "bg-surface text-brand-ink shadow-[var(--shadow-soft)]"
               : "text-ink-soft hover:text-ink"
           }`}
           onClick={() => setRole("learner")}
@@ -31,7 +33,7 @@ export function LoginForm() {
           aria-pressed={!isLearner}
           className={`rounded-xl py-2.5 text-sm font-bold transition-all ${
             !isLearner
-              ? "bg-surface text-admin shadow-sm"
+              ? "bg-surface text-admin-strong shadow-[var(--shadow-soft)]"
               : "text-ink-soft hover:text-ink"
           }`}
           onClick={() => setRole("admin")}
@@ -44,13 +46,13 @@ export function LoginForm() {
       <div>
         <span
           aria-hidden="true"
-          className={`grid size-12 place-items-center rounded-[var(--radius-control)] text-xl font-black text-white shadow-[var(--shadow-btn)] ${
-            isLearner ? "bg-brand" : "bg-admin shadow-[var(--shadow-btn-admin)]"
+          className={`grid size-12 place-items-center rounded-[var(--radius-control)] text-xl font-black text-white shadow-[var(--shadow-soft)] ${
+            isLearner ? "bg-brand" : "bg-admin"
           }`}
         >
           AI
         </span>
-        <h1 className="mt-5 text-3xl font-black tracking-[-0.03em] text-ink">
+        <h1 className="mt-5 text-3xl font-black tracking-tight text-ink">
           {isLearner ? "学员登录" : "管理员登录"}
         </h1>
         <p className="mt-2 leading-7 text-ink-soft">
@@ -67,7 +69,7 @@ export function LoginForm() {
           </label>
           <input
             autoComplete="email"
-            className="mt-2 min-h-12 w-full rounded-2xl border-2 border-brand-border bg-surface px-4 text-ink outline-none transition-colors focus:border-brand"
+            className="mt-2 min-h-12 w-full rounded-[var(--radius-control)] border-2 border-transparent bg-surface-muted px-4 text-ink outline-none transition-all placeholder:text-ink-faint focus:border-brand/30 focus:bg-surface focus:ring-0"
             id="email"
             name="email"
             placeholder="name@example.com"
@@ -85,7 +87,7 @@ export function LoginForm() {
           </label>
           <input
             autoComplete="current-password"
-            className="mt-2 min-h-12 w-full rounded-2xl border-2 border-brand-border bg-surface px-4 text-ink outline-none transition-colors focus:border-brand"
+            className="mt-2 min-h-12 w-full rounded-[var(--radius-control)] border-2 border-transparent bg-surface-muted px-4 text-ink outline-none transition-all placeholder:text-ink-faint focus:border-brand/30 focus:bg-surface focus:ring-0"
             id="password"
             name="password"
             required
@@ -104,15 +106,14 @@ export function LoginForm() {
         ) : null}
       </div>
 
-      <button
-        className={`min-h-12 w-full rounded-2xl px-5 font-bold text-white shadow-[var(--shadow-btn)] transition-transform enabled:active:translate-y-1 enabled:active:shadow-none disabled:cursor-wait disabled:opacity-70 ${
-          isLearner ? "bg-brand" : "bg-admin shadow-[var(--shadow-btn-admin)]"
-        }`}
+      <SoftButton
+        className="w-full"
         disabled={pending}
         type="submit"
+        variant={isLearner ? "primary" : "scenario"}
       >
         {pending ? "正在登录…" : "登录并继续"}
-      </button>
+      </SoftButton>
     </form>
   );
 }

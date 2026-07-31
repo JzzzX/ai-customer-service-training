@@ -13,6 +13,7 @@ vi.mock("@/lib/auth/guards", () => ({
 }));
 
 vi.mock("@/lib/runtime/services", () => ({
+  getScenarioAiMode: () => "real",
   getScenarioTemplateStore: () => ({
     listPublished: vi.fn().mockResolvedValue(scenarioTemplates),
   }),
@@ -21,13 +22,13 @@ vi.mock("@/lib/runtime/services", () => ({
 import ScenarioListPage from "./page";
 
 describe("ScenarioListPage", () => {
-  it("shows all eight mock scenarios grouped by business category", async () => {
+  it("shows all eight scenarios with the active real AI mode", async () => {
     render(await ScenarioListPage());
 
     expect(
       screen.getByRole("heading", { name: "情景实战" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("演示模式")).toBeInTheDocument();
+    expect(screen.getByText("AI 实战")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "售前" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "物流" })).toBeInTheDocument();
     expect(

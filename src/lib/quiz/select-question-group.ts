@@ -46,6 +46,14 @@ export function selectQuestionGroup(
   return selected;
 }
 
+const BALANCED_TYPE_QUOTAS: Record<
+  QuizQuestion["type"],
+  Record<QuizQuestion["difficulty"], number>
+> = {
+  single_choice: { easy: 2, medium: 2, hard: 1 },
+  true_false: { easy: 2, medium: 2, hard: 1 },
+};
+
 export function selectQuestionGroupByTopic(
   questions: QuizQuestion[],
   topic: string,
@@ -62,6 +70,60 @@ export function selectQuestionGroupByTopic(
     return [];
   }
 
+  const singleChoiceCount = topicQuestions.filter(
+    (question) => question.type === "single_choice",
+  ).length;
+  const trueFalseCount = topicQuestions.filter(
+    (question) => question.type === "true_false",
+  ).length;
+
+  if (singleChoiceCount >= 5 && trueFalseCount >= 5) {
+    return pickBalancedByType(topicQuestions, groupSize);
+  }
+
+  return pickByDifficulty(topicQuestions, groupSize);
+}
+
+function pickBalancedByType(
+  topicQuestions: QuizQuestion[],
+  groupSize: number,
+): QuizQuestion[] {
+  const picked: QuizQuestion[] = [];
+  const leftovers: QuizQuestion[] = [];
+
+  (Object.keys(BALANCED_TYPE_QUOTAS) as QuizQuestion["type"][]).forEach(
+    (type) => {
+      const typePool = topicQuestions.filter(
+        (question) => question.type === type,
+      );
+      const quotas = BALANCED_TYPE_QUOTAS[type];
+      (Object.keys(quotas) as QuizQuestion["difficulty"][]).forEach(
+        (difficulty) => {
+          const quota = quotas[difficulty];
+          const pool = shuffle(
+            typePool.filter((question) => question.difficulty === difficulty),
+          );
+          const take = Math.min(quota, pool.length);
+          picked.push(...pool.slice(0, take));
+          leftovers.push(...pool.slice(take));
+        },
+      );
+    },
+  );
+
+  if (picked.length < groupSize) {
+    const shuffledLeftovers = shuffle(leftovers);
+    const need = Math.min(groupSize - picked.length, shuffledLeftovers.length);
+    picked.push(...shuffledLeftovers.slice(0, need));
+  }
+
+  return shuffle(picked).slice(0, groupSize);
+}
+
+function pickByDifficulty(
+  topicQuestions: QuizQuestion[],
+  groupSize: number,
+): QuizQuestion[] {
   const buckets: Record<QuizQuestion["difficulty"], QuizQuestion[]> = {
     easy: [],
     medium: [],

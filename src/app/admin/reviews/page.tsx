@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import { PageHeader } from "@/components/ui/page-header";
+import { SoftBadge } from "@/components/ui/soft-badge";
+import { SoftCard } from "@/components/ui/soft-card";
 import { requireAdmin } from "@/lib/auth/guards";
 import { getReviewService } from "@/lib/runtime/services";
 
@@ -17,44 +20,51 @@ export default async function AdminReviewsPage({
   return (
     <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-5xl">
-        <header className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-bold text-[#5c7cdb]">人工复核</p>
-            <h1 className="mt-1 text-2xl font-black text-[#21312a]">
-              待复核报告
-            </h1>
-          </div>
-          <Link className="font-bold text-[#65756d]" href="/admin">
-            返回
-          </Link>
-        </header>
+        <PageHeader
+          backHref="/admin"
+          description="处理低分、风险与抽样训练报告。"
+          label="人工复核"
+          title="待复核报告"
+        />
+
         {params.reviewed === "1" ? (
-          <p className="mt-6 rounded-2xl bg-[#eff9f1] p-4 font-bold text-[#2f7b46]">
-            复核结论已保存，原始报告仍保留。
-          </p>
+          <SoftCard className="mt-8 animate-fade-in-up" gradient>
+            <div className="flex flex-wrap items-center gap-2">
+              <SoftBadge variant="success">已保存</SoftBadge>
+              <p className="text-sm font-bold text-success">
+                复核结论已保存，原始报告仍保留。
+              </p>
+            </div>
+          </SoftCard>
         ) : null}
+
         <section className="mt-8 space-y-3">
-          {items.map((item) => (
+          {items.map((item, index) => (
             <Link
-              className="flex items-center justify-between gap-4 rounded-2xl border-2 border-[#dde4ef] bg-white p-5"
+              className="block animate-fade-in-up"
               href={`/admin/reviews/${item.reportId}`}
               key={item.reportId}
+              style={{ animationDelay: `${index * 60}ms` }}
             >
-              <div>
-                <h2 className="font-black text-[#21312a]">
-                  {item.learnerName} · {item.scenarioTitle}
-                </h2>
-                <p className="mt-1 text-sm text-[#68786f]">
-                  原始分 {item.totalScore} · {item.reviewTrigger}
-                </p>
-              </div>
-              <span className="font-bold text-[#5c7cdb]">去复核</span>
+              <SoftCard className="flex items-center justify-between gap-4" hover>
+                <div>
+                  <h2 className="font-black text-ink">
+                    {item.learnerName} · {item.scenarioTitle}
+                  </h2>
+                  <p className="mt-1 text-sm text-ink-soft">
+                    原始分 {item.totalScore} · {item.reviewTrigger}
+                  </p>
+                </div>
+                <span className="shrink-0 text-sm font-bold text-scenario-strong">
+                  去复核 →
+                </span>
+              </SoftCard>
             </Link>
           ))}
           {items.length === 0 ? (
-            <p className="rounded-2xl bg-white p-6 text-[#68786f]">
-              当前没有待复核报告。
-            </p>
+            <SoftCard className="animate-fade-in-up">
+              <p className="text-ink-soft">当前没有待复核报告。</p>
+            </SoftCard>
           ) : null}
         </section>
       </div>

@@ -1,5 +1,6 @@
-import Link from "next/link";
-
+import { PageHeader } from "@/components/ui/page-header";
+import { SoftBadge } from "@/components/ui/soft-badge";
+import { SoftCard } from "@/components/ui/soft-card";
 import { requireAdmin } from "@/lib/auth/guards";
 import { getAssignmentService } from "@/lib/runtime/services";
 
@@ -7,35 +8,46 @@ export default async function AdminHistoryPage() {
   await requireAdmin();
   const assignments = await getAssignmentService().listForAdmin();
 
+  const statusVariant: Record<
+    (typeof assignments)[number]["status"],
+    "warning" | "scenario" | "success"
+  > = {
+    assigned: "warning",
+    in_progress: "scenario",
+    completed: "success",
+  };
+
   return (
     <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-5xl">
-        <header className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-bold text-[#5c7cdb]">学习记录</p>
-            <h1 className="mt-1 text-2xl font-black text-[#21312a]">
-              任务完成概览
-            </h1>
-          </div>
-          <Link className="font-bold text-[#65756d]" href="/admin">
-            返回
-          </Link>
-        </header>
-        <div className="mt-8 overflow-hidden rounded-[22px] border-2 border-[#dde4ef] bg-white">
-          {assignments.map((item) => (
+        <PageHeader
+          backHref="/admin"
+          description="按学员查看任务状态与完成记录。"
+          label="学习记录"
+          title="任务完成概览"
+        />
+
+        <SoftCard className="mt-10 animate-fade-in-up p-0">
+          {assignments.map((item, index) => (
             <div
-              className="grid gap-2 border-b border-[#edf0ee] p-5 last:border-b-0 sm:grid-cols-3"
+              className="grid gap-2 border-b border-surface-muted p-5 last:border-b-0 sm:grid-cols-3"
               key={item.id}
+              style={{ animationDelay: `${index * 40}ms` }}
             >
-              <strong>{item.learnerName}</strong>
-              <span>{item.targetLabel}</span>
-              <span className="text-[#68786f]">{item.status}</span>
+              <strong className="text-ink">{item.learnerName}</strong>
+              <span className="text-ink-soft">{item.targetLabel}</span>
+              <SoftBadge
+                className="w-fit"
+                variant={statusVariant[item.status]}
+              >
+                {item.status}
+              </SoftBadge>
             </div>
           ))}
           {assignments.length === 0 ? (
-            <p className="p-6 text-[#68786f]">暂无可展示记录。</p>
+            <p className="p-6 text-ink-soft">暂无可展示记录。</p>
           ) : null}
-        </div>
+        </SoftCard>
       </div>
     </main>
   );

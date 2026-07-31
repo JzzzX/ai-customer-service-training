@@ -33,6 +33,27 @@ describe("validateRuntimeEnvironment", () => {
     ).toThrow("生产环境配置无效");
   });
 
+  it("requires a complete model configuration for real AI mode", () => {
+    expect(() =>
+      validateRuntimeEnvironment(
+        { ...valid, SCENARIO_AI_MODE: "real" },
+        "production",
+      ),
+    ).toThrow("生产环境配置无效");
+    expect(
+      validateRuntimeEnvironment(
+        {
+          ...valid,
+          SCENARIO_AI_MODE: "real",
+          OPENAI_API_KEY: "test-key",
+          OPENAI_BASE_URL: "https://model.example.test/v1",
+          OPENAI_MODEL: "test-model",
+        },
+        "production",
+      ),
+    ).toEqual({ mode: "production" });
+  });
+
   it("does not require production secrets for explicit local demo", () => {
     expect(
       validateRuntimeEnvironment(

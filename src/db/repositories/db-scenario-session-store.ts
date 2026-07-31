@@ -101,7 +101,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
             knowledgeVersionId: version.knowledgeVersionId,
             scenarioVersionId: version.id,
             status: "in_progress",
-            mode: inputValue.scenario.mockMode ? "mock" : "real",
+            mode: inputValue.mode,
             turnCount: 0,
             startedAt,
             updatedAt: startedAt,

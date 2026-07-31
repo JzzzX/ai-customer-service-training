@@ -195,6 +195,7 @@ export function createScenarioTrainingService(
     conversationProvider: providers.conversation,
     evaluationProvider: providers.evaluation,
     liveRiskProvider: providers.liveRisk,
+    mode: aiMode,
     knowledgeUnitLoader: async (scenario) => {
       const queryStore = isLocal
         ? new EmptyKnowledgeQueryStore()
@@ -202,6 +203,10 @@ export function createScenarioTrainingService(
       return queryStore.listUnitsForScenario(scenario.category);
     },
   });
+}
+
+export function getScenarioAiMode() {
+  return resolveScenarioAiMode(process.env);
 }
 
 export function createScenarioTemplateStore(

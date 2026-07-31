@@ -13,6 +13,7 @@ vi.mock("@/lib/auth/guards", () => ({
 }));
 
 vi.mock("@/lib/runtime/services", () => ({
+  getScenarioAiMode: () => "real",
   getScenarioTemplateStore: () => ({
     getPublishedById: vi.fn().mockResolvedValue(scenarioTemplates[0]),
   }),
@@ -42,7 +43,7 @@ describe("ScenarioDetailPage", () => {
     expect(
       screen.getByText("根据幼犬情况和预算完成主粮推荐与关联建议。"),
     ).toBeInTheDocument();
-    expect(screen.getByText("演示模式")).toBeInTheDocument();
+    expect(screen.getByText("AI 实战")).toBeInTheDocument();
     expect(screen.queryByText("体重2.1kg")).not.toBeInTheDocument();
     expect(screen.queryByText("需求与宠物信息挖掘")).not.toBeInTheDocument();
     expect(

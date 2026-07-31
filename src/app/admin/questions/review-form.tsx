@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 
+import { SoftButton } from "@/components/ui/soft-button";
+import { SoftCard } from "@/components/ui/soft-card";
 import type { QuizReview } from "@/lib/quiz/review";
 
 import {
@@ -10,6 +12,12 @@ import {
 } from "./actions";
 
 type ReviewItem = QuizReview["questions"][number];
+
+const inputClassName =
+  "min-h-12 w-full rounded-[var(--radius-control)] border-2 border-surface-muted bg-surface px-4 text-ink outline-none transition-colors focus:border-scenario";
+
+const textareaClassName =
+  "min-h-24 w-full rounded-[var(--radius-control)] border-2 border-surface-muted bg-surface px-4 py-3 leading-7 text-ink outline-none transition-colors focus:border-scenario";
 
 export function ReviewForm({
   index,
@@ -34,7 +42,7 @@ export function ReviewForm({
 
       <Field label="题干">
         <textarea
-          className="min-h-24 w-full rounded-2xl border-2 border-[#dfe6e1] bg-white px-4 py-3 leading-7 outline-none focus:border-[#6c8bea]"
+          className={textareaClassName}
           defaultValue={question.prompt}
           id="prompt"
           name="prompt"
@@ -44,7 +52,7 @@ export function ReviewForm({
 
       <Field label="选项（每行一个）">
         <textarea
-          className="min-h-32 w-full rounded-2xl border-2 border-[#dfe6e1] bg-white px-4 py-3 leading-7 outline-none focus:border-[#6c8bea]"
+          className={textareaClassName}
           defaultValue={question.options.join("\n")}
           id="options"
           name="options"
@@ -54,7 +62,7 @@ export function ReviewForm({
 
       <Field label="正确答案">
         <input
-          className="min-h-12 w-full rounded-2xl border-2 border-[#dfe6e1] bg-white px-4 outline-none focus:border-[#6c8bea]"
+          className={inputClassName}
           defaultValue={question.correctAnswers[0]}
           id="correctAnswer"
           name="correctAnswer"
@@ -64,7 +72,7 @@ export function ReviewForm({
 
       <Field label="答案解释">
         <textarea
-          className="min-h-28 w-full rounded-2xl border-2 border-[#dfe6e1] bg-white px-4 py-3 leading-7 outline-none focus:border-[#6c8bea]"
+          className={textareaClassName}
           defaultValue={question.explanation}
           id="explanation"
           name="explanation"
@@ -75,7 +83,7 @@ export function ReviewForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="知识分类">
           <input
-            className="min-h-12 w-full rounded-2xl border-2 border-[#dfe6e1] bg-white px-4 outline-none focus:border-[#6c8bea]"
+            className={inputClassName}
             defaultValue={question.category}
             id="category"
             name="category"
@@ -84,7 +92,7 @@ export function ReviewForm({
         </Field>
         <Field label="难度">
           <select
-            className="min-h-12 w-full rounded-2xl border-2 border-[#dfe6e1] bg-white px-4 outline-none focus:border-[#6c8bea]"
+            className={inputClassName}
             defaultValue={question.difficulty}
             id="difficulty"
             name="difficulty"
@@ -97,21 +105,21 @@ export function ReviewForm({
       </div>
 
       {state.error ? (
-        <p
-          className="rounded-2xl bg-[#fff3f1] px-4 py-3 text-sm font-bold text-[#b94a3b]"
-          role="alert"
-        >
-          {state.error}
-        </p>
+        <SoftCard className="border-danger/20 bg-danger-soft">
+          <p className="text-sm font-bold text-danger" role="alert">
+            {state.error}
+          </p>
+        </SoftCard>
       ) : null}
 
-      <button
-        className="min-h-12 w-full rounded-2xl bg-[#6c8bea] px-6 font-black text-white shadow-[0_4px_0_#526fc6] enabled:active:translate-y-1 enabled:active:shadow-none disabled:cursor-wait disabled:opacity-70"
+      <SoftButton
+        className="w-full"
         disabled={pending}
         type="submit"
+        variant="scenario"
       >
         {pending ? "正在保存…" : "审核通过并下一题"}
-      </button>
+      </SoftButton>
     </form>
   );
 }
@@ -139,7 +147,7 @@ function Field({
   return (
     <div>
       <label
-        className="mb-2 block text-sm font-bold text-[#405149]"
+        className="mb-2 block text-sm font-bold text-ink-soft"
         htmlFor={id}
       >
         {label}

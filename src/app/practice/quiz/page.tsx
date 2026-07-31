@@ -1,18 +1,27 @@
 import { randomUUID } from "node:crypto";
 
-import Link from "next/link";
-
+import { PageHeader } from "@/components/ui/page-header";
 import { QuizRunner } from "@/components/quiz/quiz-runner";
 import { requireUser } from "@/lib/auth/guards";
 import { demoQuizQuestions } from "@/lib/quiz/demo-questions";
 import { quizTopics, topicQuizQuestions } from "@/lib/quiz/question-bank";
 import { loadPublishedQuiz } from "@/lib/quiz/review-service";
 import {
+  shuffleClientQuestionOptions,
+  toClientQuizQuestion,
+} from "@/lib/quiz/schema";
+import {
   selectQuestionGroup,
   selectQuestionGroupByTopic,
 } from "@/lib/quiz/select-question-group";
 
-import { saveQuizAttemptAction, saveTopicQuizAttemptAction } from "./actions";
+import {
+  checkDemoQuizAnswerAction,
+  checkPublishedQuizAnswerAction,
+  checkTopicQuizAnswerAction,
+  saveQuizAttemptAction,
+  saveTopicQuizAttemptAction,
+} from "./actions";
 
 export default async function PracticeQuizPage({
   searchParams,
@@ -42,39 +51,30 @@ export default async function PracticeQuizPage({
       topicMatch.id,
     );
     const saveAttempt = saveTopicQuizAttemptAction.bind(null, topicMatch.id);
+    const checkAnswer = checkTopicQuizAnswerAction.bind(null, topicMatch.id);
 
     return (
       <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
         <div className="mx-auto max-w-3xl">
-          <header className="flex items-start justify-between gap-5">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-bold text-brand">知识小测</p>
-                <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand-ink">
-                  专题练习
-                </span>
-              </div>
-              <h1 className="mt-2 text-2xl font-black text-ink">
-                {topicMatch.icon} {topicMatch.label}
-              </h1>
-              <p className="mt-2 text-sm leading-6 text-ink-soft">
-                {`从该专题 ${topicTotal} 道题中随机抽取 ${questions.length} 题，完成后可重练错题。`}
-              </p>
-            </div>
-            <Link
-              className="shrink-0 font-bold text-brand-ink"
-              href="/practice/quiz/topics"
-            >
-              返回
-            </Link>
-          </header>
+          <PageHeader
+            backHref="/practice/quiz/topics"
+            badge="专题练习"
+            description={`从该专题 ${topicTotal} 道题中随机抽取 ${questions.length} 题，完成后可重练错题。即时反馈用于学习，不作为防作弊考试或认证成绩。`}
+            label="知识小测"
+            title={`${topicMatch.icon} ${topicMatch.label}`}
+          />
 
-          <div className="mt-8">
+          <div className="mt-8 animate-fade-in-up stagger-1">
             <QuizRunner
               attemptId={attemptId}
+              onAnswer={checkAnswer}
               onComplete={saveAttempt}
               passingScore={80}
-              questions={questions}
+              questions={questions.map((question) =>
+                shuffleClientQuestionOptions(
+                  toClientQuizQuestion(question),
+                ),
+              )}
             />
           </div>
         </div>
@@ -90,39 +90,34 @@ export default async function PracticeQuizPage({
   const saveAttempt = publishedQuiz
     ? saveQuizAttemptAction.bind(null, publishedQuiz.quizHash, assignmentId)
     : undefined;
+  const checkAnswer = publishedQuiz
+    ? checkPublishedQuizAnswerAction.bind(null, publishedQuiz.quizHash)
+    : checkDemoQuizAnswerAction;
 
   return (
     <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-3xl">
-        <header className="flex items-start justify-between gap-5">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-bold text-brand">知识小测</p>
-              <span className="rounded-full bg-[#fff1da] px-3 py-1 text-xs font-bold text-[#9a641f]">
-                {publishedQuiz ? "正式题组" : "交互演示题"}
-              </span>
-            </div>
-            <h1 className="mt-2 text-2xl font-black text-ink">知识小测</h1>
-            <p className="mt-2 text-sm leading-6 text-ink-soft">
-              {publishedQuiz
-                ? `本组从已审核的${publishedQuiz.questions.length}道题中选取${questions.length}道，完成后可重练错题。`
-                : "正式题组仍在管理员审核；这里先验证完整答题体验，不作为培训成绩。"}
-            </p>
-          </div>
-          <Link
-            className="shrink-0 font-bold text-brand-ink"
-            href="/practice"
-          >
-            返回
-          </Link>
-        </header>
+        <PageHeader
+          backHref="/practice"
+          badge={publishedQuiz ? "正式题组" : "交互演示题"}
+          description={
+            publishedQuiz
+              ? `本组从已审核的${publishedQuiz.questions.length}道题中选取${questions.length}道，完成后可重练错题。即时反馈用于学习，不作为防作弊考试或认证成绩。`
+              : "正式题组仍在管理员审核；这里先验证完整答题体验，不作为培训成绩。"
+          }
+          label="知识小测"
+          title="知识小测"
+        />
 
-        <div className="mt-8">
+        <div className="mt-8 animate-fade-in-up stagger-1">
           <QuizRunner
             attemptId={attemptId}
+            onAnswer={checkAnswer}
             onComplete={saveAttempt}
             passingScore={passingScore}
-            questions={questions}
+            questions={questions.map((question) =>
+              shuffleClientQuestionOptions(toClientQuizQuestion(question)),
+            )}
           />
         </div>
       </div>

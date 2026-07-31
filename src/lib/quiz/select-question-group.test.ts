@@ -36,14 +36,15 @@ function draftQuestion(
   idDigit: string,
   category: string,
   difficulty: QuizQuestion["difficulty"],
+  type: QuizQuestion["type"] = "single_choice",
 ): QuizQuestion {
   return {
     id: `qq_${idDigit.padStart(24, "0")}`,
     knowledgeUnitId: `ku_${idDigit.padStart(24, "0")}`,
-    type: "single_choice",
+    type,
     prompt: `题目 ${idDigit}`,
-    options: ["答案", "干扰项"],
-    correctAnswers: ["答案"],
+    options: type === "true_false" ? ["正确", "错误"] : ["答案", "干扰项"],
+    correctAnswers: [type === "true_false" ? "正确" : "答案"],
     explanation: "答案解释",
     category,
     difficulty,
@@ -184,5 +185,80 @@ describe("selectQuestionGroupByTopic", () => {
     expect(
       selected.filter((item) => item.difficulty === "hard"),
     ).toHaveLength(1);
+  });
+
+  it("returns 5 single-choice + 5 true-false when both types have enough questions", () => {
+    const questions = [
+      ...Array.from({ length: 5 }, (_, index) =>
+        draftQuestion(`se${index + 1}`, "产品属性及卖点", "easy", "single_choice"),
+      ),
+      ...Array.from({ length: 5 }, (_, index) =>
+        draftQuestion(`sm${index + 1}`, "产品属性及卖点", "medium", "single_choice"),
+      ),
+      ...Array.from({ length: 5 }, (_, index) =>
+        draftQuestion(`sh${index + 1}`, "产品属性及卖点", "hard", "single_choice"),
+      ),
+      ...Array.from({ length: 5 }, (_, index) =>
+        draftQuestion(`te${index + 1}`, "产品属性及卖点", "easy", "true_false"),
+      ),
+      ...Array.from({ length: 5 }, (_, index) =>
+        draftQuestion(`tm${index + 1}`, "产品属性及卖点", "medium", "true_false"),
+      ),
+      ...Array.from({ length: 5 }, (_, index) =>
+        draftQuestion(`th${index + 1}`, "产品属性及卖点", "hard", "true_false"),
+      ),
+    ];
+
+    const selected = selectQuestionGroupByTopic(questions, "产品属性及卖点");
+
+    expect(selected).toHaveLength(10);
+    expect(
+      selected.filter((item) => item.type === "single_choice"),
+    ).toHaveLength(5);
+    expect(
+      selected.filter((item) => item.type === "true_false"),
+    ).toHaveLength(5);
+    expect(
+      selected.filter((item) => item.difficulty === "easy"),
+    ).toHaveLength(4);
+    expect(
+      selected.filter((item) => item.difficulty === "medium"),
+    ).toHaveLength(4);
+    expect(
+      selected.filter((item) => item.difficulty === "hard"),
+    ).toHaveLength(2);
+  });
+
+  it("falls back to difficulty quotas when true-false questions are fewer than 5", () => {
+    const questions = [
+      ...Array.from({ length: 5 }, (_, index) =>
+        draftQuestion(`se${index + 1}`, "产品属性及卖点", "easy", "single_choice"),
+      ),
+      ...Array.from({ length: 5 }, (_, index) =>
+        draftQuestion(`sm${index + 1}`, "产品属性及卖点", "medium", "single_choice"),
+      ),
+      ...Array.from({ length: 5 }, (_, index) =>
+        draftQuestion(`sh${index + 1}`, "产品属性及卖点", "hard", "single_choice"),
+      ),
+      ...Array.from({ length: 3 }, (_, index) =>
+        draftQuestion(`te${index + 1}`, "产品属性及卖点", "easy", "true_false"),
+      ),
+    ];
+
+    const selected = selectQuestionGroupByTopic(questions, "产品属性及卖点");
+
+    expect(selected).toHaveLength(10);
+    expect(
+      selected.filter((item) => item.difficulty === "easy"),
+    ).toHaveLength(4);
+    expect(
+      selected.filter((item) => item.difficulty === "medium"),
+    ).toHaveLength(4);
+    expect(
+      selected.filter((item) => item.difficulty === "hard"),
+    ).toHaveLength(2);
+    expect(
+      selected.filter((item) => item.type === "true_false").length,
+    ).toBeLessThanOrEqual(3);
   });
 });

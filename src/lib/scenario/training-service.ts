@@ -8,6 +8,7 @@ import type {
 import type {
   LiveRiskAlert,
   ScenarioEvaluationReport,
+  ScenarioMode,
   ScenarioSession,
   ScenarioTemplate,
 } from "./schema";
@@ -28,6 +29,7 @@ export class ScenarioTrainingService {
   private readonly evaluationProvider: EvaluationProvider;
   private readonly liveRiskProvider?: LiveRiskProvider;
   private readonly knowledgeUnitLoader?: KnowledgeUnitLoader;
+  private readonly mode: ScenarioMode;
 
   constructor(input: {
     store: ScenarioSessionStore;
@@ -36,6 +38,7 @@ export class ScenarioTrainingService {
     evaluationProvider: EvaluationProvider;
     liveRiskProvider?: LiveRiskProvider;
     knowledgeUnitLoader?: KnowledgeUnitLoader;
+    mode?: ScenarioMode;
   }) {
     this.store = input.store;
     this.templates = input.templates;
@@ -43,6 +46,7 @@ export class ScenarioTrainingService {
     this.evaluationProvider = input.evaluationProvider;
     this.liveRiskProvider = input.liveRiskProvider;
     this.knowledgeUnitLoader = input.knowledgeUnitLoader;
+    this.mode = input.mode ?? "mock";
   }
 
   async start(input: {
@@ -59,6 +63,7 @@ export class ScenarioTrainingService {
     return this.store.startSession({
       learnerId: input.learnerId,
       scenario,
+      mode: this.mode,
       assignmentId: input.assignmentId,
     });
   }

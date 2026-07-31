@@ -5,13 +5,13 @@
 
 ## 当前进度
 
-项目按 [Roadmap](docs/ROADMAP.md) 分 Part 交付。当前 `v0.1.0` 技术 Demo 已完成
-知识小测、Mock 情景实战、管理闭环、Neon 临时持久化和 Vercel 部署。正式题库、
-真实 AI、飞书身份和企业知识引擎仍待后续迭代。
+项目按 [Roadmap](docs/ROADMAP.md) 分 Part 交付。当前 MVP 已完成现代化学员端与
+管理端、5 个专题共 350 道练习题、真实 AI 情景对话与评分、Auth.js 角色登录、
+Neon 持久化和 Vercel 部署。40 道可追溯正式题仍保留人工审核门禁；飞书身份和
+企业知识引擎属于后续企业化迭代，不影响当前 MVP 试用。
 
-由其他 Agent 或开发者接手前，请先阅读
-[Agent 交接文档](docs/AGENT-HANDOFF.md)，其中包含当前基线、架构边界、验证证据、
-未完成事项和协作约束。
+当前收口范围、实施步骤和验证口径见
+[MVP Completion Plan](docs/superpowers/plans/2026-07-31-mvp-completion.md)。
 
 ## 本地运行
 
@@ -32,6 +32,7 @@ pnpm typecheck
 pnpm test
 pnpm db:check
 pnpm build
+pnpm test:e2e
 ```
 
 也可以一次运行全部质量门禁：
@@ -96,16 +97,32 @@ pnpm quiz:publish:db
 不可变正式题组。学员端在发布前提供5道明确标识的交互演示题，发布后每组从正式
 题库选取10题，并平衡单选题和判断题。
 
+正式题组仍按上述人工审核流程管理。除此之外，学员端提供 5 个专题共 350 道
+练习题；每次专题练习抽取 10 题，题库充足时固定为 5 道单选题、5 道判断题，并
+按简单 4 题、中等 4 题、困难 2 题分配。专题练习用于日常训练，不替代 40 道
+可追溯正式题的知识负责人审核。当前即时判题属于学习反馈，不作为防作弊考试或
+认证成绩；未来若用于正式考核，需要增加服务端一次性题单、单次作答状态和防重放。
+
 正式小测完成后，服务端会基于发布题库重新判分，并按当前账号保存结果。学员可在
 `/practice/history` 查看自己的练习记录；本地测试记录保存在不进入Git的
 `artifacts/quiz`，后续可在不改变页面接口的前提下替换为企业正式存储。
 
-## Mock情景实战
+## AI 情景实战
 
 学员可从 `/practice/scenario` 进入8个固定场景，覆盖售前、物流、破损少货和客诉。
-当前使用确定性 `MockConversationProvider` 与 `MockEvaluationProvider`，支持连续
-文字对话、分块显示顾客回复、刷新恢复、最大12轮、五维演示评分、关键风险判定和
-原场景重练。
+生产环境通过 OpenAI 兼容接口使用真实 `ConversationProvider` 与
+`EvaluationProvider`，支持连续文字对话、完整上下文、刷新恢复、最大 12 轮、
+五维 AI 评分、关键风险判定和原场景重练。Provider 会拒绝空回复，并对机械复述
+上一条顾客消息做一次受控重试。确定性 Mock 仅用于显式本地回退和自动化测试。
+
+在不提交密钥的 `.env.local` 中配置以下变量即可启用真实 AI：
+
+```bash
+SCENARIO_AI_MODE=real
+OPENAI_API_KEY=...
+OPENAI_BASE_URL=...
+OPENAI_MODEL=...
+```
 
 数据库迁移、账号种子和知识版本发布完成后，可将8个固定场景及其完整来源、评分
 维度和风险规则幂等发布到数据库：
@@ -135,9 +152,9 @@ pnpm production:verify:data
 正式题组后，再运行 `pnpm production:verify:data --formal`；未通过该严格门禁时，
 版本只能称为技术验收版，不能称为正式培训内容版。
 
-所有页面和报告均明确标识“演示模式”或“演示评分”，不把Mock结果计入真实AI可信度
-验收。会话保存在不进入Git的 `artifacts/scenario`；未来接入真实模型和企业存储时，
-替换Provider与服务适配层即可，页面流程和会话契约保持不变。
+场景页面、会话和报告均按运行时实际模式标识“AI 实战/AI 评分”或“演示模式/
+演示评分”，不会再由旧场景模板中的 Mock 标记误判。生产会话写入 Neon；显式本地
+Demo 才会使用不进入 Git 的 `artifacts/scenario`。
 
 ## 资料边界
 

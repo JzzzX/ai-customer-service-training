@@ -1,8 +1,14 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PageHeader } from "@/components/ui/page-header";
+import { SoftBadge } from "@/components/ui/soft-badge";
+import { SoftButton } from "@/components/ui/soft-button";
+import { SoftCard } from "@/components/ui/soft-card";
 import { requireUser } from "@/lib/auth/guards";
-import { getScenarioTemplateStore } from "@/lib/runtime/services";
+import {
+  getScenarioAiMode,
+  getScenarioTemplateStore,
+} from "@/lib/runtime/services";
 
 import { startScenarioAction } from "../actions";
 
@@ -26,42 +32,35 @@ export default async function ScenarioDetailPage({
   if (!scenario) {
     notFound();
   }
+  const isRealMode = getScenarioAiMode() === "real";
 
   return (
     <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-2xl">
-        <header className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-bold text-[#5c7cdb]">开始前</p>
-            <span className="rounded-full bg-[#eef3ff] px-3 py-1 text-xs font-bold text-[#5c7cdb]">
-              演示模式
-            </span>
-          </div>
-          <Link
-            className="font-bold text-[#65756d]"
-            href="/practice/scenario"
-          >
-            返回场景
-          </Link>
-        </header>
+        <PageHeader
+          badge={isRealMode ? "AI 实战" : "演示模式"}
+          backHref="/practice/scenario"
+          label="开始前"
+          title={scenario.title}
+        />
 
-        <section className="mt-8 rounded-[28px] border-2 border-[#dde4ef] bg-white p-7 shadow-[0_7px_0_#dde4ef] sm:p-9">
-          <p className="text-xs font-bold text-[#6a82cf]">
-            最多 {scenario.maxTurns} 轮
-          </p>
-          <h1 className="mt-3 text-3xl font-black leading-10 text-[#21312a]">
-            {scenario.title}
-          </h1>
-          <p className="mt-4 leading-7 text-[#68786f]">
-            {scenario.summary}
-          </p>
+        <SoftCard className="mt-8 animate-fade-in-up stagger-1" gradient>
+          <SoftBadge variant="scenario">最多 {scenario.maxTurns} 轮</SoftBadge>
+          <p className="mt-4 leading-7 text-ink-soft">{scenario.summary}</p>
 
-          <div className="mt-7 rounded-2xl bg-[#f5f7fb] p-5">
-            <h2 className="font-black text-[#33443b]">你的任务</h2>
-            <ul className="mt-3 space-y-2 text-sm leading-6 text-[#617068]">
-              <li>主动了解必要信息，不要急着给结论。</li>
-              <li>根据顾客回复推进处理，并明确下一步。</li>
-              <li>准备好后可主动结束训练，查看模拟报告。</li>
+          <div className="mt-6 rounded-[var(--radius-control)] bg-surface-muted p-5">
+            <h2 className="font-black text-ink">你的任务</h2>
+            <ul className="mt-3 space-y-3 text-sm leading-6 text-ink-soft">
+              {[
+                "主动了解必要信息，不要急着给结论。",
+                "根据顾客回复推进处理，并明确下一步。",
+                "准备好后可主动结束训练，查看训练报告。",
+              ].map((item) => (
+                <li className="flex items-start gap-3" key={item}>
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand" />
+                  <span>{item}</span>
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -74,14 +73,11 @@ export default async function ScenarioDetailPage({
                 value={assignmentId}
               />
             ) : null}
-            <button
-              className="min-h-12 w-full rounded-2xl bg-[#6c8bea] px-6 font-black text-white shadow-[0_4px_0_#526fc6] active:translate-y-1 active:shadow-none"
-              type="submit"
-            >
+            <SoftButton className="w-full" type="submit" variant="scenario">
               开始模拟接待
-            </button>
+            </SoftButton>
           </form>
-        </section>
+        </SoftCard>
       </div>
     </main>
   );

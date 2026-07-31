@@ -15,6 +15,7 @@ export async function createTestDatabase() {
     "drizzle/0003_spotty_donald_blake.sql",
     "drizzle/0004_warm_iceman.sql",
     "drizzle/0005_striped_boomerang.sql",
+    "drizzle/0006_light_mentor.sql",
   ]) {
     await client.exec(
       await readFile(resolve(process.cwd(), migration), "utf8"),

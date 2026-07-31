@@ -1,15 +1,16 @@
 "use server";
 
-import { createHash } from "node:crypto";
-
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth/guards";
 import { evaluateAnswer } from "@/lib/quiz/attempt";
 import { saveQuizAttemptForLearner } from "@/lib/quiz/attempt-service";
+import { demoQuizQuestions } from "@/lib/quiz/demo-questions";
 import { topicQuizQuestions } from "@/lib/quiz/question-bank";
 import { loadPublishedQuiz } from "@/lib/quiz/review-service";
+import type { QuizQuestion } from "@/lib/quiz/schema";
+import { createTopicQuizHash } from "@/lib/quiz/topic-hash";
 
 const submittedAnswerSchema = z.object({
   questionId: z.string().regex(/^qq_[a-f0-9]{24}$/),
@@ -28,6 +29,47 @@ const submittedAnswersSchema = z
   );
 
 export type QuizAnswerSubmission = z.infer<typeof submittedAnswerSchema>;
+
+export type QuizAnswerFeedback = {
+  isCorrect: boolean;
+  explanation: string;
+  sourceLabel: string;
+};
+
+export async function checkDemoQuizAnswerAction(
+  questionId: string,
+  selected: string,
+): Promise<QuizAnswerFeedback> {
+  await requireUser();
+  return checkAnswer(demoQuizQuestions, questionId, selected);
+}
+
+export async function checkPublishedQuizAnswerAction(
+  quizHash: string,
+  questionId: string,
+  selected: string,
+): Promise<QuizAnswerFeedback> {
+  await requireUser();
+  const publishedQuiz = await loadPublishedQuiz();
+  if (!publishedQuiz || publishedQuiz.quizHash !== quizHash) {
+    throw new Error("当前正式题组已更新，请重新开始练习。");
+  }
+  return checkAnswer(publishedQuiz.questions, questionId, selected);
+}
+
+export async function checkTopicQuizAnswerAction(
+  topicId: string,
+  questionId: string,
+  selected: string,
+): Promise<QuizAnswerFeedback> {
+  await requireUser();
+  const topic = z.string().trim().min(1).parse(topicId);
+  return checkAnswer(
+    topicQuizQuestions.filter((question) => question.category === topic),
+    questionId,
+    selected,
+  );
+}
 
 export async function saveQuizAttemptAction(
   quizHash: string,
@@ -100,17 +142,47 @@ export async function saveTopicQuizAttemptAction(
     };
   });
 
-  const quizHash = createHash("sha256")
-    .update(`topic:${topic}`)
-    .digest("hex");
-
   await saveQuizAttemptForLearner({
     attemptId,
     learnerId: user.id,
-    quizHash,
+    quizHash: createTopicQuizHash(topic),
     topicId: topic,
     passingScore: 80,
     answers: checkedAnswers,
   });
   revalidatePath("/practice/history");
+}
+
+function checkAnswer(
+  questions: QuizQuestion[],
+  questionIdInput: string,
+  selectedInput: string,
+): QuizAnswerFeedback {
+  const { questionId, selected } = submittedAnswerSchema.parse({
+    questionId: questionIdInput,
+    selected: selectedInput,
+  });
+  const question = questions.find((candidate) => candidate.id === questionId);
+  if (!question || !question.options.includes(selected)) {
+    throw new Error("题目或选项无效，请刷新后重试。");
+  }
+  return {
+    isCorrect: evaluateAnswer([selected], question.correctAnswers),
+    explanation: question.explanation,
+    sourceLabel: formatSource(question),
+  };
+}
+
+function formatSource(question: QuizQuestion): string {
+  const source = question.sources[0];
+  if (!source) {
+    return "未标注";
+  }
+  if (source.sheet && source.row) {
+    return `${source.sourcePath} · ${source.sheet} 第 ${source.row} 行`;
+  }
+  if (source.line) {
+    return `${source.sourcePath} · 第 ${source.line} 行`;
+  }
+  return `${source.sourcePath} · ${source.anchor}`;
 }

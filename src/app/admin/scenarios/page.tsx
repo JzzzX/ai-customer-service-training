@@ -1,5 +1,7 @@
-import Link from "next/link";
-
+import { PageHeader } from "@/components/ui/page-header";
+import { SoftBadge } from "@/components/ui/soft-badge";
+import { SoftButtonLink } from "@/components/ui/soft-button";
+import { SoftCard } from "@/components/ui/soft-card";
 import { requireAdmin } from "@/lib/auth/guards";
 import { getScenarioTemplateStore } from "@/lib/runtime/services";
 
@@ -18,70 +20,61 @@ const difficultyLabels: Record<string, string> = {
 
 export default async function AdminScenariosPage() {
   await requireAdmin();
-  const scenarios =
-    await getScenarioTemplateStore().listPublished();
+  const scenarios = await getScenarioTemplateStore().listPublished();
 
   return (
     <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-5xl">
-        <header className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-bold text-[#5c7cdb]">场景管理</p>
-            <h1 className="mt-1 text-2xl font-black text-[#21312a]">
-              已发布文字场景
-            </h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link
-              className="rounded-2xl bg-[#6c8bea] px-4 py-2 text-sm font-black text-white shadow-[0_3px_0_#526fc6]"
+        <PageHeader
+          action={
+            <SoftButtonLink
               href="/admin/scenarios/generate"
+              variant="scenario"
             >
               AI 生成场景
-            </Link>
-            <Link className="font-bold text-[#65756d]" href="/admin">
-              返回
-            </Link>
-          </div>
-        </header>
-        <section className="mt-8 grid gap-4 md:grid-cols-2">
-          {scenarios.map((scenario) => (
-            <article
-              className="rounded-[22px] border-2 border-[#dde4ef] bg-white p-5"
+            </SoftButtonLink>
+          }
+          backHref="/admin"
+          description="查看已发布文字训练场景、难度分级与知识依据。"
+          label="场景管理"
+          title="已发布文字场景"
+        />
+
+        <section className="mt-10 grid gap-4 md:grid-cols-2">
+          {scenarios.map((scenario, index) => (
+            <SoftCard
+              className="animate-fade-in-up"
+              hover
               key={scenario.versionId}
+              style={{ animationDelay: `${index * 60}ms` }}
             >
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-[#eef3ff] px-3 py-1 text-xs font-bold text-[#5c7cdb]">
+                <SoftBadge variant="scenario">
                   {categoryLabels[scenario.category] ?? scenario.category}
-                </span>
-                <span className="rounded-full bg-[#fdf8ec] px-3 py-1 text-xs font-bold text-[#a07a1e]">
+                </SoftBadge>
+                <SoftBadge variant="warning">
                   {difficultyLabels[scenario.difficulty] ?? scenario.difficulty}
-                </span>
+                </SoftBadge>
                 {scenario.scenarioFocus && (
-                  <span className="rounded-full bg-[#eaf7ed] px-3 py-1 text-xs font-bold text-[#399a57]">
-                    {scenario.scenarioFocus}
-                  </span>
+                  <SoftBadge variant="success">{scenario.scenarioFocus}</SoftBadge>
                 )}
                 {scenario.mockMode ? (
-                  <span className="rounded-full bg-[#f0f0f0] px-3 py-1 text-xs font-bold text-[#8a9690]">
-                    Mock 评分
-                  </span>
+                  <SoftBadge variant="muted">Mock 评分</SoftBadge>
                 ) : (
-                  <span className="rounded-full bg-[#fdecec] px-3 py-1 text-xs font-bold text-[#c43c3c]">
-                    AI 评分
-                  </span>
+                  <SoftBadge variant="danger">AI 评分</SoftBadge>
                 )}
               </div>
-              <h2 className="mt-2 text-lg font-black text-[#21312a]">
+              <h2 className="mt-3 text-lg font-black text-ink">
                 {scenario.title}
               </h2>
-              <p className="mt-2 text-sm leading-6 text-[#68786f]">
+              <p className="mt-2 text-sm leading-6 text-ink-soft">
                 {scenario.summary}
               </p>
-              <p className="mt-3 text-xs text-[#7a8981]">
+              <p className="mt-4 text-xs font-bold text-ink-faint">
                 {scenario.sources.length} 个知识依据 · 最多{" "}
                 {scenario.maxTurns} 轮
               </p>
-            </article>
+            </SoftCard>
           ))}
         </section>
       </div>

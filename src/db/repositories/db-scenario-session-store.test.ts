@@ -54,6 +54,7 @@ describe("DbScenarioSessionStore", () => {
     const session = await store.startSession({
       learnerId,
       scenario: template,
+      mode: "mock",
       startedAt: "2026-07-30T01:00:00.000Z",
     });
 
@@ -81,6 +82,7 @@ describe("DbScenarioSessionStore", () => {
     const session = await store.startSession({
       learnerId,
       scenario: template,
+      mode: "mock",
     });
 
     await expect(
@@ -95,6 +97,7 @@ describe("DbScenarioSessionStore", () => {
     const session = await store.startSession({
       learnerId,
       scenario: template,
+      mode: "mock",
     });
     const updated = await store.appendExchange({
       learnerId,
@@ -131,6 +134,7 @@ describe("DbScenarioSessionStore", () => {
     const session = await store.startSession({
       learnerId,
       scenario: template,
+      mode: "mock",
     });
     const riskAlert = {
       riskLabel: "绝对化产品承诺",
@@ -175,6 +179,7 @@ describe("DbScenarioSessionStore", () => {
     const session = await store.startSession({
       learnerId,
       scenario: template,
+      mode: "mock",
       assignmentId,
     });
     const report = await new MockEvaluationProvider().evaluate({

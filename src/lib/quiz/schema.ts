@@ -56,3 +56,36 @@ export type QuizQuestionPublished = z.infer<
 >;
 export type QuizPublishedPack = z.infer<typeof quizPublishedPackSchema>;
 export type QuizQuestion = QuizQuestionDraft | QuizQuestionPublished;
+
+export type QuizQuestionClient = Pick<
+  QuizQuestion,
+  "id" | "type" | "prompt" | "options" | "category" | "difficulty" | "status"
+>;
+
+export function toClientQuizQuestion(
+  question: QuizQuestion,
+): QuizQuestionClient {
+  return {
+    id: question.id,
+    type: question.type,
+    prompt: question.prompt,
+    options: question.options,
+    category: question.category,
+    difficulty: question.difficulty,
+    status: question.status,
+  };
+}
+
+export function shuffleClientQuestionOptions(
+  question: QuizQuestionClient,
+): QuizQuestionClient {
+  if (question.type !== "single_choice") {
+    return question;
+  }
+  const options = [...question.options];
+  for (let index = options.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [options[index], options[swapIndex]] = [options[swapIndex]!, options[index]!];
+  }
+  return { ...question, options };
+}

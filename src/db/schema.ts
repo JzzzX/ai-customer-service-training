@@ -362,6 +362,59 @@ export const quizAnswers = pgTable(
   ],
 );
 
+export const topicQuizAttempts = pgTable(
+  "topic_quiz_attempts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    learnerId: uuid("learner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    topicId: text("topic_id").notNull(),
+    quizHash: text("quiz_hash").notNull(),
+    status: quizAttemptStatusEnum("status").notNull(),
+    correctCount: integer("correct_count").notNull(),
+    totalQuestions: integer("total_questions").notNull(),
+    score: integer("score").notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true })
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("topic_quiz_attempts_learner_completed_idx").on(
+      table.learnerId,
+      table.completedAt,
+    ),
+    check(
+      "topic_quiz_attempts_score_check",
+      sql`${table.score} between 0 and 100`,
+    ),
+  ],
+);
+
+export const topicQuizAnswers = pgTable(
+  "topic_quiz_answers",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    topicQuizAttemptId: uuid("topic_quiz_attempt_id")
+      .notNull()
+      .references(() => topicQuizAttempts.id, { onDelete: "cascade" }),
+    questionKey: text("question_key").notNull(),
+    selectedAnswers: jsonb("selected_answers").$type<string[]>().notNull(),
+    isCorrect: boolean("is_correct").notNull(),
+    answeredAt: timestamp("answered_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("topic_quiz_answers_attempt_question_unique").on(
+      table.topicQuizAttemptId,
+      table.questionKey,
+    ),
+  ],
+);
+
 export const scenarios = pgTable(
   "scenarios",
   {
@@ -517,6 +570,10 @@ export const trainingSessions = pgTable(
     index("training_sessions_learner_started_idx").on(
       table.learnerId,
       table.startedAt,
+    ),
+    check(
+      "training_sessions_mode_check",
+      sql`${table.mode} in ('mock', 'real')`,
     ),
   ],
 );

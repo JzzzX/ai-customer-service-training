@@ -1,8 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { ProgressBar } from "@/components/ui/progress-bar";
+import { SoftButton } from "@/components/ui/soft-button";
+import { WaveLoader } from "@/components/ui/wave-loader";
 import { sendScenarioMessageAction } from "@/app/practice/scenario/actions";
 import type { LiveRiskAlert, ScenarioSession } from "@/lib/scenario/schema";
 
@@ -20,7 +23,15 @@ export function ScenarioChat({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const reachedLimit = session.learnerTurnCount >= session.maxTurns;
+
+  useEffect(() => {
+    const target = messagesEndRef.current;
+    if (target && typeof target.scrollIntoView === "function") {
+      target.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [session.messages, optimisticLearner, streamingReply]);
 
   async function submitMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,31 +69,26 @@ export function ScenarioChat({
   }
 
   return (
-    <section className="overflow-hidden rounded-[28px] border-2 border-[#dde4ef] bg-white shadow-[0_7px_0_#dde4ef]">
-      <div className="border-b-2 border-[#edf0f6] px-5 py-4 sm:px-7">
+    <section className="overflow-hidden rounded-[var(--radius-card)] bg-surface shadow-[var(--shadow-soft)]">
+      <div className="border-b border-surface-muted px-5 py-4 sm:px-7">
         <div className="flex items-center justify-between gap-4 text-sm font-bold">
-          <span className="text-[#5c7cdb]">
+          <span className="text-scenario-strong">
             第 {session.learnerTurnCount} / {session.maxTurns} 轮
           </span>
-          <span className="text-[#7a8981]">{scenarioTitle}</span>
+          <span className="text-ink-faint">{scenarioTitle}</span>
         </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#e9edf5]">
-          <div
-            aria-label={`训练进度 ${Math.round(
-              (session.learnerTurnCount / session.maxTurns) * 100,
-            )}%`}
-            className="h-full rounded-full bg-[#7f99ec] transition-all"
-            style={{
-              width: `${Math.max(
-                4,
-                (session.learnerTurnCount / session.maxTurns) * 100,
-              )}%`,
-            }}
-          />
-        </div>
+        <ProgressBar
+          className="mt-3"
+          color="scenario"
+          label={`训练进度 ${Math.round(
+            (session.learnerTurnCount / session.maxTurns) * 100,
+          )}%`}
+          value={session.learnerTurnCount}
+          max={session.maxTurns}
+        />
       </div>
 
-      <div className="max-h-[52vh] min-h-80 space-y-4 overflow-y-auto bg-[#f8f9fc] p-5 sm:p-7">
+      <div className="max-h-[52vh] min-h-80 space-y-4 overflow-y-auto bg-canvas p-5 sm:p-7">
         {session.messages.map((message) => (
           <div className="space-y-2" key={message.id}>
             <MessageBubble
@@ -101,16 +107,18 @@ export function ScenarioChat({
           <MessageBubble content={streamingReply} role="customer" />
         ) : null}
         {pending && !streamingReply ? (
-          <p className="text-sm font-bold text-[#7a8981]">
-            模拟顾客正在回复…
-          </p>
+          <div className="flex items-center gap-2 text-sm font-bold text-ink-faint">
+            <WaveLoader barClassName="bg-scenario" />
+            <span>模拟顾客正在回复…</span>
+          </div>
         ) : null}
+        <div ref={messagesEndRef} />
       </div>
 
-      <div className="border-t-2 border-[#edf0f6] p-5 sm:p-7">
+      <div className="border-t border-surface-muted p-5 sm:p-7">
         {error ? (
           <p
-            className="mb-4 rounded-2xl bg-[#fff1e5] px-4 py-3 text-sm font-bold text-[#b56127]"
+            className="mb-4 rounded-[var(--radius-control)] bg-danger-soft px-4 py-3 text-sm font-bold text-danger"
             role="alert"
           >
             {error}
@@ -118,7 +126,7 @@ export function ScenarioChat({
         ) : null}
 
         {reachedLimit ? (
-          <p className="rounded-2xl bg-[#eef3ff] px-4 py-3 text-sm font-bold text-[#526fc6]">
+          <p className="rounded-[var(--radius-control)] bg-scenario-soft px-4 py-3 text-sm font-bold text-scenario-strong">
             已达到最大轮次，请结束训练查看报告。
           </p>
         ) : (
@@ -127,7 +135,7 @@ export function ScenarioChat({
               回复顾客
             </label>
             <textarea
-              className="min-h-24 resize-none rounded-2xl border-2 border-[#dde4ef] px-4 py-3 leading-7 outline-none focus:border-[#7f99ec]"
+              className="min-h-24 resize-none rounded-[var(--radius-control)] border-2 border-transparent bg-surface-muted px-4 py-3 leading-7 text-ink outline-none transition-all placeholder:text-ink-faint focus:border-scenario/30 focus:bg-surface focus:ring-0"
               disabled={pending}
               id="scenario-message"
               maxLength={1000}
@@ -135,28 +143,28 @@ export function ScenarioChat({
               placeholder="像真实接待一样回复顾客…"
               value={content}
             />
-            <button
-              className="min-h-12 rounded-2xl bg-[#6c8bea] px-6 font-black text-white shadow-[0_4px_0_#526fc6] enabled:active:translate-y-1 enabled:active:shadow-none disabled:cursor-not-allowed disabled:opacity-60"
+            <SoftButton
               disabled={!content.trim() || pending}
               type="submit"
+              variant="scenario"
             >
               {pending ? "回复中…" : "发送"}
-            </button>
+            </SoftButton>
           </form>
         )}
 
-        <button
-          className="mt-4 min-h-11 w-full rounded-2xl border-2 border-[#d7deea] px-5 font-bold text-[#5f6f67] disabled:opacity-50"
+        <SoftButton
+          className="mt-4 w-full"
           disabled={pending}
           onClick={() =>
             router.push(
               `/practice/scenario/report/${session.id}?streaming=1`,
             )
           }
-          type="button"
+          variant="secondary"
         >
           结束并查看报告
-        </button>
+        </SoftButton>
       </div>
     </section>
   );
@@ -170,14 +178,17 @@ function MessageBubble({
   role: "customer" | "learner";
 }) {
   const learner = role === "learner";
+
   return (
     <div className={`flex ${learner ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[86%] rounded-2xl px-4 py-3 leading-7 ${
+        className={[
+          "max-w-[86%] rounded-[var(--radius-control)] px-4 py-3 leading-7",
           learner
-            ? "bg-[#6c8bea] text-white"
-            : "border border-[#dde4ef] bg-white text-[#405149]"
-        }`}
+            ? "bg-scenario text-white"
+            : "border border-scenario-border bg-surface text-ink-soft",
+          learner ? "animate-slide-in-right" : "animate-slide-in-left",
+        ].join(" ")}
       >
         <p className="mb-1 text-xs font-bold opacity-70">
           {learner ? "你" : "顾客"}
@@ -193,11 +204,12 @@ function RiskAlertCard({ alert }: { alert: LiveRiskAlert }) {
   return (
     <div className="flex justify-end" role="status">
       <div
-        className={`max-w-[86%] rounded-2xl border-2 px-4 py-3 text-sm leading-6 ${
+        className={[
+          "max-w-[86%] rounded-[var(--radius-control)] border-2 px-4 py-3 text-sm leading-6 animate-slide-in-right",
           isDanger
-            ? "border-[#f0b3b3] bg-[#fff0f0] text-[#a04040]"
-            : "border-[#f3d68a] bg-[#fff7e0] text-[#8a6420]"
-        }`}
+            ? "border-danger/30 bg-danger-soft text-danger"
+            : "border-warning/30 bg-warning-soft text-warning",
+        ].join(" ")}
       >
         <p className="mb-1 text-xs font-black opacity-80">
           {isDanger ? "严重风险提示" : "风险提示"} · {alert.riskLabel}

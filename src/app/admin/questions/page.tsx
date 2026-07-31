@@ -1,5 +1,7 @@
-import Link from "next/link";
-
+import { PageHeader } from "@/components/ui/page-header";
+import { SoftBadge } from "@/components/ui/soft-badge";
+import { SoftButton, SoftButtonLink } from "@/components/ui/soft-button";
+import { SoftCard } from "@/components/ui/soft-card";
 import { requireAdmin } from "@/lib/auth/guards";
 import {
   loadPublishedQuiz,
@@ -33,41 +35,46 @@ export default async function AdminQuestionsPage({
   return (
     <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-4xl">
-        <header className="flex items-start justify-between gap-5">
-          <div>
-            <p className="text-sm font-bold text-[#5c7cdb]">题库管理</p>
-            <h1 className="mt-1 text-2xl font-black text-[#21312a]">
-              题目审核
-            </h1>
-            <p className="mt-2 text-sm text-[#68786f]">
-              {approvedCount} / {review.questions.length} 已通过
-            </p>
-          </div>
-          <Link className="font-bold text-[#65756d]" href="/admin">
-            返回
-          </Link>
-        </header>
+        <PageHeader
+          backHref="/admin"
+          description={`${approvedCount} / ${review.questions.length} 已通过`}
+          label="题库管理"
+          title="题目审核"
+        />
 
         {params.published === "1" || published ? (
-          <p className="mt-6 rounded-2xl border-2 border-[#bfe2c7] bg-[#eff9f1] px-5 py-4 font-bold text-[#2f7b46]">
-            正式题组已发布，学员端将优先读取该版本。
-          </p>
+          <SoftCard className="mt-8 animate-fade-in-up" gradient>
+            <div className="flex flex-wrap items-center gap-2">
+              <SoftBadge variant="success">已发布</SoftBadge>
+              <p className="text-sm font-bold text-success">
+                正式题组已发布，学员端将优先读取该版本。
+              </p>
+            </div>
+          </SoftCard>
         ) : null}
 
-        <section className="mt-8 rounded-[28px] border-2 border-[#dde4ef] bg-white p-6 shadow-[0_7px_0_#dde4ef] sm:p-8">
+        <SoftCard className="mt-8 animate-fade-in-up">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-bold text-[#5c7cdb]">
+              <p className="text-sm font-bold text-scenario-strong">
                 第 {index + 1} / {review.questions.length} 题
               </p>
-              <p className="mt-1 text-sm text-[#7a8981]">
+              <p className="mt-1 text-sm text-ink-faint">
                 {item.question.type === "single_choice"
                   ? "单选题"
                   : "判断题"}{" "}
-                · {item.decision === "approved" ? "已审核" : "待审核"}
+                ·{" "}
+                <SoftBadge
+                  className="px-2 py-0.5"
+                  variant={
+                    item.decision === "approved" ? "success" : "warning"
+                  }
+                >
+                  {item.decision === "approved" ? "已审核" : "待审核"}
+                </SoftBadge>
               </p>
             </div>
-            <nav className="flex gap-3" aria-label="题目翻页">
+            <nav aria-label="题目翻页" className="flex gap-3">
               <PageLink
                 disabled={index === 0}
                 href={`/admin/questions?index=${Math.max(index - 1, 0)}`}
@@ -87,26 +94,27 @@ export default async function AdminQuestionsPage({
             total={review.questions.length}
           />
 
-          <div className="mt-6 rounded-2xl bg-[#f5f7fa] px-4 py-3 text-xs leading-6 text-[#68786f]">
+          <div className="mt-6 rounded-[var(--radius-control)] bg-surface-muted px-4 py-3 text-xs leading-6 text-ink-soft">
             知识来源：{formatSource(item.question.sources[0])}
           </div>
-        </section>
+        </SoftCard>
 
-        <section className="mt-8 rounded-[24px] border-2 border-[#dce8df] bg-white p-6">
-          <h2 className="text-lg font-black text-[#21312a]">发布正式题组</h2>
-          <p className="mt-2 text-sm leading-6 text-[#68786f]">
-            40题全部审核通过后才能发布，发布后学员端才会替换演示题。
+        <SoftCard className="mt-8 animate-fade-in-up stagger-3" gradient>
+          <h2 className="text-lg font-black text-ink">发布正式题组</h2>
+          <p className="mt-2 text-sm leading-6 text-ink-soft">
+            {review.questions.length}题全部审核通过后才能发布，发布后学员端才会替换演示题。
           </p>
           <form action={publishQuizAction}>
-            <button
-              className="mt-5 min-h-12 rounded-2xl bg-[#65b87a] px-6 font-black text-white shadow-[0_4px_0_#3f9258] enabled:active:translate-y-1 enabled:active:shadow-none disabled:cursor-not-allowed disabled:bg-[#b9c6bc] disabled:shadow-none"
+            <SoftButton
+              className="mt-5"
               disabled={!allApproved}
               type="submit"
+              variant={allApproved ? "primary" : "secondary"}
             >
-              {allApproved ? "发布40题正式题组" : "完成全部审核后可发布"}
-            </button>
+              {allApproved ? "发布正式题组" : "完成全部审核后可发布"}
+            </SoftButton>
           </form>
-        </section>
+        </SoftCard>
       </div>
     </main>
   );
@@ -122,16 +130,13 @@ function PageLink({
   label: string;
 }) {
   return disabled ? (
-    <span className="rounded-xl bg-[#eef1f5] px-3 py-2 text-sm font-bold text-[#a3ada7]">
+    <SoftButton disabled size="sm" variant="secondary">
       {label}
-    </span>
+    </SoftButton>
   ) : (
-    <Link
-      className="rounded-xl bg-[#eef2ff] px-3 py-2 text-sm font-bold text-[#5c7cdb]"
-      href={href}
-    >
+    <SoftButtonLink href={href} size="sm" variant="secondary">
       {label}
-    </Link>
+    </SoftButtonLink>
   );
 }
 

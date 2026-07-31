@@ -78,7 +78,7 @@ describe("PracticeHistoryPage", () => {
 
     render(await PracticeHistoryPage());
 
-    expect(screen.getByText(/已练 10 \/ 25 题/)).toBeInTheDocument();
+    expect(screen.getByText(/已练 10 \/ 65 题/)).toBeInTheDocument();
     expect(screen.getByText(/平均正确率 90%/)).toBeInTheDocument();
     expect(screen.getByText("90%")).toBeInTheDocument();
   });

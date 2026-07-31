@@ -15,6 +15,8 @@ import {
   users,
 } from "../schema";
 import { createTestDatabase } from "../test-support/create-test-database";
+import { topicQuizQuestions } from "@/lib/quiz/question-bank";
+import { createTopicQuizHash } from "@/lib/quiz/topic-hash";
 
 const adminId = "00000000-0000-4000-8000-000000000001";
 const learnerId = "00000000-0000-4000-8000-000000000002";
@@ -157,6 +159,42 @@ describe("DbQuizAttemptStore", () => {
         ],
       }),
     ).rejects.toThrow("无权访问该小测记录");
+  });
+
+  it("persists topic practice and recomputes answers from the server bank", async () => {
+    const question = topicQuizQuestions[0]!;
+    const topicAttemptId = "00000000-0000-4000-8000-000000000060";
+    const topicQuizHash = createTopicQuizHash(question.category);
+
+    const record = await store.saveAttempt({
+      attemptId: topicAttemptId,
+      learnerId,
+      quizHash: topicQuizHash,
+      topicId: question.category,
+      passingScore: 80,
+      answers: [
+        {
+          questionId: question.id,
+          selectedAnswers: question.correctAnswers,
+          isCorrect: false,
+        },
+      ],
+    });
+
+    expect(record).toMatchObject({
+      id: topicAttemptId,
+      learnerId,
+      quizHash: topicQuizHash,
+      topicId: question.category,
+      correctCount: 1,
+      totalQuestions: 1,
+      score: 100,
+      status: "passed",
+      missedQuestionIds: [],
+    });
+    await expect(store.listAttempts(learnerId)).resolves.toContainEqual(
+      record,
+    );
   });
 
   it("completes only the matching learner assignment", async () => {

@@ -2,8 +2,8 @@ import { LoginForm } from "./login-form";
 
 export default function LoginPage() {
   return (
-    <main className="grid min-h-screen place-items-center px-5 py-10">
-      <section className="w-full max-w-md rounded-[var(--radius-card)] border-2 border-brand-border bg-surface p-7 shadow-[var(--shadow-card)] sm:p-9">
+    <main className="grid min-h-screen place-items-center px-5 py-10 animate-fade-in-up">
+      <section className="w-full max-w-md rounded-[var(--radius-card)] bg-gradient-to-br from-surface to-surface-muted p-7 shadow-[var(--shadow-soft)] sm:p-9">
         <LoginForm />
 
         <p className="mt-6 text-center text-sm text-ink-faint">
