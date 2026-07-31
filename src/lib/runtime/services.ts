@@ -17,6 +17,7 @@ import { LocalScenarioSessionStore } from "@/lib/scenario/local-session-store";
 import {
   MockConversationProvider,
   MockEvaluationProvider,
+  MockLiveRiskProvider,
 } from "@/lib/scenario/mock-providers";
 import { createOpenAIProviders } from "@/lib/scenario/ai-providers";
 import {
@@ -181,6 +182,7 @@ export function createScenarioTrainingService(
     : {
         conversation: new MockConversationProvider(),
         evaluation: new MockEvaluationProvider(),
+        liveRisk: new MockLiveRiskProvider(),
       };
 
   return new ScenarioTrainingService({
@@ -192,6 +194,7 @@ export function createScenarioTrainingService(
     templates,
     conversationProvider: providers.conversation,
     evaluationProvider: providers.evaluation,
+    liveRiskProvider: providers.liveRisk,
     knowledgeUnitLoader: async (scenario) => {
       const queryStore = isLocal
         ? new EmptyKnowledgeQueryStore()

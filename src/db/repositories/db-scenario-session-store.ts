@@ -13,6 +13,7 @@ import {
 import {
   scenarioEvaluationReportSchema,
   scenarioSessionSchema,
+  type LiveRiskAlert,
   type ScenarioEvaluationReport,
   type ScenarioSession,
 } from "@/lib/scenario/schema";
@@ -170,6 +171,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
         role: trainingMessages.sender,
         content: trainingMessages.content,
         createdAt: trainingMessages.createdAt,
+        metadata: trainingMessages.metadata,
       })
       .from(trainingMessages)
       .where(eq(trainingMessages.trainingSessionId, session.id))
@@ -205,12 +207,16 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
       mode: session.mode as "mock" | "real",
       learnerTurnCount: session.turnCount,
       maxTurns: session.maxTurns,
-      messages: messages.map((message) => ({
-        id: message.id,
-        role: message.role,
-        content: message.content,
-        createdAt: message.createdAt.toISOString(),
-      })),
+      messages: messages.map((message) => {
+        const riskAlert = extractRiskAlert(message.metadata);
+        return {
+          id: message.id,
+          role: message.role,
+          content: message.content,
+          createdAt: message.createdAt.toISOString(),
+          ...(riskAlert ? { riskAlert } : {}),
+        };
+      }),
       ...(report ? { report } : {}),
       startedAt: session.startedAt.toISOString(),
       updatedAt: session.updatedAt.toISOString(),
@@ -242,6 +248,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
     const updatedAt = inputValue.updatedAt
       ? new Date(inputValue.updatedAt)
       : new Date();
+    const riskAlert = inputValue.riskAlert ?? null;
 
     await this.database.transaction(async (transaction) => {
       const [current] = await transaction
@@ -297,6 +304,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
           sender: "learner",
           content: learnerMessage,
           createdAt: updatedAt,
+          metadata: riskAlert ? { riskAlert } : null,
         },
         {
           trainingSessionId: identity.sessionId,
@@ -316,7 +324,6 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
   ): Promise<ScenarioSession> {
     const identity = sessionIdentitySchema.parse(inputValue);
     const report = scenarioEvaluationReportSchema.parse(inputValue.report);
-    console.log("[DEBUG completeSession] report.lowConfidence =", report.lowConfidence);
     const completedAt = inputValue.completedAt
       ? new Date(inputValue.completedAt)
       : new Date();
@@ -431,4 +438,30 @@ function determineReviewTrigger(
   }
   const sampleByte = Number.parseInt(sessionId.replaceAll("-", "").slice(-2), 16);
   return sampleByte % 10 === 0 ? "random_sample" : null;
+}
+
+function extractRiskAlert(
+  metadata: Record<string, unknown> | null,
+): LiveRiskAlert | null {
+  if (!metadata || typeof metadata !== "object") {
+    return null;
+  }
+  const raw = (metadata as { riskAlert?: unknown }).riskAlert;
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const alert = raw as Partial<LiveRiskAlert>;
+  if (
+    typeof alert.riskLabel !== "string" ||
+    typeof alert.suggestion !== "string" ||
+    (alert.severity !== "warning" && alert.severity !== "danger")
+  ) {
+    return null;
+  }
+  const riskLabel = alert.riskLabel.trim();
+  const suggestion = alert.suggestion.trim();
+  if (!riskLabel || !suggestion) {
+    return null;
+  }
+  return { riskLabel, suggestion, severity: alert.severity };
 }

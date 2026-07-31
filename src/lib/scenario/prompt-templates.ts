@@ -196,3 +196,32 @@ export function buildEvaluationUserPrompt(
     `共 ${learnerMessages.length} 轮回复。请按评分流程逐轮分析后，输出 JSON 评估结果。`,
   ].join("\n");
 }
+
+export function buildLiveRiskPrompt(
+  scenario: ScenarioTemplate,
+  learnerMessage: string,
+): { system: string; user: string } {
+  const system = [
+    "你是宠物食品电商客服训练的事中风控助手。学员刚在模拟对话中发出一条回复，请快速判断是否触发关键风险。",
+    "",
+    "## 场景已声明的关键风险",
+    ...scenario.criticalRisks.map(
+      (risk) =>
+        `- ${risk.label}：典型表现 ${risk.patterns.join("、")}`,
+    ),
+    "",
+    "## 通用风险类型（任何场景都要检测）",
+    "- 绝对化产品承诺：保证治愈、一定不会软便、肯定有效、绝对安全等",
+    "- 虚构优惠或赠品：编造不存在的活动、价格、赠品或物流承诺",
+    "- 攻击性语言：辱骂、贬低、嘲讽、威胁顾客",
+    "- 泄露内部信息：透露内部考核、对顾客不利的内部规则或话术",
+    "",
+    "## 输出 JSON 格式",
+    '- 命中风险：{"riskLabel": "<风险名，简短>", "suggestion": "<建议改用的话术或处理方式，1-2句>", "severity": "warning" | "danger"}',
+    "- severity=warning：存在风险但可纠正；severity=danger：严重违规（辱骂、绝对承诺治愈、虚构优惠等）",
+    '- 未命中任何风险：返回 JSON null',
+    "- 只输出 JSON，不要解释。",
+  ].join("\n");
+  const user = `学员回复：${learnerMessage}`;
+  return { system, user };
+}

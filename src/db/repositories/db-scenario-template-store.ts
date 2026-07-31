@@ -50,6 +50,8 @@ export class DbScenarioTemplateStore implements ScenarioTemplateStore {
         sources: scenarioVersions.sources,
         maxTurns: scenarioVersions.maxTurns,
         mockMode: scenarioVersions.mockMode,
+        customerPersona: scenarioVersions.customerPersona,
+        difficulty: scenarioVersions.difficulty,
       })
       .from(scenarioVersions)
       .innerJoin(
@@ -66,8 +68,11 @@ function mapTemplate(
     ReturnType<DbScenarioTemplateStore["listPublished"]>
   >[number] | Record<string, unknown>,
 ): unknown {
+  const input = row as { customerPersona?: unknown };
+  const { customerPersona, ...rest } = input;
   return {
-    ...row,
+    ...rest,
+    ...(customerPersona ? { customerPersona } : {}),
     status: "published",
   };
 }

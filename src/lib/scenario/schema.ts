@@ -71,6 +71,20 @@ export const scenarioMessageInputSchema = z.object({
   content: z.string().trim().min(1),
 });
 
+export const liveRiskAlertSchema = z.object({
+  riskLabel: z.string().trim().min(1),
+  suggestion: z.string().trim().min(1),
+  severity: z.enum(["warning", "danger"]),
+});
+
+export const scenarioMessageSchema = z.object({
+  id: z.string().uuid(),
+  role: z.enum(["customer", "learner"]),
+  content: z.string().trim().min(1),
+  createdAt: z.string().datetime(),
+  riskAlert: liveRiskAlertSchema.optional(),
+});
+
 export const scenarioRecommendationSchema = z.object({
   issue: z.string().trim().min(1),
   suggestedReply: z.string().trim().min(1),
@@ -109,16 +123,7 @@ export const scenarioSessionSchema = z
     mode: z.enum(["mock", "real"]),
     learnerTurnCount: z.number().int().min(0),
     maxTurns: z.number().int().min(8).max(16),
-    messages: z
-      .array(
-        z.object({
-          id: z.string().uuid(),
-          role: z.enum(["customer", "learner"]),
-          content: z.string().trim().min(1),
-          createdAt: z.string().datetime(),
-        }),
-      )
-      .min(1),
+    messages: z.array(scenarioMessageSchema).min(1),
     report: scenarioEvaluationReportSchema.optional(),
     startedAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
@@ -159,4 +164,6 @@ export type ScenarioRecommendation = z.infer<
 export type ScenarioEvaluationReport = z.infer<
   typeof scenarioEvaluationReportSchema
 >;
+export type LiveRiskAlert = z.infer<typeof liveRiskAlertSchema>;
+export type ScenarioMessage = z.infer<typeof scenarioMessageSchema>;
 export type ScenarioSession = z.infer<typeof scenarioSessionSchema>;

@@ -13,10 +13,13 @@ type TemplateInput = Omit<
   | "maxTurns"
   | "status"
   | "mockMode"
-  | "difficulty"
   | "scenarioFocus"
   | "customerPersona"
->;
+  | "difficulty"
+> & {
+  customerPersona?: ScenarioTemplate["customerPersona"];
+  difficulty?: ScenarioTemplate["difficulty"];
+};
 
 const versionIds = ["a", "b", "c", "d", "e", "f", "0", "9"];
 
@@ -228,6 +231,12 @@ const inputs: TemplateInput[] = [
     ],
     referenceReply:
       "理解您担心幼犬换粮后肠胃不适。可以先确认当前主粮和软便频率，再按7天换粮法逐步过渡，并结合预算推荐适龄主粮；搭配产品只在确有需要时说明。",
+    customerPersona: {
+      temperament: "calm",
+      knowledgeLevel: "medium",
+      mood: "新手养幼犬，想为它挑一款合适的粮，对换粮方法不太懂。",
+    },
+    difficulty: "easy",
     sources: [
       source("销售场景.md", "h:销售场景/正确推荐产品"),
     ],
@@ -246,6 +255,12 @@ const inputs: TemplateInput[] = [
     ],
     referenceReply:
       "理解您担心适口性和浪费。先确认猫咪当前饮食，再说明与需求相关的产品特点，并只介绍当前有效活动；如需考虑，可约定后续跟进。",
+    customerPersona: {
+      temperament: "bargain_hunting",
+      knowledgeLevel: "medium",
+      mood: "正在对比两家店，想压价或要赠品，怕买错浪费。",
+    },
+    difficulty: "hard",
     sources: [
       source(
         "销售场景.md",
@@ -267,6 +282,12 @@ const inputs: TemplateInput[] = [
     ],
     referenceReply:
       "先核实订单号和最后物流节点，再联系快递查询。不能保证具体到达时间，但会说明预计反馈节点，并在异常确认后按流程继续处理。",
+    customerPersona: {
+      temperament: "anxious",
+      knowledgeLevel: "low",
+      mood: "担心出差前收不到货，反复确认到达时间。",
+    },
+    difficulty: "medium",
     sources: [source("销售场景.md", "h:销售场景/正确跟单")],
   },
   {
@@ -283,6 +304,12 @@ const inputs: TemplateInput[] = [
     ],
     referenceReply:
       "先确认订单和物流状态，再按规则尝试联系快递拦截或改址，但不承诺一定成功；同时说明失败后的签收协调路径和跟进节点。",
+    customerPersona: {
+      temperament: "irritable",
+      knowledgeLevel: "low",
+      mood: "急躁想立刻改地址，对流程不耐烦，希望马上解决。",
+    },
+    difficulty: "medium",
     sources: [source("销售场景.md", "h:销售场景/正确跟单")],
   },
   {
@@ -299,6 +326,12 @@ const inputs: TemplateInput[] = [
     ],
     referenceReply:
       "先核对订单明细，再收集外箱、面单、箱内商品和开箱视频；完成仓库核查后按规则提供补发或售后方案，并说明反馈节点。",
+    customerPersona: {
+      temperament: "calm",
+      knowledgeLevel: "medium",
+      mood: "发现少货有点不快，但愿意配合提供凭证解决问题。",
+    },
+    difficulty: "medium",
     sources: [
       excelSource(
         "售前_客诉接待问题划分.xlsx",
@@ -321,6 +354,12 @@ const inputs: TemplateInput[] = [
     ],
     referenceReply:
       "先安抚并确认破损范围，收集外箱、面单和商品照片；提醒不要喂食漏液产品，再按核实结果提供补发或售后方案。",
+    customerPersona: {
+      temperament: "irritable",
+      knowledgeLevel: "low",
+      mood: "收到破损商品很不满，语气急躁，要求立刻给方案。",
+    },
+    difficulty: "hard",
     sources: [
       excelSource(
         "售前_客诉接待问题划分.xlsx",
@@ -343,6 +382,12 @@ const inputs: TemplateInput[] = [
     ],
     referenceReply:
       "理解您担心猫咪突然拒食。先确认换粮方式、精神状态和其他症状，避免直接判断产品问题；可按情况调整过渡，并在持续拒食或状态异常时及时就医。",
+    customerPersona: {
+      temperament: "anxious",
+      knowledgeLevel: "high",
+      mood: "担心产品有问题，希望明确原因和下一步做法。",
+    },
+    difficulty: "medium",
     sources: [
       excelSource(
         "售前_客诉接待问题划分.xlsx",
@@ -365,6 +410,12 @@ const inputs: TemplateInput[] = [
     ],
     referenceReply:
       "先接纳顾客情绪并确认宠物、喂食量、症状和持续时间。不能做确定性诊断；出现连续呕吐和精神不佳时应建议停止喂食并及时就医，同时按客诉流程升级跟进。",
+    customerPersona: {
+      temperament: "anxious",
+      knowledgeLevel: "medium",
+      mood: "宠物呕吐拉稀很焦急，倾向于把责任归到产品上。",
+    },
+    difficulty: "hard",
     sources: [
       excelSource(
         "售前_客诉接待问题划分.xlsx",

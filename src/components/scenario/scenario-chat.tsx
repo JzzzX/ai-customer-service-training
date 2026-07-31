@@ -6,7 +6,7 @@ import {
   completeScenarioAction,
   sendScenarioMessageAction,
 } from "@/app/practice/scenario/actions";
-import type { ScenarioSession } from "@/lib/scenario/schema";
+import type { LiveRiskAlert, ScenarioSession } from "@/lib/scenario/schema";
 
 export function ScenarioChat({
   initialSession,
@@ -85,11 +85,15 @@ export function ScenarioChat({
 
       <div className="max-h-[52vh] min-h-80 space-y-4 overflow-y-auto bg-[#f8f9fc] p-5 sm:p-7">
         {session.messages.map((message) => (
-          <MessageBubble
-            content={message.content}
-            key={message.id}
-            role={message.role}
-          />
+          <div className="space-y-2" key={message.id}>
+            <MessageBubble
+              content={message.content}
+              role={message.role}
+            />
+            {message.riskAlert ? (
+              <RiskAlertCard alert={message.riskAlert} />
+            ) : null}
+          </div>
         ))}
         {optimisticLearner ? (
           <MessageBubble content={optimisticLearner} role="learner" />
@@ -178,6 +182,26 @@ function MessageBubble({
           {learner ? "你" : "顾客"}
         </p>
         <p>{content}</p>
+      </div>
+    </div>
+  );
+}
+
+function RiskAlertCard({ alert }: { alert: LiveRiskAlert }) {
+  const isDanger = alert.severity === "danger";
+  return (
+    <div className="flex justify-end" role="status">
+      <div
+        className={`max-w-[86%] rounded-2xl border-2 px-4 py-3 text-sm leading-6 ${
+          isDanger
+            ? "border-[#f0b3b3] bg-[#fff0f0] text-[#a04040]"
+            : "border-[#f3d68a] bg-[#fff7e0] text-[#8a6420]"
+        }`}
+      >
+        <p className="mb-1 text-xs font-black opacity-80">
+          {isDanger ? "严重风险提示" : "风险提示"} · {alert.riskLabel}
+        </p>
+        <p>{alert.suggestion}</p>
       </div>
     </div>
   );

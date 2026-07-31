@@ -8,6 +8,7 @@ import { LocalScenarioSessionStore } from "./local-session-store";
 import {
   MockConversationProvider,
   MockEvaluationProvider,
+  MockLiveRiskProvider,
 } from "./mock-providers";
 import { ScenarioTrainingService } from "./training-service";
 import { getScenarioTemplate, scenarioTemplates } from "./templates";
@@ -116,5 +117,97 @@ describe("ScenarioTrainingService", () => {
     expect(session.learnerTurnCount).toBe(scenario.maxTurns);
     expect(session.status).toBe("completed");
     expect(session.report).toBeDefined();
+  });
+
+  it("attaches a live risk alert to the learner message and persists it", async () => {
+    const outputDir = await mkdtemp(
+      join(tmpdir(), "scenario-training-risk-"),
+    );
+    const scenario = scenarioTemplates[0];
+    const serviceWithRisk = new ScenarioTrainingService({
+      store: new LocalScenarioSessionStore(outputDir),
+      templates: {
+        async listPublished() {
+          return scenarioTemplates;
+        },
+        async getPublishedById(scenarioId) {
+          return getScenarioTemplate(scenarioId) ?? null;
+        },
+      },
+      conversationProvider: new MockConversationProvider(),
+      evaluationProvider: new MockEvaluationProvider(),
+      liveRiskProvider: new MockLiveRiskProvider(),
+    });
+
+    const session = await serviceWithRisk.start({
+      learnerId,
+      scenarioId: scenario.id,
+    });
+
+    const result = await serviceWithRisk.sendMessage({
+      learnerId,
+      sessionId: session.id,
+      content: "这款粮保证不软便，您放心买就行。",
+    });
+
+    expect(result.riskAlert).not.toBeNull();
+    expect(result.riskAlert?.severity).toBe("warning");
+    expect(result.riskAlert?.riskLabel).toBe("绝对化产品承诺");
+    const learnerMessage = result.session.messages.find(
+      (message) =>
+        message.role === "learner" &&
+        message.content === "这款粮保证不软便，您放心买就行。",
+    );
+    expect(learnerMessage?.riskAlert).toEqual(result.riskAlert);
+
+    const reloaded = await serviceWithRisk.load({
+      learnerId,
+      sessionId: session.id,
+    });
+    const reloadedLearner = reloaded.messages.find(
+      (message) => message.role === "learner",
+    );
+    expect(reloadedLearner?.riskAlert).toEqual(result.riskAlert);
+  });
+
+  it("keeps the conversation flowing when the live risk provider throws", async () => {
+    const outputDir = await mkdtemp(
+      join(tmpdir(), "scenario-training-risk-fallback-"),
+    );
+    const scenario = scenarioTemplates[0];
+    const throwingProvider: import("./providers").LiveRiskProvider = {
+      async detectRisk() {
+        throw new Error("网络异常");
+      },
+    };
+    const serviceWithThrowingRisk = new ScenarioTrainingService({
+      store: new LocalScenarioSessionStore(outputDir),
+      templates: {
+        async listPublished() {
+          return scenarioTemplates;
+        },
+        async getPublishedById(scenarioId) {
+          return getScenarioTemplate(scenarioId) ?? null;
+        },
+      },
+      conversationProvider: new MockConversationProvider(),
+      evaluationProvider: new MockEvaluationProvider(),
+      liveRiskProvider: throwingProvider,
+    });
+
+    const session = await serviceWithThrowingRisk.start({
+      learnerId,
+      scenarioId: scenario.id,
+    });
+
+    const result = await serviceWithThrowingRisk.sendMessage({
+      learnerId,
+      sessionId: session.id,
+      content: "想先了解狗狗的体重和现在怎么喂。",
+    });
+
+    expect(result.riskAlert).toBeNull();
+    expect(result.customerChunks.length).toBeGreaterThan(0);
+    expect(result.session.learnerTurnCount).toBe(1);
   });
 });

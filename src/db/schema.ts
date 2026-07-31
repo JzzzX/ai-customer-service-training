@@ -416,6 +416,9 @@ export const scenarioVersions = pgTable(
     sources: jsonb("sources").$type<SourceLocator[]>().notNull(),
     maxTurns: integer("max_turns").default(12).notNull(),
     mockMode: boolean("mock_mode").default(true).notNull(),
+    customerPersona: jsonb("customer_persona")
+      .$type<ScenarioTemplate["customerPersona"]>(),
+    difficulty: text("difficulty").default("medium"),
     status: lifecycleStatusEnum("status").default("draft").notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     createdById: uuid("created_by_id")

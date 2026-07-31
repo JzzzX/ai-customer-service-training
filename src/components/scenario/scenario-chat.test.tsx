@@ -109,4 +109,71 @@ describe("ScenarioChat", () => {
       screen.queryByText("需求与宠物信息挖掘"),
     ).not.toBeInTheDocument();
   });
+
+  it("renders a warning risk alert card attached to the learner message", () => {
+    const sessionWithRisk: ScenarioSession = {
+      ...initialSession,
+      learnerTurnCount: 1,
+      messages: [
+        ...initialSession.messages,
+        {
+          id: "00000000-0000-4000-8000-000000000021",
+          role: "learner",
+          content: "这款粮保证不软便。",
+          createdAt: "2026-07-29T08:01:00.000Z",
+          riskAlert: {
+            riskLabel: "绝对化产品承诺",
+            suggestion: "避免使用绝对化承诺，建议改为更稳妥的说法。",
+            severity: "warning",
+          },
+        },
+      ],
+    };
+
+    render(
+      <ScenarioChat
+        initialSession={sessionWithRisk}
+        scenarioTitle={scenarioTemplates[0].title}
+      />,
+    );
+
+    expect(
+      screen.getByText("风险提示 · 绝对化产品承诺"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("避免使用绝对化承诺，建议改为更稳妥的说法。"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders a danger risk alert card for severe violations", () => {
+    const sessionWithDanger: ScenarioSession = {
+      ...initialSession,
+      learnerTurnCount: 1,
+      messages: [
+        ...initialSession.messages,
+        {
+          id: "00000000-0000-4000-8000-000000000031",
+          role: "learner",
+          content: "你别废话了。",
+          createdAt: "2026-07-29T08:01:00.000Z",
+          riskAlert: {
+            riskLabel: "攻击性语言",
+            suggestion: "请使用专业、礼貌的表达。",
+            severity: "danger",
+          },
+        },
+      ],
+    };
+
+    render(
+      <ScenarioChat
+        initialSession={sessionWithDanger}
+        scenarioTitle={scenarioTemplates[0].title}
+      />,
+    );
+
+    expect(
+      screen.getByText("严重风险提示 · 攻击性语言"),
+    ).toBeInTheDocument();
+  });
 });

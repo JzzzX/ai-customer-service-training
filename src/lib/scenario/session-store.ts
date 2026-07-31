@@ -1,4 +1,5 @@
 import type {
+  LiveRiskAlert,
   ScenarioEvaluationReport,
   ScenarioSession,
   ScenarioTemplate,
@@ -20,6 +21,7 @@ export type AppendScenarioExchangeInput = SessionIdentity & {
   expectedTurnCount: number;
   learnerMessage: string;
   customerReply: string;
+  riskAlert?: LiveRiskAlert | null;
   updatedAt?: string;
 };
 

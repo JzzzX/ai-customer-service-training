@@ -1,5 +1,6 @@
 import type { KnowledgeUnit } from "@/lib/knowledge/schema";
 import type {
+  LiveRiskAlert,
   ScenarioEvaluationReport,
   ScenarioMessageInput,
   ScenarioTemplate,
@@ -19,4 +20,11 @@ export interface EvaluationProvider {
     scenario: ScenarioTemplate;
     learnerMessages: string[];
   }): Promise<ScenarioEvaluationReport>;
+}
+
+export interface LiveRiskProvider {
+  detectRisk(input: {
+    scenario: ScenarioTemplate;
+    learnerMessage: string;
+  }): Promise<LiveRiskAlert | null>;
 }

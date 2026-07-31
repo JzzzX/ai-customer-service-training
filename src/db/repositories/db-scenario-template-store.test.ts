@@ -133,6 +133,8 @@ describe("DbScenarioTemplateStore", () => {
         sources: template.sources,
         maxTurns: template.maxTurns,
         mockMode: true,
+        customerPersona: template.customerPersona ?? null,
+        difficulty: template.difficulty,
         status: "published",
         publishedAt: new Date(),
         createdById: adminId,

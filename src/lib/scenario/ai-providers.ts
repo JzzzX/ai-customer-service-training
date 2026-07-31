@@ -5,14 +5,17 @@ import {
   buildConversationUserPrompt,
   buildEvaluationSystemPrompt,
   buildEvaluationUserPrompt,
+  buildLiveRiskPrompt,
 } from "./prompt-templates";
 import type {
   ConversationProvider,
   EvaluationProvider,
+  LiveRiskProvider,
 } from "./providers";
 import {
   scenarioEvaluationReportSchema,
   scenarioMessageInputSchema,
+  type LiveRiskAlert,
   type ScenarioEvaluationReport,
 } from "./schema";
 
@@ -206,9 +209,63 @@ export function createOpenAIProviders(
 ): {
   conversation: OpenAIConversationProvider;
   evaluation: OpenAIEvaluationProvider;
+  liveRisk: OpenAILiveRiskProvider;
 } {
   return {
     conversation: new OpenAIConversationProvider(client, model),
     evaluation: new OpenAIEvaluationProvider(client, model),
+    liveRisk: new OpenAILiveRiskProvider(client, model),
   };
+}
+
+export class OpenAILiveRiskProvider implements LiveRiskProvider {
+  constructor(
+    private readonly client: OpenAI,
+    private readonly model: string,
+  ) {}
+
+  async detectRisk(
+    input: Parameters<LiveRiskProvider["detectRisk"]>[0],
+  ): Promise<LiveRiskAlert | null> {
+    const { system, user } = buildLiveRiskPrompt(
+      input.scenario,
+      input.learnerMessage,
+    );
+    const completion = await this.client.chat.completions.create({
+      model: this.model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      response_format: { type: "json_object" },
+    });
+    const content = completion.choices[0]?.message?.content ?? "";
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      return null;
+    }
+    if (parsed === null || typeof parsed !== "object") {
+      return null;
+    }
+    const result = parsed as Partial<LiveRiskAlert>;
+    if (
+      typeof result.riskLabel !== "string" ||
+      typeof result.suggestion !== "string" ||
+      (result.severity !== "warning" && result.severity !== "danger")
+    ) {
+      return null;
+    }
+    const riskLabel = result.riskLabel.trim();
+    const suggestion = result.suggestion.trim();
+    if (!riskLabel || !suggestion) {
+      return null;
+    }
+    return {
+      riskLabel,
+      suggestion,
+      severity: result.severity,
+    };
+  }
 }

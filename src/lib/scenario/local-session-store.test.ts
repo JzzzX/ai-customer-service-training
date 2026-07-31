@@ -83,6 +83,37 @@ describe("LocalScenarioSessionStore", () => {
     });
   });
 
+  it("persists and reloads a live risk alert on the learner message", async () => {
+    const store = new LocalScenarioSessionStore(outputDir);
+    const session = await store.startSession({
+      learnerId: learnerA,
+      scenario: scenarioTemplates[0],
+      startedAt: "2026-07-29T08:00:00.000Z",
+    });
+    const riskAlert = {
+      riskLabel: "绝对化产品承诺",
+      suggestion: "避免使用「保证不软便」类表述。",
+      severity: "warning" as const,
+    };
+
+    const updated = await store.appendExchange({
+      learnerId: learnerA,
+      sessionId: session.id,
+      expectedTurnCount: 0,
+      learnerMessage: "这款粮保证不软便。",
+      customerReply: "好吧，那需要怎么换粮？",
+      riskAlert,
+      updatedAt: "2026-07-29T08:01:00.000Z",
+    });
+
+    expect(updated.messages[1].riskAlert).toEqual(riskAlert);
+
+    const reloaded = await new LocalScenarioSessionStore(
+      outputDir,
+    ).loadSession({ learnerId: learnerA, sessionId: session.id });
+    expect(reloaded.messages[1].riskAlert).toEqual(riskAlert);
+  });
+
   it("isolates learner ownership and locks completed sessions", async () => {
     const store = new LocalScenarioSessionStore(outputDir);
     const scenario = scenarioTemplates[0];

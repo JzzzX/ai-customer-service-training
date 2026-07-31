@@ -2,8 +2,13 @@ import type { KnowledgeUnit } from "@/lib/knowledge/schema";
 import type {
   ConversationProvider,
   EvaluationProvider,
+  LiveRiskProvider,
 } from "./providers";
-import type { ScenarioSession, ScenarioTemplate } from "./schema";
+import type {
+  LiveRiskAlert,
+  ScenarioSession,
+  ScenarioTemplate,
+} from "./schema";
 import type {
   ScenarioSessionStore,
   SessionIdentity,
@@ -19,6 +24,7 @@ export class ScenarioTrainingService {
   private readonly templates: ScenarioTemplateStore;
   private readonly conversationProvider: ConversationProvider;
   private readonly evaluationProvider: EvaluationProvider;
+  private readonly liveRiskProvider?: LiveRiskProvider;
   private readonly knowledgeUnitLoader?: KnowledgeUnitLoader;
 
   constructor(input: {
@@ -26,12 +32,14 @@ export class ScenarioTrainingService {
     templates: ScenarioTemplateStore;
     conversationProvider: ConversationProvider;
     evaluationProvider: EvaluationProvider;
+    liveRiskProvider?: LiveRiskProvider;
     knowledgeUnitLoader?: KnowledgeUnitLoader;
   }) {
     this.store = input.store;
     this.templates = input.templates;
     this.conversationProvider = input.conversationProvider;
     this.evaluationProvider = input.evaluationProvider;
+    this.liveRiskProvider = input.liveRiskProvider;
     this.knowledgeUnitLoader = input.knowledgeUnitLoader;
   }
 
@@ -64,6 +72,7 @@ export class ScenarioTrainingService {
   ): Promise<{
     session: ScenarioSession;
     customerChunks: string[];
+    riskAlert: LiveRiskAlert | null;
   }> {
     const session = await this.load(input);
     if (session.status === "completed") {
@@ -79,14 +88,23 @@ export class ScenarioTrainingService {
       ? await this.knowledgeUnitLoader(scenario)
       : [];
 
-    for await (const chunk of this.conversationProvider.streamCustomerReply({
-      scenario,
-      learnerTurnCount: session.learnerTurnCount,
-      messages,
-      knowledgeUnits,
-    })) {
-      customerChunks.push(chunk);
-    }
+    const streamCustomer = (async () => {
+      for await (const chunk of this.conversationProvider.streamCustomerReply({
+        scenario,
+        learnerTurnCount: session.learnerTurnCount,
+        messages,
+        knowledgeUnits,
+      })) {
+        customerChunks.push(chunk);
+      }
+    })();
+    const detectRisk = this.liveRiskProvider
+      ? this.liveRiskProvider
+          .detectRisk({ scenario, learnerMessage: input.content })
+          .catch(() => null)
+      : Promise.resolve(null);
+
+    const [, riskAlert] = await Promise.all([streamCustomer, detectRisk]);
 
     let updated = await this.store.appendExchange({
       learnerId: input.learnerId,
@@ -94,6 +112,7 @@ export class ScenarioTrainingService {
       expectedTurnCount: session.learnerTurnCount,
       learnerMessage: input.content,
       customerReply: customerChunks.join(""),
+      riskAlert,
     });
     if (updated.learnerTurnCount >= updated.maxTurns) {
       updated = await this.complete({
@@ -101,7 +120,7 @@ export class ScenarioTrainingService {
         sessionId: input.sessionId,
       });
     }
-    return { session: updated, customerChunks };
+    return { session: updated, customerChunks, riskAlert };
   }
 
   async complete(input: SessionIdentity): Promise<ScenarioSession> {

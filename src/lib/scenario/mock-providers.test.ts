@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   MockConversationProvider,
   MockEvaluationProvider,
+  MockLiveRiskProvider,
 } from "./mock-providers";
 import { scenarioTemplates } from "./templates";
 
@@ -109,5 +110,44 @@ describe("MockEvaluationProvider", () => {
 
     expect(report.status).toBe("needs_retry");
     expect(report.risks).toEqual(["绝对化产品承诺"]);
+  });
+});
+
+describe("MockLiveRiskProvider", () => {
+  const provider = new MockLiveRiskProvider();
+
+  it("flags attack keywords as danger severity", async () => {
+    const scenario = scenarioTemplates[0];
+    const alert = await provider.detectRisk({
+      scenario,
+      learnerMessage: "你自己傻逼吧，别废话了。",
+    });
+
+    expect(alert).not.toBeNull();
+    expect(alert?.severity).toBe("danger");
+    expect(alert?.riskLabel).toBe("攻击性语言");
+    expect(alert?.suggestion.length).toBeGreaterThan(0);
+  });
+
+  it("flags scenario critical risk patterns as warning severity", async () => {
+    const scenario = scenarioTemplates[0];
+    const alert = await provider.detectRisk({
+      scenario,
+      learnerMessage: "这款粮保证不软便，您放心买就行。",
+    });
+
+    expect(alert).not.toBeNull();
+    expect(alert?.severity).toBe("warning");
+    expect(alert?.riskLabel).toBe("绝对化产品承诺");
+  });
+
+  it("returns null when the learner reply is clean", async () => {
+    const scenario = scenarioTemplates[0];
+    const alert = await provider.detectRisk({
+      scenario,
+      learnerMessage: "想先了解狗狗的年龄、体重和当前饮食。",
+    });
+
+    expect(alert).toBeNull();
   });
 });

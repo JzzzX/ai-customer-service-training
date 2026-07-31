@@ -101,6 +101,7 @@ export class LocalScenarioSessionStore implements ScenarioSessionStore {
           role: "learner",
           content: learnerMessage,
           createdAt: updatedAt,
+          ...(input.riskAlert ? { riskAlert: input.riskAlert } : {}),
         },
         {
           id: randomUUID(),

@@ -127,6 +127,41 @@ describe("DbScenarioSessionStore", () => {
     ).resolves.toHaveLength(3);
   });
 
+  it("persists a live risk alert on the learner message metadata", async () => {
+    const session = await store.startSession({
+      learnerId,
+      scenario: template,
+    });
+    const riskAlert = {
+      riskLabel: "绝对化产品承诺",
+      suggestion: "避免使用「保证不软便」类表述。",
+      severity: "warning" as const,
+    };
+
+    const updated = await store.appendExchange({
+      learnerId,
+      sessionId: session.id,
+      expectedTurnCount: 0,
+      learnerMessage: "这款粮保证不软便。",
+      customerReply: "那需要怎么换粮？",
+      riskAlert,
+    });
+
+    const learnerMessage = updated.messages.find(
+      (message) => message.role === "learner",
+    );
+    expect(learnerMessage?.riskAlert).toEqual(riskAlert);
+
+    const reloaded = await store.loadSession({
+      learnerId,
+      sessionId: session.id,
+    });
+    const reloadedLearner = reloaded.messages.find(
+      (message) => message.role === "learner",
+    );
+    expect(reloadedLearner?.riskAlert).toEqual(riskAlert);
+  });
+
   it("completes once, persists the report and completes the assignment", async () => {
     await database.insert(assignments).values({
       id: assignmentId,
@@ -248,6 +283,8 @@ describe("DbScenarioSessionStore", () => {
       sources: template.sources,
       maxTurns: template.maxTurns,
       mockMode: true,
+      customerPersona: template.customerPersona ?? null,
+      difficulty: template.difficulty,
       status: "published",
       publishedAt: new Date(),
       createdById: adminId,

@@ -55,6 +55,8 @@ export type PreparedScenarioPublication = {
     sources: SourceLocator[];
     maxTurns: number;
     mockMode: boolean;
+    customerPersona: ScenarioTemplate["customerPersona"] | null;
+    difficulty: ScenarioTemplate["difficulty"];
     createdById: string;
   };
 };
@@ -278,6 +280,8 @@ function prepareScenarioPublication(
       sources: template.sources,
       maxTurns: template.maxTurns,
       mockMode: template.mockMode,
+      customerPersona: template.customerPersona ?? null,
+      difficulty: template.difficulty,
       createdById,
     },
   };
