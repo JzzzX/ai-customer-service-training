@@ -83,9 +83,13 @@ export class OpenAIConversationProvider implements ConversationProvider {
     input.messages.forEach((message) =>
       scenarioMessageInputSchema.parse(message),
     );
+    const currentTurn =
+      input.messages.filter((message) => message.role === "learner").length +
+      1;
     const systemPrompt = buildConversationSystemPrompt(
       input.scenario,
       input.knowledgeUnits ?? [],
+      currentTurn,
     );
     const userPrompt = buildConversationUserPrompt(
       input.messages.map((message) => ({

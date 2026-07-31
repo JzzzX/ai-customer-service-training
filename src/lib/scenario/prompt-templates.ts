@@ -66,6 +66,7 @@ function formatKnowledgeUnits(units: KnowledgeUnit[]): string {
 export function buildConversationSystemPrompt(
   scenario: ScenarioTemplate,
   knowledgeUnits: KnowledgeUnit[] = [],
+  currentTurn: number,
 ): string {
   const persona = resolvePersona(scenario);
   return [
@@ -89,12 +90,19 @@ export function buildConversationSystemPrompt(
     "以下是你作为顾客了解到的产品/规则信息。你可以基于这些信息提出真实疑问（如对比价格、询问活动、质疑规则），但不要像客服一样复述知识：",
     formatKnowledgeUnits(knowledgeUnits),
     "",
+    "## 参考话术（仅供语气参考，不要逐字照念）",
+    "以下是产品/培训侧预设的顾客在不同轮次可能说的话，体现了真实顾客的语气和顾虑推进节奏。请学习其口语化、带情绪、有顾虑的说话方式，但根据实际对话上下文灵活调整，不要逐字重复：",
+    ...scenario.customerTurns.map(
+      (turn, index) => `第${index + 1}轮参考："${turn}"`,
+    ),
+    "",
     "## 多轮对话策略",
-    `1. 当前是对话的第 N 轮（由客服回复数推算），总共约 ${scenario.maxTurns} 轮。`,
-    "2. 每轮最多透露 1 条隐藏事实，不要主动倾倒所有信息。",
-    "3. 客服没问到的信息不要主动说，但可以基于你的知识背景提出新的疑问或顾虑。",
-    "4. 如果客服问到你不知道的信息，就说不知道或含糊回应，不要编造。",
-    "5. 允许基于知识库提出真实顾客常见的疑问（如「别家更便宜」、「能不能送赠品」、「之前吃的拉肚子」等）。",
+    `1. 当前是对话的第 ${currentTurn} 轮（学员已回复 ${currentTurn - 1} 次），总共约 ${scenario.maxTurns} 轮。`,
+    "2. **必须先回应学员上一句话**：针对学员的最新回复给出自然反应（追问/质疑/认可/不满等），再考虑是否透露新信息。绝不能无视学员的话直接抛新话题。",
+    "3. 隐藏事实按需透露：只有当学员问到相关问题、或对话自然推进到该信息时才透露。不要为了\"每轮透露一条\"而强行换话题。",
+    "4. 禁止原样重复自己之前说过的话。如果不知道怎么推进，可以追问学员未回答的问题、表达情绪、或基于知识背景提出新顾虑，但必须用不同的措辞。",
+    "5. 如果学员问到你不知道的信息，就说不知道或含糊回应，不要编造。",
+    `6. 对话节奏参考：前半段（1-${Math.floor(scenario.maxTurns / 2)}轮）以挖掘需求/抛出顾虑为主，后半段以决策/对比/收尾为主。`,
     "",
     "## 对话规则",
     "1. 每次只回复一条消息，口语化，符合真实顾客的说话方式。",
@@ -102,6 +110,8 @@ export function buildConversationSystemPrompt(
     "3. 不要主动结束对话，除非客服明确表示对话结束。",
     "4. 不要透露你是被模拟的，始终保持在角色内。",
     `5. 根据你的性格倾向调整说话方式：${personaDescription[persona.temperament]}`,
+    "6. **回复长度控制**：1-3句话，不要长篇大论，真实顾客说话简短。",
+    "7. **情绪连贯**：如果学员上一句话让你不高兴/满意/犹豫，下一条回复要体现这种情绪变化。",
   ].join("\n");
 }
 
