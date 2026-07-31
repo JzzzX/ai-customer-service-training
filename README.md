@@ -124,6 +124,12 @@ OPENAI_BASE_URL=...
 OPENAI_MODEL=...
 ```
 
+当前 Vercel Production 因公司模型网关不接受云端出口访问，显式启用 Vercel AI
+Gateway，并通过运行时自动注入的短期 OIDC 身份调用同厂商
+`bytedance/seed-1.8`。本地仍默认使用公司 OpenAI 兼容网关。Gateway 路由必须通过
+`AI_GATEWAY_ENABLED=true` 主动开启，不会静默替换；使用量受 Vercel AI Gateway
+额度与账单规则约束。
+
 数据库迁移、账号种子和知识版本发布完成后，可将8个固定场景及其完整来源、评分
 维度和风险规则幂等发布到数据库：
 

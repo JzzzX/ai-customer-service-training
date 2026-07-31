@@ -75,6 +75,7 @@ export class OpenAIConversationProvider implements ConversationProvider {
   constructor(
     private readonly client: OpenAI,
     private readonly model: string,
+    private readonly useDoubaoThinking = true,
   ) {}
 
   async *streamCustomerReply(
@@ -115,7 +116,9 @@ export class OpenAIConversationProvider implements ConversationProvider {
                 : `${userPrompt}\n\n上一次候选回复与顾客之前说过的话重复。请直接重新生成一条不同的回复，并优先回答客服的最新问题。`,
           },
         ],
-        thinking: { type: "disabled" },
+        ...(this.useDoubaoThinking
+          ? { thinking: { type: "disabled" as const } }
+          : {}),
       } as DoubaoNonStreamingChatParams);
       const reply = (completion.choices[0]?.message?.content ?? "").trim();
       if (!reply) {
@@ -275,15 +278,24 @@ export class OpenAIEvaluationProvider implements EvaluationProvider {
 export function createOpenAIProviders(
   client: OpenAI,
   model: string,
+  options: { useDoubaoThinking?: boolean } = {},
 ): {
   conversation: OpenAIConversationProvider;
   evaluation: OpenAIEvaluationProvider;
   liveRisk: OpenAILiveRiskProvider;
 } {
   return {
-    conversation: new OpenAIConversationProvider(client, model),
+    conversation: new OpenAIConversationProvider(
+      client,
+      model,
+      options.useDoubaoThinking,
+    ),
     evaluation: new OpenAIEvaluationProvider(client, model),
-    liveRisk: new OpenAILiveRiskProvider(client, model),
+    liveRisk: new OpenAILiveRiskProvider(
+      client,
+      model,
+      options.useDoubaoThinking,
+    ),
   };
 }
 
@@ -291,6 +303,7 @@ export class OpenAILiveRiskProvider implements LiveRiskProvider {
   constructor(
     private readonly client: OpenAI,
     private readonly model: string,
+    private readonly useDoubaoThinking = true,
   ) {}
 
   async detectRisk(
@@ -307,7 +320,9 @@ export class OpenAILiveRiskProvider implements LiveRiskProvider {
         { role: "user", content: user },
       ],
       response_format: { type: "json_object" },
-      thinking: { type: "disabled" },
+      ...(this.useDoubaoThinking
+        ? { thinking: { type: "disabled" as const } }
+        : {}),
     } as DoubaoNonStreamingChatParams);
     const content = completion.choices[0]?.message?.content ?? "";
     let parsed: unknown;

@@ -52,6 +52,17 @@ describe("validateRuntimeEnvironment", () => {
         "production",
       ),
     ).toEqual({ mode: "production" });
+    expect(
+      validateRuntimeEnvironment(
+        {
+          ...valid,
+          SCENARIO_AI_MODE: "real",
+          AI_GATEWAY_ENABLED: "true",
+          AI_GATEWAY_MODEL: "bytedance/seed-1.8",
+        },
+        "production",
+      ),
+    ).toEqual({ mode: "production" });
   });
 
   it("does not require production secrets for explicit local demo", () => {

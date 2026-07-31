@@ -133,4 +133,27 @@ describe("OpenAIConversationProvider", () => {
     ).rejects.toThrow("AI 顾客回复重复，请重新发送消息。");
     expect(create).toHaveBeenCalledTimes(2);
   });
+
+  it("omits provider-specific thinking options for gateway models", async () => {
+    const scenario = scenarioTemplates[0];
+    const { client, create } = fakeClient(["它3个月大，是泰迪。"]);
+    const provider = new OpenAIConversationProvider(
+      client,
+      "bytedance/seed-1.8",
+      false,
+    );
+
+    await collect(
+      provider.streamCustomerReply({
+        scenario,
+        learnerTurnCount: 0,
+        messages: [
+          { role: "customer", content: scenario.openingMessage },
+          { role: "learner", content: "狗狗多大？" },
+        ],
+      }),
+    );
+
+    expect(create.mock.calls[0]?.[0]).not.toHaveProperty("thinking");
+  });
 });

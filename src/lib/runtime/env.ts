@@ -16,16 +16,21 @@ export const productionEnvironmentSchema = z
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_BASE_URL: z.string().url().optional(),
     OPENAI_MODEL: z.string().min(1).optional(),
+    AI_GATEWAY_ENABLED: z.literal("true").optional(),
+    AI_GATEWAY_MODEL: z.string().min(1).optional(),
   })
   .superRefine((environment, context) => {
     if (environment.SCENARIO_AI_MODE !== "real") {
       return;
     }
-    for (const field of [
-      "OPENAI_API_KEY",
-      "OPENAI_BASE_URL",
-      "OPENAI_MODEL",
-    ] as const) {
+    const requiredFields = environment.AI_GATEWAY_ENABLED
+      ? (["AI_GATEWAY_MODEL"] as const)
+      : ([
+          "OPENAI_API_KEY",
+          "OPENAI_BASE_URL",
+          "OPENAI_MODEL",
+        ] as const);
+    for (const field of requiredFields) {
       if (!environment[field]) {
         context.addIssue({
           code: "custom",

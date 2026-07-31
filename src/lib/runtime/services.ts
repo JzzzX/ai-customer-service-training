@@ -22,6 +22,7 @@ import {
 import { createOpenAIProviders } from "@/lib/scenario/ai-providers";
 import {
   getOpenAIClient,
+  isAiGatewayEnabled,
   resolveOpenAiModel,
   resolveScenarioAiMode,
 } from "@/lib/scenario/ai-client";
@@ -178,6 +179,9 @@ export function createScenarioTrainingService(
     ? createOpenAIProviders(
         getOpenAIClient(input.environment),
         resolveOpenAiModel(input.environment),
+        {
+          useDoubaoThinking: !isAiGatewayEnabled(input.environment),
+        },
       )
     : {
         conversation: new MockConversationProvider(),
