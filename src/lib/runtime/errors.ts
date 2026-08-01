@@ -4,6 +4,23 @@ export type RuntimeErrorContext = {
   resourceId?: string;
 };
 
+const PRIVATE_INFRASTRUCTURE_ERROR_PATTERN =
+  /AI Gateway|Vercel AI|credit card|OPENAI_|ECONN|ETIMEDOUT|fetch failed|timeout/i;
+
+export function toPublicRuntimeError(
+  error: unknown,
+  fallback: string,
+): string {
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+  const message = error.message.trim();
+  if (!message || PRIVATE_INFRASTRUCTURE_ERROR_PATTERN.test(message)) {
+    return fallback;
+  }
+  return message;
+}
+
 export function reportRuntimeError(
   context: RuntimeErrorContext,
   error: unknown,

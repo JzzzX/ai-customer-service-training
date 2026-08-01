@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { auth } from "@/auth";
 import { getScenarioTrainingService } from "@/lib/runtime/services";
+import { toPublicRuntimeError } from "@/lib/runtime/errors";
 
 const sessionIdSchema = z.string().uuid();
 
@@ -48,10 +49,7 @@ export async function GET(
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
       } catch (error) {
         send({
-          error:
-            error instanceof Error
-              ? error.message
-              : "报告生成失败，请稍后重试。",
+          error: toPublicRuntimeError(error, "AI 评测服务暂时不可用，请稍后重试。"),
         });
       } finally {
         controller.close();

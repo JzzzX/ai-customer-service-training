@@ -5,13 +5,14 @@
 
 ## 当前进度
 
-项目按 [Roadmap](docs/ROADMAP.md) 分 Part 交付。当前 MVP 已完成现代化学员端与
-管理端、5 个专题共 350 道练习题、真实 AI 情景对话与评分、Auth.js 角色登录、
-Neon 持久化和 Vercel 部署。40 道可追溯正式题仍保留人工审核门禁；飞书身份和
-企业知识引擎属于后续企业化迭代，不影响当前 MVP 试用。
+项目按 [Roadmap](docs/ROADMAP.md) 分 Part 交付。当前代码已完成现代化学员端与
+管理端、5 个专题共 350 道练习题、真实 AI 情景对话与评分链路、Auth.js 角色登录、
+Neon 持久化和 Vercel 部署。Vercel 真实 AI 冒烟仍需完成 AI Gateway 账单配置；
+40 道可追溯正式题仍保留人工审核门禁。飞书身份和企业知识引擎属于后续企业化迭代。
 
-当前收口范围、实施步骤和验证口径见
-[MVP Completion Plan](docs/superpowers/plans/2026-07-31-mvp-completion.md)。
+当前验收结论和剩余交付条件见
+[MVP 验收矩阵](docs/MVP-ACCEPTANCE.md)；Vercel + Neon 初始化与运维见
+[部署与运维说明](docs/DEPLOYMENT.md)。
 
 ## 本地运行
 
@@ -124,11 +125,10 @@ OPENAI_BASE_URL=...
 OPENAI_MODEL=...
 ```
 
-当前 Vercel Production 因公司模型网关不接受云端出口访问，显式启用 Vercel AI
-Gateway，并通过运行时自动注入的短期 OIDC 身份调用同厂商
-`bytedance/seed-1.8`。本地仍默认使用公司 OpenAI 兼容网关。Gateway 路由必须通过
-`AI_GATEWAY_ENABLED=true` 主动开启，不会静默替换；使用量受 Vercel AI Gateway
-额度与账单规则约束。
+当前 Vercel Production 显式启用 Vercel AI Gateway，并通过运行时自动注入的短期
+OIDC 身份调用同厂商 `bytedance/seed-1.8`。本地仍可使用公司 OpenAI 兼容网关。
+Gateway 路由必须通过 `AI_GATEWAY_ENABLED=true` 主动开启，不会静默替换；项目账户
+需要完成可用账单配置，否则线上真实 AI 请求会返回 403。
 
 数据库迁移、账号种子和知识版本发布完成后，可将8个固定场景及其完整来源、评分
 维度和风险规则幂等发布到数据库：

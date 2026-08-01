@@ -14,7 +14,7 @@ export default defineConfig({
     ["html", { open: "never" }],
   ],
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000",
     trace: "on-first-retry",
   },
   projects: [
@@ -23,9 +23,13 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: {
-    command: "pnpm dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
-  },
+  ...(process.env.E2E_BASE_URL
+    ? {}
+    : {
+        webServer: {
+          command: "pnpm dev",
+          url: "http://localhost:3000",
+          reuseExistingServer: !process.env.CI,
+        },
+      }),
 });

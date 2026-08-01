@@ -101,6 +101,23 @@ describe("scenario server actions", () => {
     });
   });
 
+  it("hides provider infrastructure details when AI reply generation fails", async () => {
+    mocks.sendMessage.mockRejectedValue(
+      new Error(
+        "403 AI Gateway requires a valid credit card on file to service requests.",
+      ),
+    );
+    const formData = new FormData();
+    formData.set("sessionId", sessionId);
+    formData.set("content", "请帮我推荐一款主粮。");
+
+    const state = await sendScenarioMessageAction({}, formData);
+
+    expect(state).toEqual({
+      error: "AI 服务暂时不可用，请稍后重试。",
+    });
+  });
+
   it("completes to a report and restarts into a new session", async () => {
     mocks.complete.mockResolvedValue({ id: sessionId });
     mocks.restart.mockResolvedValue({ id: restartedId });

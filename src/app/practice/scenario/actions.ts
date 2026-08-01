@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { requireUser } from "@/lib/auth/guards";
 import { getScenarioTrainingService } from "@/lib/runtime/services";
+import { toPublicRuntimeError } from "@/lib/runtime/errors";
 
 const scenarioIdSchema = z.string().regex(/^st_[a-f0-9]{24}$/);
 const sessionIdSchema = z.string().uuid();
@@ -61,10 +62,7 @@ export async function sendScenarioMessageAction(
     return { result };
   } catch (error) {
     return {
-      error:
-        error instanceof Error
-          ? error.message
-          : "消息发送失败，请稍后重试。",
+      error: toPublicRuntimeError(error, "AI 服务暂时不可用，请稍后重试。"),
     };
   }
 }
