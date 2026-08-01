@@ -103,7 +103,7 @@ async function login(page: Page) {
 
 async function waitForTurn(page: Page, turn: number) {
   const progress = page.getByText(`第 ${turn} / 12 轮`);
-  const alert = page.getByRole("alert");
+  const alert = page.locator('p[role="alert"]');
   await expect
     .poll(
       async () => {
