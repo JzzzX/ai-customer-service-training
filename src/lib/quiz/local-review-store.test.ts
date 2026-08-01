@@ -78,16 +78,7 @@ describe("LocalQuizReviewStore", () => {
     });
   });
 
-  it("publishes only after all questions are approved and can reload the result", async () => {
-    await expect(store.publish()).rejects.toThrow("还有 2 道题未审核");
-
-    for (const item of (await store.loadReview()).questions) {
-      await store.approveQuestion({
-        questionId: item.question.id,
-        reviewerId: "admin-1",
-      });
-    }
-
+  it("auto-publishes the generated draft without manual approvals", async () => {
     const published = await store.publish();
     const reloaded = await new LocalQuizReviewStore(
       outputDir,

@@ -8,7 +8,10 @@ import {
   projectKnowledgeSourceDirectory,
 } from "../src/lib/knowledge/project-config";
 
-config({ path: ".env.local", quiet: true });
+config({
+  path: process.env.DOTENV_CONFIG_PATH?.trim() || ".env.local",
+  quiet: true,
+});
 
 async function main(): Promise<void> {
   const pack = await compileKnowledgeDirectory({

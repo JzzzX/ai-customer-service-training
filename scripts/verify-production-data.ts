@@ -3,7 +3,10 @@ import { config } from "dotenv";
 import { getDatabase } from "../src/db/client";
 import { verifyProductionData } from "../src/db/production-verification";
 
-config({ path: ".env.local", quiet: true });
+config({
+  path: process.env.DOTENV_CONFIG_PATH?.trim() || ".env.local",
+  quiet: true,
+});
 
 async function main() {
   const formal = process.argv.includes("--formal");

@@ -115,15 +115,11 @@ describe("DbQuizReviewStore", () => {
     expect(reloaded.questions[0]?.decision).toBe("pending");
   });
 
-  it("refuses publication while any current question hash is pending", async () => {
-    await store.approveQuestion({
-      questionId: `qq_${"0".repeat(24)}`,
-      reviewerId: adminId,
-    });
+  it("auto-publishes while current question hashes are still pending", async () => {
+    const published = await store.publish();
 
-    await expect(store.publish()).rejects.toThrow(
-      "还有 39 道题未审核",
-    );
+    expect(published.status).toBe("published");
+    expect(published.questions).toHaveLength(40);
   });
 
   it("publishes one immutable set and returns it on repeated publish", async () => {

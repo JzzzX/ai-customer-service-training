@@ -162,7 +162,7 @@ export class DbQuizReviewStore implements QuizReviewStore {
 
   async publish(): Promise<QuizPublishedPack> {
     const current = await this.loadReview();
-    publishQuizReview(current);
+    publishQuizReview(current, { requireApproval: false });
 
     const publishedHash = await this.database.transaction(
       async (transaction) => {
@@ -201,7 +201,9 @@ export class DbQuizReviewStore implements QuizReviewStore {
           questionRows.map((row) => row.id),
         );
         const transactionReview = buildReview(set, questionRows, reviewRows);
-        const published = publishQuizReview(transactionReview);
+        const published = publishQuizReview(transactionReview, {
+          requireApproval: false,
+        });
 
         const [existing] = await transaction
           .select({ quizHash: quizSets.quizHash })

@@ -30,16 +30,15 @@ export default async function AdminQuestionsPage({
   const approvedCount = review.questions.filter(
     (question) => question.decision === "approved",
   ).length;
-  const allApproved = approvedCount === review.questions.length;
 
   return (
     <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-4xl">
         <PageHeader
           backHref="/admin"
-          description={`${approvedCount} / ${review.questions.length} 已通过`}
+          description={`${approvedCount} / ${review.questions.length} 已复核（可选）`}
           label="题库管理"
-          title="题目审核"
+          title="题目检查"
         />
 
         {params.published === "1" || published ? (
@@ -70,7 +69,7 @@ export default async function AdminQuestionsPage({
                     item.decision === "approved" ? "success" : "warning"
                   }
                 >
-                  {item.decision === "approved" ? "已审核" : "待审核"}
+                  {item.decision === "approved" ? "已复核" : "待复核"}
                 </SoftBadge>
               </p>
             </div>
@@ -102,16 +101,11 @@ export default async function AdminQuestionsPage({
         <SoftCard className="mt-8 animate-fade-in-up stagger-3" gradient>
           <h2 className="text-lg font-black text-ink">发布正式题组</h2>
           <p className="mt-2 text-sm leading-6 text-ink-soft">
-            {review.questions.length}题全部审核通过后才能发布，发布后学员端才会替换演示题。
+            {review.questions.length}道题已通过知识来源和版本校验。MVP 不设人工审核门禁；管理员可以先复核或编辑，直接发布也会作为正式题组供学员使用。
           </p>
           <form action={publishQuizAction}>
-            <SoftButton
-              className="mt-5"
-              disabled={!allApproved}
-              type="submit"
-              variant={allApproved ? "primary" : "secondary"}
-            >
-              {allApproved ? "发布正式题组" : "完成全部审核后可发布"}
+            <SoftButton className="mt-5" type="submit" variant="primary">
+              自动发布正式题组
             </SoftButton>
           </form>
         </SoftCard>

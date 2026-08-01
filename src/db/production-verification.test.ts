@@ -21,14 +21,14 @@ describe("evaluateProductionSnapshot", () => {
     expect(result.technicalPassed).toBe(true);
     expect(result.formalPassed).toBe(false);
     expect(result.formalIssues).toContain(
-      "正式题组尚未在40/40人工审核后发布。",
+      "正式题组尚未发布。",
     );
   });
 
-  it("passes formal readiness only with 40 approvals and one published quiz", () => {
+  it("passes formal readiness with one published quiz even without manual approvals", () => {
     const result = evaluateProductionSnapshot({
       ...technicalSnapshot,
-      currentApprovalCount: 40,
+      currentApprovalCount: 0,
       publishedQuizCount: 1,
     });
 

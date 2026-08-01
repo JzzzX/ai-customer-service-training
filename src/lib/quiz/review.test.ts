@@ -106,6 +106,18 @@ describe("quiz review", () => {
     expect(() => publishQuizReview(review)).toThrow("还有 1 道题未审核");
   });
 
+  it("auto-publishes a generated draft when manual review is waived", () => {
+    const published = publishQuizReview(createQuizReview(draftPack()), {
+      requireApproval: false,
+    });
+
+    expect(published.status).toBe("published");
+    expect(published.questions).toHaveLength(2);
+    expect(
+      published.questions.every((item) => item.status === "published"),
+    ).toBe(true);
+  });
+
   it("publishes an immutable source-bound pack after complete review", () => {
     let review = createQuizReview(draftPack());
     for (const item of review.questions) {

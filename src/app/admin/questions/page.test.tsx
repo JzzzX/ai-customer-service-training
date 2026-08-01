@@ -83,9 +83,9 @@ describe("AdminQuestionsPage", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "题目审核" }),
+      screen.getByRole("heading", { name: "题目检查" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("1 / 2 已通过")).toBeInTheDocument();
+    expect(screen.getByText("1 / 2 已复核（可选）")).toBeInTheDocument();
     expect(screen.getByLabelText("题干")).toHaveValue("待审核题目");
     expect(screen.getByLabelText("正确答案")).toHaveValue("标准答案");
     expect(
@@ -97,5 +97,10 @@ describe("AdminQuestionsPage", () => {
     expect(
       screen.getByRole("button", { name: "审核通过并下一题" }),
     ).toBeInTheDocument();
+    const publishButton = screen.getByRole("button", {
+      name: "自动发布正式题组",
+    });
+    expect(publishButton).toBeInTheDocument();
+    expect(publishButton).not.toBeDisabled();
   });
 });

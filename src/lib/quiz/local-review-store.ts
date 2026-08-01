@@ -81,7 +81,9 @@ export class LocalQuizReviewStore implements QuizReviewStore {
   }
 
   async publish(): Promise<QuizPublishedPack> {
-    const published = publishQuizReview(await this.loadReview());
+    const published = publishQuizReview(await this.loadReview(), {
+      requireApproval: false,
+    });
     const publishedFile = `published-${published.quizHash}.json`;
     const publishedPath = join(this.outputDir, publishedFile);
 

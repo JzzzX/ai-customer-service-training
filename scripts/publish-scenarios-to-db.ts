@@ -16,7 +16,10 @@ import {
 } from "../src/lib/knowledge/project-config";
 import { scenarioTemplates } from "../src/lib/scenario/templates";
 
-config({ path: ".env.local", quiet: true });
+config({
+  path: process.env.DOTENV_CONFIG_PATH?.trim() || ".env.local",
+  quiet: true,
+});
 
 async function main(): Promise<void> {
   const knowledge = await compileKnowledgeDirectory({

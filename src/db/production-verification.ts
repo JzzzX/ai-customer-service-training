@@ -52,12 +52,6 @@ export function evaluateProductionSnapshot(
   if (snapshot.publishedQuizCount > 1) {
     technicalIssues.push("正式题组只能存在一个当前版本。");
   }
-  if (
-    snapshot.publishedQuizCount === 1 &&
-    snapshot.currentApprovalCount !== 40
-  ) {
-    technicalIssues.push("正式题组不得绕过40/40人工审核门禁。");
-  }
   if (snapshot.activeAdminCount < 1) {
     technicalIssues.push("至少需要一个启用中的管理员账号。");
   }
@@ -66,11 +60,8 @@ export function evaluateProductionSnapshot(
   }
 
   const formalIssues = [...technicalIssues];
-  if (
-    snapshot.publishedQuizCount !== 1 ||
-    snapshot.currentApprovalCount !== 40
-  ) {
-    formalIssues.push("正式题组尚未在40/40人工审核后发布。");
+  if (snapshot.publishedQuizCount !== 1) {
+    formalIssues.push("正式题组尚未发布。");
   }
 
   return {

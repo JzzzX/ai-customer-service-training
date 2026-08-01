@@ -8,6 +8,9 @@
 - AI：Vercel AI Gateway 或 OpenAI 兼容接口
 - 本地要求：Node.js 24、pnpm 10.33
 
+Vercel 免费版足够承载 Web MVP。网页托管额度与模型调用费用是两条独立链路；免费
+托管不等于 AI 推理免费。
+
 生产环境禁止使用本地文件 Store 和本地测试账号回退。训练知识、题库、场景、练习记录和报告必须来自 Neon。
 
 ## 生产环境变量
@@ -34,7 +37,9 @@ OPENAI_BASE_URL
 OPENAI_MODEL
 ```
 
-Vercel AI Gateway 当前要求项目账户具备可用账单配置；未配置时真实 AI 请求会返回 403，不能将该状态误判为应用已通过 AI 验收。
+Vercel AI Gateway 当前要求项目账户具备可用账单配置；未配置时真实 AI 请求会返回 403。
+如果不启用 Gateway，可以将 `AI_GATEWAY_ENABLED` 设为 `false`，改配一个可用的外部
+OpenAI 兼容接口；该接口的模型账户仍需由项目方自行提供。
 
 ## 空数据库初始化
 
@@ -47,7 +52,15 @@ pnpm scenario:publish:db
 pnpm production:verify:data
 ```
 
-正式题完成审核后，再运行：
+其中 `quiz:publish:db` 会在40题通过知识版本、来源和冲突校验后自动发布正式题组，
+人工逐题复核不是 MVP 阻塞项。若使用从 Vercel 拉取的环境文件，可运行：
+
+```bash
+DOTENV_CONFIG_PATH=.env.production.local pnpm quiz:publish:db
+DOTENV_CONFIG_PATH=.env.production.local pnpm production:verify:data --formal
+```
+
+`--formal` 现在检查正式题组是否已发布且引用活动知识版本，不再要求 40/40 人工审核：
 
 ```bash
 pnpm production:verify:data --formal
@@ -65,9 +78,9 @@ pnpm test:e2e:live
 
 ## 故障处理
 
-- `403 AI Gateway ... credit card`：检查 Vercel AI 账单配置，再重新部署和运行 `pnpm test:e2e:live`。
+- `403 AI Gateway ... credit card`：网页托管仍可用；配置 Vercel AI 账单，或关闭 Gateway 改用外部 OpenAI 兼容接口，再运行 `pnpm test:e2e:live`。
 - AI 服务失败：页面应展示通用中文提示，不展示网关、密钥、URL 或内部错误细节。
-- 题库为空：先确认活动知识版本和 `quiz:publish:db` 是否完成，再检查正式题审核状态。
+- 题库为空：先确认活动知识版本和 `DOTENV_CONFIG_PATH=.env.production.local pnpm quiz:publish:db` 是否完成。
 - 生产数据异常：先运行 `pnpm production:verify:data`，不要直接修改数据库中的版本指针。
 
 ## 回滚原则

@@ -5,7 +5,10 @@ import { getDatabase } from "../src/db/client";
 import { readSeedAccounts } from "../src/db/seed-config";
 import { users } from "../src/db/schema";
 
-config({ path: ".env.local", quiet: true });
+config({
+  path: process.env.DOTENV_CONFIG_PATH?.trim() || ".env.local",
+  quiet: true,
+});
 
 async function main(): Promise<void> {
   const database = getDatabase();

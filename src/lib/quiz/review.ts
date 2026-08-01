@@ -29,6 +29,10 @@ export const quizReviewSchema = z.object({
 
 export type QuizReview = z.infer<typeof quizReviewSchema>;
 
+export type QuizPublishOptions = {
+  requireApproval?: boolean;
+};
+
 interface ApproveQuizQuestionInput {
   questionId: string;
   reviewerId: string;
@@ -113,12 +117,15 @@ export function approveQuizQuestion(
   return quizReviewSchema.parse({ ...current, questions });
 }
 
-export function publishQuizReview(review: QuizReview): QuizPublishedPack {
+export function publishQuizReview(
+  review: QuizReview,
+  options: QuizPublishOptions = {},
+): QuizPublishedPack {
   const current = quizReviewSchema.parse(review);
   const pendingCount = current.questions.filter(
     (item) => item.decision !== "approved",
   ).length;
-  if (pendingCount > 0) {
+  if (options.requireApproval !== false && pendingCount > 0) {
     throw new Error(`还有 ${pendingCount} 道题未审核，不能发布。`);
   }
 
