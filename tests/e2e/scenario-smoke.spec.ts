@@ -32,6 +32,9 @@ test("runs a complete mock scenario and restores it after refresh", async ({
     page.getByRole("heading", { name: /本次训练通过|本次需要重练/ }),
   ).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("演示评分")).toBeVisible();
+  await page.goto("/practice/profile?tab=scenario");
+  await expect(page.getByText("已完成记录")).toBeVisible();
+  await expect(page.getByRole("link", { name: "查看完整报告" }).first()).toBeVisible();
 });
 
 test("keeps the scenario list and chat usable at 390px", async ({ page }) => {
