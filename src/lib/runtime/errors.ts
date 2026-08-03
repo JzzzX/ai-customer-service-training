@@ -5,7 +5,7 @@ export type RuntimeErrorContext = {
 };
 
 const PRIVATE_INFRASTRUCTURE_ERROR_PATTERN =
-  /AI Gateway|Vercel AI|credit card|OPENAI_|ECONN|ETIMEDOUT|fetch failed|timeout/i;
+  /AI Gateway|Vercel AI|credit card|OPENAI_|ECONN|ETIMEDOUT|fetch failed|timed out|timeout/i;
 
 export function toPublicRuntimeError(
   error: unknown,

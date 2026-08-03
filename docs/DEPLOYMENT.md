@@ -27,7 +27,7 @@ SEED_LEARNER_PASSWORD
 ```
 
 当前免费 Web 托管的推荐生产配置是关闭 Vercel AI Gateway，直接使用从 Vercel 函数区域
-可达的外部 OpenAI 兼容接口：
+可达的公网 OpenAI 兼容接口：
 
 ```text
 SCENARIO_AI_MODE=real
@@ -38,9 +38,11 @@ OPENAI_MODEL
 ```
 
 Vercel 免费版可以运行 Web Functions，但不能替模型服务承担网络可达性或模型费用。
-当前项目的外部接口使用自定义 `35772` 端口：本机调用正常，Vercel `hkg1` 调用
-在 60 秒后超时。生产接入前应提供公网 HTTPS 443 入口，或将 Vercel 函数出口加入
-上游白名单。
+当前项目的外部接口使用自定义 `35772` 端口，并解析到 `198.18.0.0/15` 保留地址；
+本机之所以能调用，是因为请求经过本机 `utun6` VPN 路由。Vercel 函数不在这条 VPN
+网络内，因此在 `hkg1` 调用会在客户端 60 秒后超时。生产接入前必须提供公网 HTTPS
+443 转发入口，或在 Vercel 与模型服务之间部署可公网访问的代理；仅登录 Vercel CLI
+不会把 Vercel 运行时接入本机 VPN。
 
 如果改用 Vercel AI Gateway，将 `AI_GATEWAY_ENABLED` 设为 `true` 并配置
 `AI_GATEWAY_MODEL`；项目账户还必须具备 Gateway 可用账单/额度，当前账户曾返回 403。
@@ -83,7 +85,7 @@ pnpm test:e2e:live
 ## 故障处理
 
 - `403 AI Gateway ... credit card`：网页托管仍可用；关闭 Gateway 改用从 Vercel 函数区域可达的外部 OpenAI 兼容接口，或配置 Gateway 账单/额度。
-- `Request timed out`：先确认 `OPENAI_BASE_URL` 的公网 HTTPS、端口和上游白名单；本项目当前自定义 `35772` 端口在 Vercel `hkg1` 超时，不能只凭本机请求成功判定生产可达。
+- `Request timed out`：页面会统一显示中文兜底提示；先确认 `OPENAI_BASE_URL` 的公网 HTTPS、端口和上游白名单。当前自定义 `35772` 端口在 Vercel `hkg1` 超时，不能只凭本机请求成功判定生产可达。
 - AI 服务失败：页面应展示通用中文提示，不展示网关、密钥、URL 或内部错误细节。
 - 题库为空：先确认活动知识版本和 `DOTENV_CONFIG_PATH=.env.production.local pnpm quiz:publish:db` 是否完成。
 - 生产数据异常：先运行 `pnpm production:verify:data`，不要直接修改数据库中的版本指针。

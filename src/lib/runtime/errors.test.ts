@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { reportRuntimeError } from "./errors";
+import { reportRuntimeError, toPublicRuntimeError } from "./errors";
+
+const fallback = "AI 服务暂时不可用，请稍后重试。";
 
 describe("reportRuntimeError", () => {
   it("logs structured identifiers without error messages or secrets", () => {
@@ -23,5 +25,13 @@ describe("reportRuntimeError", () => {
     expect(output).not.toContain(secret);
     expect(output).not.toContain("password");
     spy.mockRestore();
+  });
+});
+
+describe("toPublicRuntimeError", () => {
+  it("hides provider timeout messages from the learner", () => {
+    expect(toPublicRuntimeError(new Error("Request timed out."), fallback)).toBe(
+      fallback,
+    );
   });
 });
