@@ -1,19 +1,15 @@
 import Link from "next/link";
 
-import { SignOutButton } from "@/components/sign-out-button";
 import { SoftBadge } from "@/components/ui/soft-badge";
 import { SoftCard } from "@/components/ui/soft-card";
 import { requireUser } from "@/lib/auth/guards";
+import { getQuizProgressForLearner } from "@/lib/quiz/attempt-service";
+import {
+  getScenarioTemplateStore,
+  getScenarioTrainingService,
+} from "@/lib/runtime/services";
 
 const entries = [
-  {
-    label: "我的任务",
-    description: "集中查看待完成、进行中和已完成的正式训练。",
-    href: "/practice/assignments",
-    action: "查看任务",
-    icon: "📋",
-    tone: "warm",
-  },
   {
     label: "知识小测",
     description: "按专题分类练习，每次随机抽 10 题，完成后可重练错题。",
@@ -34,6 +30,21 @@ const entries = [
 
 export default async function PracticePage() {
   const user = await requireUser();
+  const scenarioTemplates =
+    await getScenarioTemplateStore().listPublished();
+  const [quizProgress, scenarioProgress] = await Promise.all([
+    getQuizProgressForLearner(user.id, { recentLimit: 0 }),
+    getScenarioTrainingService().getProgress({
+      learnerId: user.id,
+      publishedScenarioCount: scenarioTemplates.length,
+      publishedScenarioIds: scenarioTemplates.map((scenario) => scenario.id),
+      includeDetails: false,
+    }),
+  ]);
+  const progressByLabel: Record<string, string> = {
+    知识小测: `已覆盖 ${quizProgress.uniqueAnsweredCount} / ${quizProgress.totalQuestions} 题 · 累计正确率 ${quizProgress.accuracy}%`,
+    情景实战: `已完成 ${scenarioProgress.completedScenarioCount} / ${scenarioProgress.publishedScenarioCount} 个场景 · 最近平均 ${scenarioProgress.recentAverageScore} 分`,
+  };
 
   return (
     <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
@@ -48,10 +59,16 @@ export default async function PracticePage() {
               今天想从哪一项训练开始？
             </p>
           </div>
-          <SignOutButton />
+          <Link
+            aria-label="进入个人中心"
+            className="rounded-[var(--radius-control)] px-4 py-2 text-sm font-bold text-ink-soft transition-colors hover:bg-surface-muted hover:text-ink"
+            href="/practice/profile"
+          >
+            {user.name} <span aria-hidden="true">›</span>
+          </Link>
         </header>
 
-        <section className="mt-12 grid gap-5 md:grid-cols-3">
+        <section className="mt-12 grid gap-5 md:grid-cols-2">
           {entries.map((entry) => (
             <SoftCard
               className="animate-fade-in-up flex flex-col"
@@ -63,11 +80,9 @@ export default async function PracticePage() {
                 className="flex size-12 items-center justify-center rounded-2xl text-2xl"
                 style={{
                   backgroundColor:
-                    entry.tone === "warm"
-                      ? "var(--color-warm-soft)"
-                      : entry.tone === "scenario"
-                        ? "var(--color-scenario-soft)"
-                        : "var(--color-brand-soft)",
+                    entry.tone === "scenario"
+                      ? "var(--color-scenario-soft)"
+                      : "var(--color-brand-soft)",
                 }}
               >
                 {entry.icon}
@@ -77,6 +92,9 @@ export default async function PracticePage() {
               </h2>
               <p className="mt-2 flex-1 text-sm leading-6 text-ink-soft">
                 {entry.description}
+                <span className="mt-2 block text-xs font-bold text-ink-faint">
+                  {progressByLabel[entry.label]}
+                </span>
               </p>
               <Link
                 className="mt-6 inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] bg-ink px-6 font-bold text-white transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(31,36,33,0.15)] active:scale-95"
@@ -87,30 +105,6 @@ export default async function PracticePage() {
             </SoftCard>
           ))}
         </section>
-
-        {user.role === "admin" ? (
-          <div className="mt-8 flex flex-wrap gap-5 animate-fade-in-up stagger-3">
-            <Link
-              className="font-bold text-ink-soft hover:text-ink"
-              href="/practice/history"
-            >
-              查看练习记录
-            </Link>
-            <Link
-              className="font-bold text-ink-soft hover:text-ink"
-              href="/admin"
-            >
-              进入管理端
-            </Link>
-          </div>
-        ) : (
-          <Link
-            className="mt-8 inline-flex animate-fade-in-up stagger-3 font-bold text-ink-soft hover:text-ink"
-            href="/practice/history"
-          >
-            查看练习记录
-          </Link>
-        )}
       </div>
     </main>
   );
