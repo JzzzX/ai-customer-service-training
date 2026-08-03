@@ -10,6 +10,7 @@ type PageHeaderProps = {
   description?: ReactNode;
   backHref?: string;
   backLabel?: string;
+  backIconOnly?: boolean;
   action?: ReactNode;
 };
 
@@ -20,6 +21,7 @@ export function PageHeader({
   description,
   backHref,
   backLabel = "返回",
+  backIconOnly = false,
   action,
 }: PageHeaderProps) {
   return (
@@ -42,10 +44,20 @@ export function PageHeader({
         {action}
         {backHref ? (
           <Link
-            className="rounded-[var(--radius-control)] px-3 py-2 text-sm font-bold text-ink-soft transition-colors hover:bg-surface-muted hover:text-ink"
+            aria-label={backIconOnly ? backLabel : undefined}
+            className={
+              backIconOnly
+                ? "flex size-10 items-center justify-center rounded-full text-2xl font-bold leading-none text-ink-soft transition-colors hover:bg-surface-muted hover:text-ink"
+                : "rounded-[var(--radius-control)] px-3 py-2 text-sm font-bold text-ink-soft transition-colors hover:bg-surface-muted hover:text-ink"
+            }
             href={backHref}
+            title={backIconOnly ? backLabel : undefined}
           >
-            {backLabel}
+            {backIconOnly ? (
+              <span aria-hidden="true">←</span>
+            ) : (
+              backLabel
+            )}
           </Link>
         ) : null}
       </div>

@@ -56,5 +56,13 @@ describe("ScenarioListPage", () => {
     ).toHaveAttribute("href", "/practice/profile?tab=scenario");
     expect(screen.getByText("给3个月泰迪推荐主粮")).toBeInTheDocument();
     expect(screen.getByText("食用后呕吐软便")).toBeInTheDocument();
+    expect(screen.queryByText("继续训练")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("你有尚未完成的实战会话。"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("🛍️")).toBeInTheDocument();
+    expect(screen.getByText("🚚")).toBeInTheDocument();
+    expect(screen.getByText("📦")).toBeInTheDocument();
+    expect(screen.getByText("💬")).toBeInTheDocument();
   });
 });

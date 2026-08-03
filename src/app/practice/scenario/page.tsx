@@ -14,26 +14,31 @@ import type { ScenarioCategory } from "@/lib/scenario/schema";
 
 const categories: Array<{
   id: ScenarioCategory;
+  icon: string;
   label: string;
   description: string;
 }> = [
   {
     id: "presale",
+    icon: "🛍️",
     label: "售前",
     description: "需求挖掘、产品推荐与价格异议",
   },
   {
     id: "logistics",
+    icon: "🚚",
     label: "物流",
     description: "在途异常、改址拦截与签收问题",
   },
   {
     id: "damage_shortage",
+    icon: "📦",
     label: "破损少货",
     description: "凭证收集、责任判断与售后方案",
   },
   {
     id: "complaint",
+    icon: "💬",
     label: "客诉",
     description: "适口性、健康风险与升级处理",
   },
@@ -47,6 +52,7 @@ export default async function ScenarioListPage() {
     learnerId: user.id,
     publishedScenarioCount: scenarioTemplates.length,
     publishedScenarioIds: scenarioTemplates.map((scenario) => scenario.id),
+    includeDetails: false,
   });
   const isRealMode = getScenarioAiMode() === "real";
 
@@ -60,6 +66,8 @@ export default async function ScenarioListPage() {
             </SoftBadge>
           }
           backHref="/practice"
+          backIconOnly
+          backLabel="返回训练中心"
           description="选择一个常见客服场景，用文字和模拟顾客连续对话，完成训练后获得评分报告。"
           label="对话训练"
           title="情景实战"
@@ -104,54 +112,24 @@ export default async function ScenarioListPage() {
           </SoftCard>
         </section>
 
-        {progress.activeSessions.length > 0 ? (
-          <section className="mt-8 animate-fade-in-up">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-black text-ink">继续训练</h2>
-                <p className="mt-1 text-sm text-ink-faint">你有尚未完成的实战会话。</p>
-              </div>
-              <Link
-                className="text-sm font-bold text-ink-soft hover:text-ink"
-                href="/practice/profile?tab=scenario"
-              >
-                全部记录
-              </Link>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {progress.activeSessions.map((session) => (
-                <SoftCard
-                  className="flex items-center justify-between gap-4"
-                  key={session.id}
-                >
-                  <div>
-                    <p className="font-black text-ink">{session.title}</p>
-                    <p className="mt-1 text-xs text-ink-faint">
-                      已进行 {session.learnerTurnCount} / {session.maxTurns} 轮
-                    </p>
-                  </div>
-                  <Link
-                    className="inline-flex min-h-10 items-center justify-center rounded-[var(--radius-control)] bg-scenario px-4 text-sm font-bold text-white"
-                    href={`/practice/scenario/session/${session.id}`}
-                  >
-                    继续
-                  </Link>
-                </SoftCard>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
         <div className="mt-10 space-y-12 animate-fade-in-up stagger-1">
           {categories.map((category, categoryIndex) => (
             <section key={category.id}>
-              <div>
-                <h2 className="text-xl font-black text-ink">
-                  {category.label}
-                </h2>
-                <p className="mt-1 text-sm text-ink-faint">
-                  {category.description}
-                </p>
+              <div className="flex items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className="flex size-10 items-center justify-center rounded-2xl bg-scenario-soft text-xl"
+                >
+                  {category.icon}
+                </span>
+                <div>
+                  <h2 className="text-xl font-black text-ink">
+                    {category.label}
+                  </h2>
+                  <p className="mt-1 text-sm text-ink-faint">
+                    {category.description}
+                  </p>
+                </div>
               </div>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 {scenarioTemplates
