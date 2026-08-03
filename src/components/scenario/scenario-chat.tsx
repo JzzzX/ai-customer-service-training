@@ -1,9 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { ProgressBar } from "@/components/ui/progress-bar";
+import {
+  ScenarioReportProgress,
+  type ReportGenerationPhase,
+} from "@/components/scenario/scenario-report-progress";
 import { SoftButton } from "@/components/ui/soft-button";
 import { WaveLoader } from "@/components/ui/wave-loader";
 import { sendScenarioMessageAction } from "@/app/practice/scenario/actions";
@@ -22,9 +31,134 @@ export function ScenarioChat({
   const [streamingReply, setStreamingReply] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [reportPhase, setReportPhase] = useState<
+    ReportGenerationPhase | undefined
+  >();
+  const [reportError, setReportError] = useState("");
   const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const reportStartedRef = useRef(false);
+  const reportAbortRef = useRef<AbortController | null>(null);
   const reachedLimit = session.learnerTurnCount >= session.maxTurns;
+  const reportBusy =
+    reportPhase !== undefined &&
+    reportPhase !== "ready" &&
+    reportPhase !== "error";
+
+  const replaceFinishingFlag = useCallback((enabled: boolean) => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (enabled) {
+      url.searchParams.set("finishing", "1");
+    } else {
+      url.searchParams.delete("finishing");
+    }
+    window.history.replaceState(
+      null,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+  }, []);
+
+  const generateReport = useCallback(async () => {
+    if (reportStartedRef.current) return;
+    reportStartedRef.current = true;
+    reportAbortRef.current?.abort();
+    const controller = new AbortController();
+    reportAbortRef.current = controller;
+    setReportPhase("analyzing");
+    setReportError("");
+
+    try {
+      const response = await fetch(
+        `/api/scenario/complete/${session.id}`,
+        { signal: controller.signal },
+      );
+      if (!response.ok || !response.body) {
+        throw new Error(
+          response.status === 401
+            ? "未登录，请重新登录后重试。"
+            : "连接评测服务失败，请稍后重试。",
+        );
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let reportReceived = false;
+      const consumeEvent = (event: string) => {
+        const data = event.replace(/^data: /, "").trim();
+        if (!data || data === "[DONE]") return;
+        let chunk: {
+          phase?: ReportGenerationPhase;
+          report?: unknown;
+          error?: string;
+        };
+        try {
+          chunk = JSON.parse(data) as typeof chunk;
+        } catch {
+          return;
+        }
+        if (chunk.error) throw new Error(chunk.error);
+        if (
+          chunk.phase === "analyzing" ||
+          chunk.phase === "scoring" ||
+          chunk.phase === "saving"
+        ) {
+          setReportPhase(chunk.phase);
+        }
+        if (chunk.report) {
+          reportReceived = true;
+          setReportPhase("ready");
+          replaceFinishingFlag(false);
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+        events.forEach(consumeEvent);
+      }
+      buffer += decoder.decode();
+      if (buffer.trim()) consumeEvent(buffer);
+      if (!reportReceived) {
+        throw new Error("报告生成失败，请稍后重试。");
+      }
+    } catch (caught) {
+      if (controller.signal.aborted) return;
+      setReportPhase("error");
+      setReportError(
+        caught instanceof Error
+          ? caught.message
+          : "报告生成失败，请稍后重试。",
+      );
+      replaceFinishingFlag(false);
+    } finally {
+      if (reportAbortRef.current === controller) {
+        reportAbortRef.current = null;
+      }
+    }
+  }, [replaceFinishingFlag, session.id]);
+
+  useEffect(() => {
+    const finishing =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("finishing") === "1";
+    if (
+      initialSession.learnerTurnCount >= initialSession.maxTurns ||
+      finishing
+    ) {
+      const timer = window.setTimeout(() => void generateReport(), 0);
+      return () => window.clearTimeout(timer);
+    }
+  }, [generateReport, initialSession.learnerTurnCount, initialSession.maxTurns]);
+
+  useEffect(() => {
+    return () => reportAbortRef.current?.abort();
+  }, []);
 
   useEffect(() => {
     const target = messagesEndRef.current;
@@ -66,6 +200,25 @@ export function ScenarioChat({
     setOptimisticLearner("");
     setStreamingReply("");
     setPending(false);
+    if (state.result.session.learnerTurnCount >= state.result.session.maxTurns) {
+      void generateReport();
+    }
+  }
+
+  function finishTraining() {
+    if (pending || reportPhase !== undefined || reachedLimit) return;
+    replaceFinishingFlag(true);
+    void generateReport();
+  }
+
+  function retryReport() {
+    reportStartedRef.current = false;
+    replaceFinishingFlag(true);
+    void generateReport();
+  }
+
+  function viewReport() {
+    router.push(`/practice/scenario/report/${session.id}`);
   }
 
   return (
@@ -127,16 +280,16 @@ export function ScenarioChat({
 
         {reachedLimit ? (
           <p className="rounded-[var(--radius-control)] bg-scenario-soft px-4 py-3 text-sm font-bold text-scenario-strong">
-            已达到最大轮次，请结束训练查看报告。
+            已达到最大轮次，正在准备训练报告。
           </p>
-        ) : (
+        ) : reportPhase === undefined ? (
           <form className="flex flex-col gap-3" onSubmit={submitMessage}>
             <label className="sr-only" htmlFor="scenario-message">
               回复顾客
             </label>
             <textarea
               className="min-h-24 resize-none rounded-[var(--radius-control)] border-2 border-transparent bg-surface-muted px-4 py-3 leading-7 text-ink outline-none transition-all placeholder:text-ink-faint focus:border-scenario/30 focus:bg-surface focus:ring-0"
-              disabled={pending}
+              disabled={pending || reportBusy}
               id="scenario-message"
               maxLength={1000}
               onChange={(event) => setContent(event.target.value)}
@@ -144,27 +297,32 @@ export function ScenarioChat({
               value={content}
             />
             <SoftButton
-              disabled={!content.trim() || pending}
+              disabled={!content.trim() || pending || reportBusy}
               type="submit"
               variant="scenario"
             >
               {pending ? "回复中…" : "发送"}
             </SoftButton>
           </form>
-        )}
+        ) : null}
 
-        <SoftButton
-          className="mt-4 w-full"
-          disabled={pending}
-          onClick={() =>
-            router.push(
-              `/practice/scenario/report/${session.id}?streaming=1`,
-            )
-          }
-          variant="secondary"
-        >
-          结束并查看报告
-        </SoftButton>
+        {reportPhase ? (
+          <ScenarioReportProgress
+            error={reportError}
+            onRetry={retryReport}
+            onView={viewReport}
+            phase={reportPhase}
+          />
+        ) : (
+          <SoftButton
+            className="mt-4 w-full"
+            disabled={pending || reachedLimit}
+            onClick={finishTraining}
+            variant="secondary"
+          >
+            结束并查看报告
+          </SoftButton>
+        )}
       </div>
     </section>
   );

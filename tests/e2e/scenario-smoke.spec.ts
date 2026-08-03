@@ -27,7 +27,9 @@ test("runs a complete mock scenario and restores it after refresh", async ({
   await expect(page.getByText("第 1 / 12 轮")).toBeVisible();
   await page.getByRole("button", { name: "结束并查看报告" }).click();
 
-  await expect(page).toHaveURL(/\/practice\/scenario\/report\/.*streaming=1/);
+  await expect(page.getByText("报告已生成")).toBeVisible();
+  await page.getByRole("button", { name: "查看训练报告" }).click();
+  await expect(page).toHaveURL(/\/practice\/scenario\/report\/[^?]+$/);
   await expect(
     page.getByRole("heading", { name: /本次训练通过|本次需要重练/ }),
   ).toBeVisible({ timeout: 30_000 });
@@ -35,6 +37,32 @@ test("runs a complete mock scenario and restores it after refresh", async ({
   await page.goto("/practice/profile?tab=scenario");
   await expect(page.getByText("已完成记录")).toBeVisible();
   await expect(page.getByRole("link", { name: "查看完整报告" }).first()).toBeVisible();
+});
+
+test("generates the report automatically after the final customer reply", async ({
+  page,
+}) => {
+  test.skip(
+    process.env.SCENARIO_AI_MODE !== "mock",
+    "the deterministic scenario smoke test requires SCENARIO_AI_MODE=mock",
+  );
+  await login(page);
+  await page.goto("/practice/scenario");
+  await page.getByRole("link", { name: "开始训练" }).first().click();
+  await page.getByRole("button", { name: "开始模拟接待" }).click();
+
+  for (let turn = 0; turn < 12; turn += 1) {
+    await page.getByLabel("回复顾客").fill(`第${turn + 1}轮，我先确认宠物信息并给出下一步建议。`);
+    await page.getByRole("button", { name: "发送" }).click();
+    await waitForTurn(page, turn + 1);
+  }
+
+  await expect(page.getByText("报告已生成")).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "查看训练报告" }).click();
+  await expect(page).toHaveURL(/\/practice\/scenario\/report\/[^?]+$/);
+  await expect(
+    page.getByRole("heading", { name: /本次训练通过|本次需要重练/ }),
+  ).toBeVisible({ timeout: 30_000 });
 });
 
 test("keeps the scenario list and chat usable at 390px", async ({ page }) => {
@@ -87,7 +115,9 @@ test("runs three context-dependent turns against the live AI provider", async ({
   await page.reload();
   await expect(page.getByText("第 3 / 12 轮")).toBeVisible();
   await page.getByRole("button", { name: "结束并查看报告" }).click();
-  await expect(page).toHaveURL(/\/practice\/scenario\/report\/.*streaming=1/);
+  await expect(page.getByText("报告已生成")).toBeVisible();
+  await page.getByRole("button", { name: "查看训练报告" }).click();
+  await expect(page).toHaveURL(/\/practice\/scenario\/report\/[^?]+$/);
   await expect(
     page.getByRole("heading", { name: /本次训练通过|本次需要重练/ }),
   ).toBeVisible({ timeout: 90_000 });

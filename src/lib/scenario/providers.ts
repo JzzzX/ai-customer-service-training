@@ -15,7 +15,10 @@ export interface ConversationProvider {
   }): AsyncIterable<string>;
 }
 
+export type EvaluationPhase = "analyzing" | "scoring" | "saving";
+
 export type EvaluationStreamChunk =
+  | { phase: EvaluationPhase }
   | { delta: string }
   | { report: ScenarioEvaluationReport };
 

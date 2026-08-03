@@ -141,7 +141,7 @@ export class ScenarioTrainingService {
 
     const [, riskAlert] = await Promise.all([streamCustomer, detectRisk]);
 
-    let updated = await this.store.appendExchange({
+    const updated = await this.store.appendExchange({
       learnerId: input.learnerId,
       sessionId: input.sessionId,
       expectedTurnCount: session.learnerTurnCount,
@@ -149,12 +149,6 @@ export class ScenarioTrainingService {
       customerReply: customerChunks.join(""),
       riskAlert,
     });
-    if (updated.learnerTurnCount >= updated.maxTurns) {
-      updated = await this.complete({
-        learnerId: input.learnerId,
-        sessionId: input.sessionId,
-      });
-    }
     return { session: updated, customerChunks, riskAlert };
   }
 
@@ -184,20 +178,29 @@ export class ScenarioTrainingService {
     const learnerMessages = session.messages
       .filter((message) => message.role === "learner")
       .map((message) => message.content);
+    yield { phase: "analyzing" };
     let report: ScenarioEvaluationReport | undefined;
+    let scoringStarted = false;
     for await (const chunk of this.evaluationProvider.evaluateStream({
       scenario,
       learnerMessages,
     })) {
-      yield chunk;
+      if (!scoringStarted) {
+        scoringStarted = true;
+        yield { phase: "scoring" };
+      }
       if ("report" in chunk) {
         report = chunk.report;
+      } else if ("delta" in chunk) {
+        yield chunk;
       }
     }
     if (!report) {
       throw new Error("AI 评测结果解析失败，请稍后重试。");
     }
+    yield { phase: "saving" };
     const completed = await this.store.completeSession({ ...input, report });
+    yield { report };
     yield { session: completed };
   }
 
