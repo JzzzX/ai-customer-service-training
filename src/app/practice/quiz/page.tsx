@@ -75,6 +75,7 @@ export default async function PracticeQuizPage({
                   toClientQuizQuestion(question),
                 ),
               )}
+              resultBackHref="/practice/quiz/topics"
             />
           </div>
         </div>
@@ -118,6 +119,7 @@ export default async function PracticeQuizPage({
             questions={questions.map((question) =>
               shuffleClientQuestionOptions(toClientQuizQuestion(question)),
             )}
+            resultBackHref="/practice"
           />
         </div>
       </div>

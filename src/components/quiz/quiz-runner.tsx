@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { ProgressBar } from "@/components/ui/progress-bar";
@@ -7,7 +8,10 @@ import { SoftBadge } from "@/components/ui/soft-badge";
 import { SoftButton } from "@/components/ui/soft-button";
 import { SoftCard } from "@/components/ui/soft-card";
 import { WaveLoader } from "@/components/ui/wave-loader";
-import type { QuizAnswerFeedback } from "@/app/practice/quiz/actions";
+import type {
+  QuizAnswerFeedback,
+  QuizCompletionProgress,
+} from "@/app/practice/quiz/actions";
 import { finishQuizAttempt } from "@/lib/quiz/attempt";
 import type { QuizQuestionClient } from "@/lib/quiz/schema";
 
@@ -42,7 +46,8 @@ interface QuizRunnerProps {
   onComplete?: (
     attemptId: string,
     answers: Array<{ questionId: string; selected: string }>,
-  ) => Promise<void>;
+  ) => Promise<QuizCompletionProgress | void>;
+  resultBackHref?: string;
 }
 
 type AnswerRecord = {
@@ -59,6 +64,7 @@ export function QuizRunner({
   passingScore = 80,
   onAnswer,
   onComplete,
+  resultBackHref = "/practice",
 }: QuizRunnerProps) {
   const [activeQuestions, setActiveQuestions] = useState(questions);
   const [activeAttemptId, setActiveAttemptId] = useState(attemptId);
@@ -70,6 +76,8 @@ export function QuizRunner({
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
   const [saveWarning, setSaveWarning] = useState(false);
+  const [completionProgress, setCompletionProgress] =
+    useState<QuizCompletionProgress | null>(null);
   const [answerWarning, setAnswerWarning] = useState("");
   const current = activeQuestions[currentIndex];
   const outcome = useMemo(
@@ -132,23 +140,38 @@ export function QuizRunner({
             本次结果已显示，但练习记录暂未保存，请稍后再试。
           </p>
         ) : null}
-        {missed.length > 0 ? (
+        {completionProgress?.topicProgress ? (
+          <div className="mt-5 rounded-[var(--radius-control)] bg-brand-soft p-4 text-left text-sm text-brand-ink">
+            <p className="font-black">
+              本次新覆盖 {completionProgress.newCoverageCount} 题
+            </p>
+            <p className="mt-1">
+              专题累计覆盖 {completionProgress.topicProgress.uniqueAnsweredCount} /{" "}
+              {completionProgress.topicProgress.totalQuestions} 题
+            </p>
+          </div>
+        ) : null}
+        <div className="mt-7 grid gap-3">
           <SoftButton
-            className="mt-7"
+            disabled={missed.length === 0}
             onClick={() => restart(missed)}
             variant="primary"
           >
             重练错题
           </SoftButton>
-        ) : (
           <SoftButton
-            className="mt-7"
             onClick={() => restart(questions)}
-            variant="primary"
+            variant="secondary"
           >
-            再练一组
+            再来一组
           </SoftButton>
-        )}
+          <Link
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-[var(--radius-control)] border-2 border-surface-muted px-5 font-bold text-ink-soft transition-colors hover:border-brand hover:text-brand"
+            href={resultBackHref}
+          >
+            返回专题
+          </Link>
+        </div>
       </SoftCard>
     );
   }
@@ -183,13 +206,16 @@ export function QuizRunner({
         setSaving(true);
         setSaveWarning(false);
         try {
-          await onComplete(
+          const progress = await onComplete(
             activeAttemptId,
             answers.map(({ questionId, selected: answerSelected }) => ({
               questionId,
               selected: answerSelected,
             })),
           );
+          if (progress) {
+            setCompletionProgress(progress);
+          }
         } catch {
           setSaveWarning(true);
         } finally {
@@ -216,6 +242,7 @@ export function QuizRunner({
     setAnswers([]);
     setShowResult(false);
     setSaveWarning(false);
+    setCompletionProgress(null);
     setAnswerWarning("");
   }
 

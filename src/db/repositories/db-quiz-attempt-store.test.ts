@@ -81,6 +81,7 @@ describe("DbQuizAttemptStore", () => {
       score: 50,
       status: "needs_retry",
       missedQuestionIds: [secondQuestionKey],
+      answeredQuestionIds: [firstQuestionKey, secondQuestionKey],
     });
     const storedAnswers = await database
       .select({

@@ -5,10 +5,15 @@ import { z } from "zod";
 
 import { requireUser } from "@/lib/auth/guards";
 import { evaluateAnswer } from "@/lib/quiz/attempt";
-import { saveQuizAttemptForLearner } from "@/lib/quiz/attempt-service";
+import {
+  getQuizProgressForLearner,
+  saveQuizAttemptForLearner,
+} from "@/lib/quiz/attempt-service";
 import { demoQuizQuestions } from "@/lib/quiz/demo-questions";
-import { topicQuizQuestions } from "@/lib/quiz/question-bank";
+import { quizTopics, topicQuizQuestions } from "@/lib/quiz/question-bank";
 import { loadPublishedQuiz } from "@/lib/quiz/review-service";
+import type { QuizAttemptRecord } from "@/lib/quiz/attempt-store";
+import type { QuizTopicProgress } from "@/lib/quiz/progress";
 import type { QuizQuestion } from "@/lib/quiz/schema";
 import { createTopicQuizHash } from "@/lib/quiz/topic-hash";
 
@@ -34,6 +39,12 @@ export type QuizAnswerFeedback = {
   isCorrect: boolean;
   explanation: string;
   sourceLabel: string;
+};
+
+export type QuizCompletionProgress = {
+  savedAttempt: QuizAttemptRecord;
+  newCoverageCount: number;
+  topicProgress?: QuizTopicProgress;
 };
 
 export async function checkDemoQuizAnswerAction(
@@ -76,7 +87,7 @@ export async function saveQuizAttemptAction(
   assignmentIdInput: string | undefined,
   attemptIdInput: string,
   submittedAnswers: QuizAnswerSubmission[],
-): Promise<void> {
+): Promise<QuizCompletionProgress> {
   const user = await requireUser();
   const attemptId = z.string().uuid().parse(attemptIdInput);
   const assignmentId = assignmentIdInput
@@ -106,7 +117,7 @@ export async function saveQuizAttemptAction(
       ),
     };
   });
-  await saveQuizAttemptForLearner({
+  const savedAttempt = await saveQuizAttemptForLearner({
     attemptId,
     learnerId: user.id,
     quizHash,
@@ -114,21 +125,28 @@ export async function saveQuizAttemptAction(
     passingScore: publishedQuiz.passingScore,
     answers: checkedAnswers,
   });
-  revalidatePath("/practice/history");
+  revalidatePracticePaths();
+  return { savedAttempt, newCoverageCount: 0 };
 }
 
 export async function saveTopicQuizAttemptAction(
   topicId: string,
   attemptIdInput: string,
   submittedAnswers: QuizAnswerSubmission[],
-): Promise<void> {
+): Promise<QuizCompletionProgress> {
   const user = await requireUser();
   const topic = z.string().trim().min(1).parse(topicId);
   const attemptId = z.string().uuid().parse(attemptIdInput);
   const answers = submittedAnswersSchema.parse(submittedAnswers);
+  if (!quizTopics.some((candidate) => candidate.id === topic)) {
+    throw new Error("专题不存在，请重新选择。");
+  }
+  const topicQuestions = topicQuizQuestions.filter(
+    (question) => question.category === topic,
+  );
 
   const questionsById = new Map(
-    topicQuizQuestions.map((question) => [question.id, question]),
+    topicQuestions.map((question) => [question.id, question]),
   );
   const checkedAnswers = answers.map((answer) => {
     const question = questionsById.get(answer.questionId);
@@ -142,7 +160,7 @@ export async function saveTopicQuizAttemptAction(
     };
   });
 
-  await saveQuizAttemptForLearner({
+  const savedAttempt = await saveQuizAttemptForLearner({
     attemptId,
     learnerId: user.id,
     quizHash: createTopicQuizHash(topic),
@@ -150,6 +168,25 @@ export async function saveTopicQuizAttemptAction(
     passingScore: 80,
     answers: checkedAnswers,
   });
+  const progress = await getQuizProgressForLearner(user.id);
+  const recentAttempt = progress.recentAttempts.find(
+    (attempt) => attempt.id === savedAttempt.id,
+  );
+  const topicProgress = progress.topics.find(
+    (topicProgress) => topicProgress.topicId === topic,
+  );
+  revalidatePracticePaths();
+  return {
+    savedAttempt,
+    newCoverageCount: recentAttempt?.newCoverageCount ?? 0,
+    ...(topicProgress ? { topicProgress } : {}),
+  };
+}
+
+function revalidatePracticePaths(): void {
+  revalidatePath("/practice");
+  revalidatePath("/practice/quiz/topics");
+  revalidatePath("/practice/profile");
   revalidatePath("/practice/history");
 }
 

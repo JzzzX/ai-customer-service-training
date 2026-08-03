@@ -112,6 +112,7 @@ describe("QuizRunner", () => {
         onComplete={onComplete}
         passingScore={80}
         questions={questions}
+        resultBackHref="/practice/quiz/topics"
       />,
     );
 
@@ -142,6 +143,63 @@ describe("QuizRunner", () => {
     expect(
       screen.getByRole("heading", { name: "这组需要再练一次" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows the saved coverage delta and a route back to the topic", async () => {
+    const onComplete = vi.fn().mockResolvedValue({
+      savedAttempt: {
+        id: initialAttemptId,
+        learnerId: "00000000-0000-4000-8000-000000000002",
+        quizHash: "a".repeat(64),
+        topicId: "日常问答",
+        status: "passed",
+        correctCount: 2,
+        totalQuestions: 2,
+        score: 100,
+        missedQuestionIds: [],
+        answeredQuestionIds: questions.map((question) => question.id),
+        completedAt: "2026-08-03T08:00:00.000Z",
+      },
+      newCoverageCount: 2,
+      topicProgress: {
+        topicId: "日常问答",
+        totalQuestions: 10,
+        uniqueAnsweredCount: 3,
+        totalCorrectAnswers: 3,
+        totalAnsweredAnswers: 3,
+        accuracy: 100,
+        attemptCount: 2,
+      },
+    });
+    render(
+      <QuizRunner
+        attemptId={initialAttemptId}
+        onAnswer={onAnswer}
+        onComplete={onComplete}
+        passingScore={80}
+        questions={questions}
+        resultBackHref="/practice/quiz/topics"
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("选项A"));
+    fireEvent.click(screen.getByRole("button", { name: "提交答案" }));
+    await screen.findByText("回答正确");
+    fireEvent.click(screen.getByRole("button", { name: "下一题" }));
+    fireEvent.click(screen.getByLabelText("错误"));
+    fireEvent.click(screen.getByRole("button", { name: "提交答案" }));
+    await screen.findByText("回答正确");
+    fireEvent.click(screen.getByRole("button", { name: "查看结果" }));
+
+    expect(await screen.findByText("本次新覆盖 2 题")).toBeInTheDocument();
+    expect(screen.getByText("专题累计覆盖 3 / 10 题")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "重练错题" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "再来一组" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "返回专题" }),
+    ).toHaveAttribute("href", "/practice/quiz/topics");
   });
 
   it("shuffles single-choice options without receiving standard answers", async () => {

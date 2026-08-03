@@ -428,7 +428,12 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
         ),
       );
     const missedByAttempt = new Map<string, string[]>();
+    const answeredByAttempt = new Map<string, string[]>();
     for (const answer of answerRows) {
+      answeredByAttempt.set(answer.attemptId, [
+        ...(answeredByAttempt.get(answer.attemptId) ?? []),
+        answer.questionKey,
+      ]);
       if (!answer.isCorrect) {
         missedByAttempt.set(answer.attemptId, [
           ...(missedByAttempt.get(answer.attemptId) ?? []),
@@ -450,6 +455,7 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
         totalQuestions: row.totalQuestions,
         score: row.score,
         missedQuestionIds: missedByAttempt.get(row.id) ?? [],
+        answeredQuestionIds: answeredByAttempt.get(row.id) ?? [],
         completedAt: row.completedAt?.toISOString(),
       }),
     );
@@ -475,7 +481,12 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
         ),
       );
     const missedByAttempt = new Map<string, string[]>();
+    const answeredByAttempt = new Map<string, string[]>();
     for (const answer of answerRows) {
+      answeredByAttempt.set(answer.attemptId, [
+        ...(answeredByAttempt.get(answer.attemptId) ?? []),
+        answer.questionKey,
+      ]);
       if (!answer.isCorrect) {
         missedByAttempt.set(answer.attemptId, [
           ...(missedByAttempt.get(answer.attemptId) ?? []),
@@ -494,6 +505,7 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
         totalQuestions: row.totalQuestions,
         score: row.score,
         missedQuestionIds: missedByAttempt.get(row.id) ?? [],
+        answeredQuestionIds: answeredByAttempt.get(row.id) ?? [],
         completedAt: row.completedAt.toISOString(),
       }),
     );

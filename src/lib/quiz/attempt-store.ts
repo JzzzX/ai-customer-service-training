@@ -13,6 +13,12 @@ export const quizAttemptRecordSchema = z.object({
   totalQuestions: z.number().int().positive(),
   score: z.number().int().min(0).max(100),
   missedQuestionIds: z.array(questionIdSchema),
+  /**
+   * Older local records did not persist correct question IDs. Keep this
+   * optional so they remain readable while new records can calculate exact
+   * de-duplicated coverage.
+   */
+  answeredQuestionIds: z.array(questionIdSchema).optional(),
   completedAt: z.string().datetime(),
 });
 
