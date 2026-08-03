@@ -14,8 +14,10 @@ import type {
 } from "./schema";
 import type {
   ScenarioSessionStore,
+  ScenarioProgressSummary,
   SessionIdentity,
 } from "./session-store";
+import { summarizeScenarioProgress } from "./session-store";
 import type { ScenarioTemplateStore } from "./template-store";
 
 export type KnowledgeUnitLoader = (
@@ -71,6 +73,26 @@ export class ScenarioTrainingService {
   async load(input: SessionIdentity): Promise<ScenarioSession> {
     const { session } = await this.loadWithScenario(input);
     return session;
+  }
+
+  async getProgress(input: {
+    learnerId: string;
+    publishedScenarioCount: number;
+    publishedScenarioIds?: string[];
+    includeDetails?: boolean;
+  }): Promise<ScenarioProgressSummary> {
+    const sessions = await this.store.listSessions({
+      learnerId: input.learnerId,
+    });
+    return summarizeScenarioProgress(
+      sessions,
+      input.publishedScenarioCount,
+      20,
+      input.publishedScenarioIds
+        ? new Set(input.publishedScenarioIds)
+        : undefined,
+      input.includeDetails !== false,
+    );
   }
 
   private async loadWithScenario(

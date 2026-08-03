@@ -218,6 +218,50 @@ describe("DbScenarioSessionStore", () => {
     expect(storedSession?.status).toBe("needs_review");
   });
 
+  it("lists learner summaries without joining training messages", async () => {
+    const completedSession = await store.startSession({
+      learnerId,
+      scenario: template,
+      mode: "mock",
+      startedAt: "2026-07-30T01:00:00.000Z",
+    });
+    const activeSession = await store.startSession({
+      learnerId,
+      scenario: template,
+      mode: "mock",
+      startedAt: "2026-07-31T01:00:00.000Z",
+    });
+    const report = await new MockEvaluationProvider().evaluate({
+      scenario: template,
+      learnerMessages: ["年龄"],
+    });
+    await store.completeSession({
+      learnerId,
+      sessionId: completedSession.id,
+      report,
+      completedAt: "2026-08-01T01:00:00.000Z",
+    });
+
+    const summaries = await store.listSessions({ learnerId });
+
+    expect(summaries).toHaveLength(2);
+    expect(summaries[0]).toMatchObject({
+      id: completedSession.id,
+      title: template.title,
+      category: template.category,
+      status: "completed",
+      score: report.totalScore,
+    });
+    expect(summaries[0]).not.toHaveProperty("messages");
+    expect(summaries[1]).toMatchObject({
+      id: activeSession.id,
+      status: "active",
+    });
+    await expect(
+      store.listSessions({ learnerId: otherLearnerId }),
+    ).resolves.toEqual([]);
+  });
+
   async function seedScenario(): Promise<void> {
     await database.insert(users).values([
       {
