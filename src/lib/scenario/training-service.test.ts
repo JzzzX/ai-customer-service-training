@@ -210,4 +210,27 @@ describe("ScenarioTrainingService", () => {
     expect(result.customerChunks.length).toBeGreaterThan(0);
     expect(result.session.learnerTurnCount).toBe(1);
   });
+
+  it("returns learner recap progress without loading conversation messages", async () => {
+    const scenario = scenarioTemplates[0];
+    const session = await service.start({
+      learnerId,
+      scenarioId: scenario.id,
+    });
+
+    const progress = await service.getProgress({
+      learnerId,
+      publishedScenarioCount: scenarioTemplates.length,
+    });
+
+    expect(progress).toMatchObject({
+      publishedScenarioCount: scenarioTemplates.length,
+      completedScenarioCount: 0,
+      completedSessionCount: 0,
+    });
+    expect(progress.activeSessions).toEqual([
+      expect.objectContaining({ id: session.id, status: "active" }),
+    ]);
+    expect(progress.activeSessions[0]).not.toHaveProperty("messages");
+  });
 });

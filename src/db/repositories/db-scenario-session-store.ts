@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import type { DatabaseClient } from "../client";
@@ -12,6 +12,7 @@ import {
 } from "../schema";
 import {
   scenarioEvaluationReportSchema,
+  scenarioCategorySchema,
   scenarioSessionSchema,
   type LiveRiskAlert,
   type ScenarioEvaluationReport,
@@ -21,6 +22,7 @@ import type {
   AppendScenarioExchangeInput,
   CompleteScenarioSessionInput,
   ScenarioSessionStore,
+  ScenarioSessionSummary,
   SessionIdentity,
   StartScenarioSessionInput,
 } from "@/lib/scenario/session-store";
@@ -227,6 +229,80 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
         ? { completedAt: session.completedAt.toISOString() }
         : {}),
     });
+  }
+
+  async listSessions(input: {
+    learnerId: string;
+    limit?: number;
+  }): Promise<ScenarioSessionSummary[]> {
+    const learnerId = z.string().uuid().parse(input.learnerId);
+    const query = this.database
+      .select({
+        id: trainingSessions.id,
+        learnerId: trainingSessions.learnerId,
+        scenarioId: scenarios.scenarioKey,
+        scenarioVersionId: scenarioVersions.versionKey,
+        title: scenarios.title,
+        category: scenarios.category,
+        status: trainingSessions.status,
+        mode: trainingSessions.mode,
+        learnerTurnCount: trainingSessions.turnCount,
+        maxTurns: scenarioVersions.maxTurns,
+        startedAt: trainingSessions.startedAt,
+        updatedAt: trainingSessions.updatedAt,
+        completedAt: trainingSessions.completedAt,
+        score: evaluationReports.totalScore,
+        verdict: evaluationReports.verdict,
+      })
+      .from(trainingSessions)
+      .innerJoin(
+        scenarioVersions,
+        eq(trainingSessions.scenarioVersionId, scenarioVersions.id),
+      )
+      .innerJoin(
+        scenarios,
+        eq(scenarioVersions.scenarioId, scenarios.id),
+      )
+      .leftJoin(
+        evaluationReports,
+        eq(evaluationReports.trainingSessionId, trainingSessions.id),
+      )
+      .where(
+        and(
+          eq(trainingSessions.learnerId, learnerId),
+          inArray(trainingSessions.status, [
+            "in_progress",
+            "completed",
+            "needs_review",
+          ]),
+        ),
+      )
+      .orderBy(desc(trainingSessions.updatedAt), desc(trainingSessions.id));
+    const rows = input.limit === undefined
+      ? await query
+      : await query.limit(input.limit);
+
+    return rows.map((row) => ({
+      id: row.id,
+      learnerId: row.learnerId,
+      scenarioId: row.scenarioId,
+      scenarioVersionId: row.scenarioVersionId,
+      title: row.title,
+      category: scenarioCategorySchema.parse(row.category),
+      status: row.status === "in_progress" ? "active" : "completed",
+      mode: scenarioSessionSchema.shape.mode.parse(row.mode),
+      learnerTurnCount: row.learnerTurnCount,
+      maxTurns: row.maxTurns,
+      startedAt: row.startedAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+      ...(row.completedAt
+        ? { completedAt: row.completedAt.toISOString() }
+        : {}),
+      ...(row.score !== null && row.score !== undefined
+        ? { score: row.score }
+        : {}),
+      ...(row.verdict ? { verdict: row.verdict } : {}),
+    }));
   }
 
   async appendExchange(

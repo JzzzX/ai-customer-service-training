@@ -1,6 +1,10 @@
 import type { UserRole } from "./credentials";
 
-export type RouteAccessDecision = "allow" | "login" | "forbidden";
+export type RouteAccessDecision =
+  | "allow"
+  | "login"
+  | "forbidden"
+  | "redirect_admin";
 
 interface RouteUser {
   role: UserRole;
@@ -16,6 +20,10 @@ export function decideRouteAccess(
 
   if (!user) {
     return "login";
+  }
+
+  if (isPathWithin(pathname, "/practice") && user.role === "admin") {
+    return "redirect_admin";
   }
 
   if (isPathWithin(pathname, "/admin") && user.role !== "admin") {

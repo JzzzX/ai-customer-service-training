@@ -57,8 +57,6 @@ export default async function AdminPage() {
       <div className="mx-auto max-w-5xl">
         <PageHeader
           action={<SignOutButton />}
-          backHref="/practice"
-          backLabel="返回训练中心"
           description="管理知识库、题目、场景与训练任务，跟进学员学习进度。"
           label="培训管理"
           title="管理员控制台"

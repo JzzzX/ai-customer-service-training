@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   complete: vi.fn(),
   restart: vi.fn(),
   reportRuntimeError: vi.fn(),
+  revalidatePath: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/guards", () => ({
@@ -25,6 +26,10 @@ vi.mock("@/lib/runtime/services", () => ({
 
 vi.mock("next/navigation", () => ({
   redirect: mocks.redirect,
+}));
+
+vi.mock("next/cache", () => ({
+  revalidatePath: mocks.revalidatePath,
 }));
 
 vi.mock("@/lib/runtime/errors", () => ({
@@ -149,5 +154,8 @@ describe("scenario server actions", () => {
     expect(mocks.redirect).toHaveBeenCalledWith(
       `/practice/scenario/session/${restartedId}`,
     );
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/practice");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/practice/scenario");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/practice/profile");
   });
 });

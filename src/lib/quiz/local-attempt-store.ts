@@ -61,6 +61,7 @@ export class LocalQuizAttemptStore implements QuizAttemptStore {
       totalQuestions: input.answers.length,
       score: outcome.score,
       missedQuestionIds,
+      answeredQuestionIds: input.answers.map((answer) => answer.questionId),
       completedAt: input.completedAt ?? new Date().toISOString(),
     });
 

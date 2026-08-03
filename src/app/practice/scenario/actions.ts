@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth/guards";
@@ -87,6 +88,7 @@ export async function completeScenarioAction(
     learnerId: user.id,
     sessionId,
   });
+  revalidatePracticePaths();
   redirect(`/practice/scenario/report/${session.id}`);
 }
 
@@ -99,5 +101,12 @@ export async function restartScenarioAction(
     learnerId: user.id,
     sessionId,
   });
+  revalidatePracticePaths();
   redirect(`/practice/scenario/session/${session.id}`);
+}
+
+function revalidatePracticePaths(): void {
+  revalidatePath("/practice");
+  revalidatePath("/practice/scenario");
+  revalidatePath("/practice/profile");
 }

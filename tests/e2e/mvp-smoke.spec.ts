@@ -56,6 +56,9 @@ test("sends an administrator to the management console", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "开始审题" })).toBeVisible();
   await expect(page.getByRole("link", { name: "查看场景" })).toBeVisible();
+
+  await page.goto("/practice");
+  await expect(page).toHaveURL(/\/admin$/);
 });
 
 test("completes a topic practice and keeps it in learner history", async ({
@@ -88,7 +91,8 @@ test("completes a topic practice and keeps it in learner history", async ({
       name: /这组顺利通过|这组需要再练一次/,
     }),
   ).toBeVisible();
-  await page.goto("/practice/history");
+  await page.goto("/practice/profile?tab=quiz");
+  await expect(page.getByText("最近练习")).toBeVisible();
   await expect(page.getByText("产品属性及卖点").first()).toBeVisible();
   expect(pageErrors).toEqual([]);
 });
