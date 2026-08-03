@@ -343,6 +343,7 @@ describe("ScenarioChat", () => {
       screen.getByText("严重风险提示 · 攻击性语言"),
     ).toBeInTheDocument();
   });
+
 });
 
 function createReportResponse(events: unknown[]): Response {
