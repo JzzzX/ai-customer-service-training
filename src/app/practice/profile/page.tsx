@@ -60,19 +60,7 @@ export default async function ProfilePage({
     <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-4xl">
         <PageHeader
-          action={
-            <div className="flex items-center gap-3">
-              {user.role === "admin" ? (
-                <Link
-                  className="rounded-[var(--radius-control)] px-3 py-2 text-sm font-bold text-ink-soft transition-colors hover:bg-surface-muted hover:text-ink"
-                  href="/admin"
-                >
-                  管理端
-                </Link>
-              ) : null}
-              <SignOutButton />
-            </div>
-          }
+          action={<SignOutButton />}
           backHref="/practice"
           description="任务、知识小测和情景实战记录都在这里。"
           label="训练中心"

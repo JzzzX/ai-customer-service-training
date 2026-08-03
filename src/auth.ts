@@ -67,6 +67,9 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       if (decision === "forbidden") {
         return Response.redirect(new URL("/forbidden", resolveBaseUrl(request)));
       }
+      if (decision === "redirect_admin") {
+        return Response.redirect(new URL("/admin", resolveBaseUrl(request)));
+      }
       return true;
     },
   },

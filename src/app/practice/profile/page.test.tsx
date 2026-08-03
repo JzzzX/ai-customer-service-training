@@ -131,7 +131,7 @@ describe("ProfilePage", () => {
     expect(screen.getByText("物流专题测验")).toBeInTheDocument();
   });
 
-  it("keeps the administrator entry in the profile for admin accounts", async () => {
+  it("does not expose a learner profile entry to administrator accounts", async () => {
     mocks.requireUser.mockResolvedValue({
       id: learnerId,
       name: "管理员",
@@ -141,10 +141,7 @@ describe("ProfilePage", () => {
 
     render(await ProfilePage({ searchParams: Promise.resolve({}) }));
 
-    expect(screen.getByRole("link", { name: "管理端" })).toHaveAttribute(
-      "href",
-      "/admin",
-    );
+    expect(screen.queryByRole("link", { name: "管理端" })).not.toBeInTheDocument();
   });
 });
 

@@ -27,4 +27,14 @@ describe("decideRouteAccess", () => {
       "allow",
     );
   });
+
+  it("redirects administrators away from learner training routes", () => {
+    expect(decideRouteAccess("/practice", { role: "admin" })).toBe(
+      "redirect_admin",
+    );
+    expect(
+      decideRouteAccess("/practice/profile?tab=quiz", { role: "admin" }),
+    ).toBe("redirect_admin");
+    expect(decideRouteAccess("/practice", { role: "learner" })).toBe("allow");
+  });
 });
