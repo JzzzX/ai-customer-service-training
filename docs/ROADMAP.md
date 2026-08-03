@@ -1,6 +1,6 @@
 # AI 培训智能客服 Roadmap
 
-最后更新：2026-08-01
+最后更新：2026-08-03
 
 ## 当前结论
 
@@ -8,7 +8,10 @@
 
 40 道可追溯题已取消人工审核发布门禁：仍必须通过活动知识版本、题目数量、来源、冲突和跨版本引用校验，当前已自动发布 1 个正式题组；人工复核只作为可选质量工具。350 道专题题继续用于日常训练。
 
-线上真实 AI 代码链路已接入并有本地 Provider 测试；当前 Vercel Production 冒烟返回 Vercel AI Gateway 账单未开通（403）。这不影响 Vercel 免费版 Web 托管，但在配置 Gateway 或切换到可用的 OpenAI 兼容接口前，线上真实对话仍不能宣称闭环。
+线上真实 AI 代码链路已接入并有本地 Provider 测试；当前 Production 已关闭 Vercel AI
+Gateway，改走外部 OpenAI 兼容接口。Vercel Web 与登录可用，但函数调用该接口在 60 秒
+后超时；线上真实对话仍不能宣称闭环。当前重点是外部接口的 Vercel 网络可达性，不是
+Vercel 免费 Web 托管能力。
 
 ## 版本状态
 
@@ -18,9 +21,9 @@
 | 知识库编译 | 已完成 | Markdown、Excel、MM 适配器、版本化知识包、来源追溯和冲突隔离 |
 | 专题练习题 | 技术验收通过 | 5 个专题、350 题；每次练习 10 题，题型和难度按配额抽取 |
 | 正式知识小测 | 技术验收通过 | 40 道题通过知识与来源门禁后已自动发布；逐题复核为可选 |
-| AI 模拟对话 | 代码验收通过，线上待复验 | 完整上下文、重复回复重试、空回复保护、风险提示和报告生成已实现；真实模型服务待配置 |
+| AI 模拟对话 | 代码验收通过，线上被接口可达性阻塞 | 完整上下文、重复回复重试、空回复保护、风险提示和报告生成已实现；Vercel 直连外部模型请求超时 |
 | 认证与权限 | 已完成 | 学员/管理员 Credentials 登录、受保护路由和越权拦截 |
-| 生产部署 | 已部署 | Vercel + Neon；生产真实 AI 受 Gateway 账单配置阻塞 |
+| 生产部署 | 已部署 | Vercel + Neon；生产真实 AI 受外部模型接口网络可达性阻塞 |
 
 ## 下一步优先级
 
@@ -28,7 +31,7 @@
 
 1. [x] 运行 `DOTENV_CONFIG_PATH=.env.production.local pnpm quiz:publish:db`，把通过技术门禁的40题自动发布到 Neon。
 2. [x] 运行 `DOTENV_CONFIG_PATH=.env.production.local pnpm production:verify:data --formal`，保存正式题组验收证据。
-3. 为线上配置可用的 AI 模型服务：可完成 Vercel AI Gateway 账单配置，也可关闭 Gateway 改用外部 OpenAI 兼容接口；随后重新执行 `pnpm test:e2e:live`。
+3. 为线上提供从 Vercel `hkg1` 可达的模型入口：优先使用公网 HTTPS 443 或调整上游白名单；随后重新执行 `pnpm test:e2e:live`，完成 3 轮对话、刷新恢复和 AI 报告验收。
 
 ### P1：试用运营完善
 

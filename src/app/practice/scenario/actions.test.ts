@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   sendMessage: vi.fn(),
   complete: vi.fn(),
   restart: vi.fn(),
+  reportRuntimeError: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/guards", () => ({
@@ -24,6 +25,11 @@ vi.mock("@/lib/runtime/services", () => ({
 
 vi.mock("next/navigation", () => ({
   redirect: mocks.redirect,
+}));
+
+vi.mock("@/lib/runtime/errors", () => ({
+  reportRuntimeError: mocks.reportRuntimeError,
+  toPublicRuntimeError: (_error: unknown, fallback: string) => fallback,
 }));
 
 import {
@@ -116,6 +122,14 @@ describe("scenario server actions", () => {
     expect(state).toEqual({
       error: "AI 服务暂时不可用，请稍后重试。",
     });
+    expect(mocks.reportRuntimeError).toHaveBeenCalledWith(
+      {
+        route: "/practice/scenario/session",
+        userId: learnerId,
+        resourceId: sessionId,
+      },
+      expect.any(Error),
+    );
   });
 
   it("completes to a report and restarts into a new session", async () => {

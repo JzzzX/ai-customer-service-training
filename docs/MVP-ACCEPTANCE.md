@@ -1,16 +1,19 @@
 # MVP 验收矩阵
 
-最后更新：2026-08-01
+最后更新：2026-08-03
 
 ## 结论
 
-### Web MVP：题库已可自动发布，线上真实 AI 待模型服务配置
+### Web MVP：题库可自动发布，线上真实 AI 仍待外部接口可达
 
-本地代码、数据库、UI、权限、题库和 Mock 情景闭环已通过自动化验证。Vercel Production 登录与页面可达，但真实 AI 请求返回：
+本地代码、数据库、UI、权限、题库和 Mock 情景闭环已通过自动化验证。Vercel Production
+登录、页面和函数均可达；已关闭 Vercel AI Gateway，改走外部 OpenAI 兼容接口，但真实
+AI 请求返回 `Request timed out.`。
 
-`403 AI Gateway requires a valid credit card on file to service requests.`
-
-该问题属于 Vercel AI Gateway 账户配置，不是应用代码或 SSE 流式报告实现错误。Vercel 免费版足够承载 Web；要完成线上真实 AI，还需要 Gateway 账单或一个可用的外部 OpenAI 兼容模型服务。
+本机用同一外部接口完成完整情景请求约 2 秒；Vercel 函数部署在 `hkg1`，当前接口使用
+自定义 `35772` 端口，线上在 60 秒后连接超时。证据指向 Vercel 函数到外部模型接口的
+网络可达性/上游白名单问题，不是 Vercel 免费 Web 托管不能调用外部 API；仍需提供公网
+HTTPS 443 入口或调整上游网络策略后，才能完成真实 AI 验收。
 
 ### 正式培训内容版：题库技术门禁已达标
 
@@ -22,7 +25,7 @@
 |---|---|---|---|
 | 现代化前端 UI 重构 | 学员端、管理端、登录、测验、场景、报告统一视觉；桌面与 390px 无溢出 | 共享 UI 组件、现有响应式 E2E、页面测试 | 技术达标 |
 | 知识库测验题重新设置 | 5 个专题共 350 题；40 道正式题通过知识/来源门禁自动发布；10 题抽取满足题型和难度配额；服务端判分 | `question-bank.test.ts`、`select-question-group.test.ts`、题库发布测试、练习历史 E2E | 技术达标 |
-| AI 模拟对话修复 | 完整上下文；回答最新客服消息；重复/空回复保护；刷新恢复；报告生成；真实 AI 线上复验 | Provider、训练服务、聊天组件测试；Mock 场景 E2E；Vercel 真实 AI 冒烟 | 代码达标，线上被模型服务配置阻塞 |
+| AI 模拟对话修复 | 完整上下文；回答最新客服消息；重复/空回复保护；刷新恢复；报告生成；真实 AI 线上复验 | Provider、训练服务、聊天组件测试；Mock 场景 E2E；Vercel 直连 AI 冒烟返回 `Request timed out.` | 代码达标，线上被外部模型接口可达性阻塞 |
 
 ## 功能验收清单
 
@@ -61,9 +64,16 @@ pnpm production:verify:data --formal
 - `pnpm test:e2e`：6 个 Mock 测试通过，1 个真实 AI 测试按条件跳过。
 - Neon 正式数据校验：通过；活动知识版本 1 个、题目 40 道、正式题组 1 个、已发布场景 8 个、管理员 1 个、学员 1 个、跨版本引用 0 个，当前人工复核记录 0/40 但不阻塞 MVP。
 - Neon `production:verify:data --formal`：通过；只要求存在 1 个与活动知识版本一致的正式题组。
-- Vercel Production AI 冒烟：未通过；第一轮请求返回 Vercel AI Gateway 账单未配置的 403。
+- Vercel Production AI 冒烟：未通过；已关闭 AI Gateway 后，第一轮直连外部模型请求在 60 秒后返回 `Request timed out.`。
+
+### 2026-08-03 线上复验
+
+- `AI_GATEWAY_ENABLED=false` 已写入 Vercel Production，部署 `dpl_C23jQ6LhB1BMTMX99wEDQdf6rBsv` 为 Ready，生产别名正常。
+- 生产环境校验曾错误地只接受 `AI_GATEWAY_ENABLED="true"`；已改为接受 `true/false`，并补充回归测试。
+- 生产登录与场景启动成功；消息请求进入直连模型路径，但 `pnpm test:e2e:live` 第一轮收到 `Request timed out.`。
+- 本机同一 `OPENAI_BASE_URL`、模型和完整对话提示请求成功；当前差异集中在 Vercel 函数到外部接口的网络路径。
 
 ## 交付判定
 
-- Web MVP：自动题库发布、权限、知识小测和 Mock 情景闭环通过后可交付试用；线上真实 AI 冒烟是完整 AI 交付的剩余条件。
+- Web MVP：自动题库发布、权限、知识小测和 Mock 情景闭环通过，可交付演示/试用；线上真实 AI 冒烟仍是完整 AI 交付的剩余条件。
 - 完整 AI MVP：还需满足线上真实 AI 3 轮对话、报告生成和 `production:verify:data --formal` 通过。

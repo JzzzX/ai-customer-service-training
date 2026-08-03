@@ -24,22 +24,26 @@ SEED_ADMIN_EMAIL
 SEED_ADMIN_PASSWORD
 SEED_LEARNER_EMAIL
 SEED_LEARNER_PASSWORD
-SCENARIO_AI_MODE=real
-AI_GATEWAY_ENABLED=true
-AI_GATEWAY_MODEL=bytedance/seed-1.8
 ```
 
-使用公司 OpenAI 兼容网关时，将 `AI_GATEWAY_ENABLED` 设为 `false`，并配置：
+当前免费 Web 托管的推荐生产配置是关闭 Vercel AI Gateway，直接使用从 Vercel 函数区域
+可达的外部 OpenAI 兼容接口：
 
 ```text
+SCENARIO_AI_MODE=real
+AI_GATEWAY_ENABLED=false
 OPENAI_API_KEY
 OPENAI_BASE_URL
 OPENAI_MODEL
 ```
 
-Vercel AI Gateway 当前要求项目账户具备可用账单配置；未配置时真实 AI 请求会返回 403。
-如果不启用 Gateway，可以将 `AI_GATEWAY_ENABLED` 设为 `false`，改配一个可用的外部
-OpenAI 兼容接口；该接口的模型账户仍需由项目方自行提供。
+Vercel 免费版可以运行 Web Functions，但不能替模型服务承担网络可达性或模型费用。
+当前项目的外部接口使用自定义 `35772` 端口：本机调用正常，Vercel `hkg1` 调用
+在 60 秒后超时。生产接入前应提供公网 HTTPS 443 入口，或将 Vercel 函数出口加入
+上游白名单。
+
+如果改用 Vercel AI Gateway，将 `AI_GATEWAY_ENABLED` 设为 `true` 并配置
+`AI_GATEWAY_MODEL`；项目账户还必须具备 Gateway 可用账单/额度，当前账户曾返回 403。
 
 ## 空数据库初始化
 
@@ -78,7 +82,8 @@ pnpm test:e2e:live
 
 ## 故障处理
 
-- `403 AI Gateway ... credit card`：网页托管仍可用；配置 Vercel AI 账单，或关闭 Gateway 改用外部 OpenAI 兼容接口，再运行 `pnpm test:e2e:live`。
+- `403 AI Gateway ... credit card`：网页托管仍可用；关闭 Gateway 改用从 Vercel 函数区域可达的外部 OpenAI 兼容接口，或配置 Gateway 账单/额度。
+- `Request timed out`：先确认 `OPENAI_BASE_URL` 的公网 HTTPS、端口和上游白名单；本项目当前自定义 `35772` 端口在 Vercel `hkg1` 超时，不能只凭本机请求成功判定生产可达。
 - AI 服务失败：页面应展示通用中文提示，不展示网关、密钥、URL 或内部错误细节。
 - 题库为空：先确认活动知识版本和 `DOTENV_CONFIG_PATH=.env.production.local pnpm quiz:publish:db` 是否完成。
 - 生产数据异常：先运行 `pnpm production:verify:data`，不要直接修改数据库中的版本指针。

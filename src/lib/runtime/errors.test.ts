@@ -10,13 +10,16 @@ describe("reportRuntimeError", () => {
 
     reportRuntimeError(
       { route: "/practice/quiz", userId: "learner-id" },
-      new Error(`connection failed: ${secret}`),
+      Object.assign(new Error(`connection failed: ${secret}`), {
+        code: "ETIMEDOUT",
+      }),
     );
 
     const output = JSON.stringify(spy.mock.calls);
     expect(output).toContain("/practice/quiz");
     expect(output).toContain("learner-id");
     expect(output).toContain("Error");
+    expect(output).toContain("ETIMEDOUT");
     expect(output).not.toContain(secret);
     expect(output).not.toContain("password");
     spy.mockRestore();

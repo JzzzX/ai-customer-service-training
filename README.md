@@ -8,9 +8,10 @@
 项目按 [Roadmap](docs/ROADMAP.md) 分 Part 交付。当前代码已完成现代化学员端与
 管理端、5 个专题共 350 道练习题、真实 AI 情景对话与评分链路、Auth.js 角色登录、
 Neon 持久化和 Vercel 部署。40 道可追溯题已改为通过知识版本、来源和冲突校验后自动
-发布，人工复核保留为可选质量工具。Vercel 免费版足够承载 Web MVP；线上真实 AI
-仍需配置一个可用的模型服务，当前 Vercel AI Gateway 账户返回 403 时不影响网页托管，
-但会阻塞真实对话。飞书身份和企业知识引擎属于后续企业化迭代。
+发布，人工复核保留为可选质量工具。Vercel 免费版足够承载 Web MVP；网页托管、
+Vercel AI Gateway 和外部模型服务是三条独立链路。当前 Production 已关闭 AI Gateway
+并改走外部 OpenAI 兼容接口，但该接口从 Vercel 函数调用仍会超时，线上真实 AI 尚未
+完成闭环验收。飞书身份和企业知识引擎属于后续企业化迭代。
 
 当前验收结论和剩余交付条件见
 [MVP 验收矩阵](docs/MVP-ACCEPTANCE.md)；Vercel + Neon 初始化与运维见
@@ -125,11 +126,12 @@ OPENAI_BASE_URL=...
 OPENAI_MODEL=...
 ```
 
-当前 Vercel Production 显式启用 Vercel AI Gateway，并通过运行时自动注入的短期
-OIDC 身份调用同厂商 `bytedance/seed-1.8`。本地仍可使用公司 OpenAI 兼容网关。
-Vercel 免费 Web 托管与模型调用是两件事：Gateway 路由必须通过
-`AI_GATEWAY_ENABLED=true` 主动开启且项目账户有可用账单；如果要维持 Vercel 免费版，
-可关闭 Gateway，改配一个外部 OpenAI 兼容接口。两种方式都不把密钥提交到仓库。
+当前 Vercel Production 使用 `AI_GATEWAY_ENABLED=false`，直接调用
+`OPENAI_BASE_URL` 指向的外部 OpenAI 兼容接口；Vercel 运行时不会再经过 AI Gateway。
+本机用同一接口完成完整情景请求约 2 秒，但 Vercel `hkg1` 调用该接口的自定义
+`35772` 端口在 60 秒后超时。要完成线上真实 AI 验收，需要让模型接口从 Vercel
+函数区域可达（优先提供公网 HTTPS 443 入口，或调整上游网络白名单），不需要升级
+Vercel Web 托管套餐。若改回 AI Gateway，则还需处理项目账户的 Gateway 账单/额度。
 
 数据库迁移、账号种子和知识版本发布完成后，可将8个固定场景及其完整来源、评分
 维度和风险规则幂等发布到数据库：

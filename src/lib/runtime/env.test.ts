@@ -63,6 +63,19 @@ describe("validateRuntimeEnvironment", () => {
         "production",
       ),
     ).toEqual({ mode: "production" });
+    expect(
+      validateRuntimeEnvironment(
+        {
+          ...valid,
+          SCENARIO_AI_MODE: "real",
+          AI_GATEWAY_ENABLED: "false",
+          OPENAI_API_KEY: "test-key",
+          OPENAI_BASE_URL: "https://model.example.test/v1",
+          OPENAI_MODEL: "test-model",
+        },
+        "production",
+      ),
+    ).toEqual({ mode: "production" });
   });
 
   it("does not require production secrets for explicit local demo", () => {
