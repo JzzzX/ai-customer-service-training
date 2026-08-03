@@ -98,7 +98,7 @@ describe("ScenarioTrainingService", () => {
     ).rejects.toThrow("场景不存在或未发布");
   });
 
-  it("automatically completes when the maximum learner turn is reached", async () => {
+  it("keeps the final conversation turn active until report generation starts", async () => {
     const scenario = scenarioTemplates[0];
     let session = await service.start({
       learnerId,
@@ -115,8 +115,64 @@ describe("ScenarioTrainingService", () => {
     }
 
     expect(session.learnerTurnCount).toBe(scenario.maxTurns);
-    expect(session.status).toBe("completed");
-    expect(session.report).toBeDefined();
+    expect(session.status).toBe("active");
+    expect(session.report).toBeUndefined();
+    expect(session.messages.at(-1)?.role).toBe("customer");
+  });
+
+  it("persists the report before yielding the completion event", async () => {
+    const scenario = scenarioTemplates[0];
+    const outputDir = await mkdtemp(
+      join(tmpdir(), "scenario-training-stream-"),
+    );
+    const baseEvaluation = new MockEvaluationProvider();
+    const serviceWithStream = new ScenarioTrainingService({
+      store: new LocalScenarioSessionStore(outputDir),
+      templates: {
+        async listPublished() {
+          return scenarioTemplates;
+        },
+        async getPublishedById(scenarioId) {
+          return getScenarioTemplate(scenarioId) ?? null;
+        },
+      },
+      conversationProvider: new MockConversationProvider(),
+      evaluationProvider: {
+        evaluate: (input) => baseEvaluation.evaluate(input),
+        async *evaluateStream(input) {
+          yield { delta: "{\"confidence\":" };
+          yield* baseEvaluation.evaluateStream(input);
+        },
+      },
+    });
+    const session = await serviceWithStream.start({
+      learnerId,
+      scenarioId: scenario.id,
+    });
+    await serviceWithStream.sendMessage({
+      learnerId,
+      sessionId: session.id,
+      content: "我先了解宠物年龄、体重和当前饮食。",
+    });
+
+    const completionEvents: string[] = [];
+    const phases: string[] = [];
+    for await (const chunk of serviceWithStream.completeStream({
+      learnerId,
+      sessionId: session.id,
+    })) {
+      if ("phase" in chunk) phases.push(chunk.phase);
+      if ("report" in chunk) {
+        completionEvents.push("report");
+        await expect(
+          serviceWithStream.load({ learnerId, sessionId: session.id }),
+        ).resolves.toMatchObject({ status: "completed" });
+      }
+      if ("session" in chunk) completionEvents.push("session");
+    }
+
+    expect(completionEvents).toEqual(["report", "session"]);
+    expect(phases).toEqual(["analyzing", "scoring", "saving"]);
   });
 
   it("attaches a live risk alert to the learner message and persists it", async () => {

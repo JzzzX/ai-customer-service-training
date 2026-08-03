@@ -121,6 +121,162 @@ describe("ScenarioChat", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("starts report generation after revealing the final customer reply", async () => {
+    const learnerMessage = "我会确认需求后给出合适建议。";
+    const finalSession: ScenarioSession = {
+      ...initialSession,
+      learnerTurnCount: 11,
+      messages: [
+        ...initialSession.messages,
+        ...Array.from({ length: 11 }, (_, index) => [
+          {
+            id: `00000000-0000-4000-8000-${String(index + 30).padStart(12, "0")}`,
+            role: "learner" as const,
+            content: `第${index + 1}轮回复`,
+            createdAt: "2026-07-29T08:01:00.000Z",
+          },
+          {
+            id: `00000000-0000-4000-8000-${String(index + 60).padStart(12, "0")}`,
+            role: "customer" as const,
+            content: `第${index + 1}轮顾客回复`,
+            createdAt: "2026-07-29T08:01:00.000Z",
+          },
+        ]).flat(),
+      ],
+    };
+    const updated: ScenarioSession = {
+      ...finalSession,
+      learnerTurnCount: 12,
+      messages: [
+        ...finalSession.messages,
+        {
+          id: "00000000-0000-4000-8000-000000000071",
+          role: "learner",
+          content: learnerMessage,
+          createdAt: "2026-07-29T08:02:00.000Z",
+        },
+        {
+          id: "00000000-0000-4000-8000-000000000072",
+          role: "customer",
+          content: "好的，那我先了解了。",
+          createdAt: "2026-07-29T08:02:00.000Z",
+        },
+      ],
+    };
+    mocks.sendScenarioMessageAction.mockResolvedValue({
+      result: {
+        session: updated,
+        customerChunks: ["好的，那我先了解了。"],
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        createReportResponse([
+          { phase: "analyzing" },
+          { phase: "scoring" },
+          { phase: "saving" },
+          { report: { totalScore: 90 } },
+          { session: { status: "completed" } },
+        ]),
+      ),
+    );
+
+    render(
+      <ScenarioChat
+        initialSession={finalSession}
+        scenarioTitle={scenarioTemplates[0].title}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("回复顾客"), {
+      target: { value: learnerMessage },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+
+    expect(await screen.findByText("好的，那我先了解了。"))
+      .toBeInTheDocument();
+    expect(await screen.findByText("报告已生成")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "查看训练报告" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("正在生成训练报告")).not.toBeInTheDocument();
+  });
+
+  it("generates a report in place when the learner ends early", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        createReportResponse([
+          { phase: "analyzing" },
+          { phase: "scoring" },
+          { phase: "saving" },
+          { report: { totalScore: 70 } },
+        ]),
+      ),
+    );
+
+    render(
+      <ScenarioChat
+        initialSession={initialSession}
+        scenarioTitle={scenarioTemplates[0].title}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "结束并查看报告" }));
+
+    expect(await screen.findByText("报告已生成")).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      `/api/scenario/complete/${initialSession.id}`,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+
+  it("keeps the conversation and allows a failed report to be retried", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockRejectedValueOnce(new Error("评测服务暂时不可用"))
+        .mockResolvedValueOnce(
+          createReportResponse([{ report: { totalScore: 80 } }]),
+        ),
+    );
+
+    render(
+      <ScenarioChat
+        initialSession={initialSession}
+        scenarioTitle={scenarioTemplates[0].title}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "结束并查看报告" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "评测服务暂时不可用",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "重新生成报告" }));
+    expect(await screen.findByText("报告已生成")).toBeInTheDocument();
+  });
+
+  it("shows an error when the report stream closes without a report", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        createReportResponse([{ phase: "analyzing" }, { phase: "saving" }]),
+      ),
+    );
+
+    render(
+      <ScenarioChat
+        initialSession={initialSession}
+        scenarioTitle={scenarioTemplates[0].title}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "结束并查看报告" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "报告生成失败",
+    );
+  });
+
   it("renders a warning risk alert card attached to the learner message", () => {
     const sessionWithRisk: ScenarioSession = {
       ...initialSession,
@@ -188,3 +344,12 @@ describe("ScenarioChat", () => {
     ).toBeInTheDocument();
   });
 });
+
+function createReportResponse(events: unknown[]): Response {
+  const body = events
+    .map((event) => `data: ${JSON.stringify(event)}\n\n`)
+    .join("");
+  return new Response(body, {
+    headers: { "Content-Type": "text/event-stream" },
+  });
+}
