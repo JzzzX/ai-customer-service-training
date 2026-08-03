@@ -10,7 +10,6 @@ import { SoftButton } from "@/components/ui/soft-button";
 import { SoftCard } from "@/components/ui/soft-card";
 import { WaveLoader } from "@/components/ui/wave-loader";
 import {
-  completeScenarioAction,
   restartScenarioAction,
 } from "@/app/practice/scenario/actions";
 import type {
@@ -42,6 +41,7 @@ export function StreamingReport({
   scenario: ScenarioTemplate;
 }) {
   const router = useRouter();
+  const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<StreamingState>({
     phase: "streaming",
     partial: {},
@@ -128,14 +128,7 @@ export function StreamingReport({
       cancelled = true;
       controller.abort();
     };
-  }, [sessionId, router]);
-
-  useEffect(() => {
-    if (state.phase !== "error") return;
-    const formData = new FormData();
-    formData.set("sessionId", sessionId);
-    void completeScenarioAction(formData);
-  }, [state, sessionId]);
+  }, [sessionId, router, attempt]);
 
   if (state.phase === "streaming") {
     return (
@@ -147,7 +140,15 @@ export function StreamingReport({
     );
   }
   if (state.phase === "error") {
-    return <ErrorFallback message={state.message} />;
+    return (
+      <ErrorFallback
+        message={state.message}
+        onRetry={() => {
+          setState({ phase: "streaming", partial: {}, deltaLength: 0 });
+          setAttempt((current) => current + 1);
+        }}
+      />
+    );
   }
   return (
     <ReportView
@@ -278,7 +279,13 @@ function StreamingSkeleton({
   );
 }
 
-function ErrorFallback({ message }: { message: string }) {
+function ErrorFallback({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
   return (
     <div>
       <PageHeader
@@ -289,8 +296,15 @@ function ErrorFallback({ message }: { message: string }) {
       <SoftCard className="mt-8" gradient>
         <p className="text-sm leading-6 text-ink-soft">{message}</p>
         <p className="mt-2 text-sm font-bold text-warning">
-          正在自动重试，请稍候…
+          可点击下方按钮重新生成报告。
         </p>
+        <SoftButton
+          className="mt-5 w-full"
+          onClick={onRetry}
+          variant="scenario"
+        >
+          重新生成报告
+        </SoftButton>
       </SoftCard>
     </div>
   );

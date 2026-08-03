@@ -12,6 +12,7 @@ import { scenarioTemplates } from "@/lib/scenario/templates";
 const mocks = vi.hoisted(() => ({
   sendScenarioMessageAction: vi.fn(),
   completeScenarioAction: vi.fn(),
+  routerPush: vi.fn(),
 }));
 
 vi.mock("@/app/practice/scenario/actions", () => ({
@@ -21,7 +22,7 @@ vi.mock("@/app/practice/scenario/actions", () => ({
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push: mocks.routerPush,
     replace: vi.fn(),
     back: vi.fn(),
     forward: vi.fn(),
@@ -186,5 +187,70 @@ describe("ScenarioChat", () => {
     expect(
       screen.getByText("严重风险提示 · 攻击性语言"),
     ).toBeInTheDocument();
+  });
+
+  it("reveals the final customer reply before offering the report", async () => {
+    const finalLearnerMessage = "好的，那我先这样安排。";
+    const finalCustomerReply = "好的，您可以点击按钮生成本次训练报告。";
+    const beforeFinal: ScenarioSession = {
+      ...initialSession,
+      learnerTurnCount: 11,
+    };
+    const finalSession: ScenarioSession = {
+      ...beforeFinal,
+      learnerTurnCount: 12,
+      messages: [
+        ...beforeFinal.messages,
+        {
+          id: "00000000-0000-4000-8000-000000000040",
+          role: "learner",
+          content: finalLearnerMessage,
+          createdAt: "2026-07-29T08:12:00.000Z",
+        },
+        {
+          id: "00000000-0000-4000-8000-000000000041",
+          role: "customer",
+          content: finalCustomerReply,
+          createdAt: "2026-07-29T08:12:00.000Z",
+        },
+      ],
+    };
+    mocks.routerPush.mockClear();
+    mocks.sendScenarioMessageAction.mockResolvedValue({
+      result: {
+        session: finalSession,
+        customerChunks: [finalCustomerReply],
+      },
+    });
+
+    render(
+      <ScenarioChat
+        initialSession={beforeFinal}
+        scenarioTitle={scenarioTemplates[0].title}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("回复顾客"), {
+      target: { value: finalLearnerMessage },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("训练进度 100%")).toBeInTheDocument(),
+    );
+    expect(screen.getByText(finalCustomerReply)).toBeInTheDocument();
+    expect(
+      screen.queryByText("模拟顾客正在回复…"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("回复顾客")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("对话已完成，请生成报告。"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "生成并查看报告" }),
+    );
+    expect(mocks.routerPush).toHaveBeenCalledWith(
+      `/practice/scenario/report/${finalSession.id}?streaming=1`,
+    );
   });
 });

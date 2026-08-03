@@ -34,6 +34,44 @@ test("runs a complete mock scenario and restores it after refresh", async ({
   await expect(page.getByText("演示评分")).toBeVisible();
 });
 
+test("shows the final customer reply before generating the report", async ({
+  page,
+}) => {
+  test.skip(
+    process.env.SCENARIO_AI_MODE !== "mock",
+    "the deterministic scenario smoke test requires SCENARIO_AI_MODE=mock",
+  );
+  test.setTimeout(90_000);
+
+  await login(page);
+  await page.goto("/practice/scenario");
+  await page.getByRole("link", { name: "开始训练" }).first().click();
+  await page.getByRole("button", { name: "开始模拟接待" }).click();
+
+  for (let turn = 1; turn <= 12; turn += 1) {
+    await page.getByLabel("回复顾客").fill(`第${turn}轮：请继续模拟接待。`);
+    await page.getByRole("button", { name: "发送" }).click();
+    await waitForTurn(page, turn);
+  }
+
+  await page.reload();
+  await expect(page.getByText("第 12 / 12 轮")).toBeVisible();
+  await expect(
+    page.getByText("嗯嗯，那我先考虑一下，你还有什么要补充的吗？").last(),
+  ).toBeVisible();
+  await expect(page.getByText("对话已完成，请生成报告。")).toBeVisible();
+  await expect(page.getByText("模拟顾客正在回复…")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "生成并查看报告" }),
+  ).toBeEnabled();
+
+  await page.getByRole("button", { name: "生成并查看报告" }).click();
+  await expect(page).toHaveURL(/\/practice\/scenario\/report\/.*streaming=1/);
+  await expect(
+    page.getByRole("heading", { name: /本次训练通过|本次需要重练/ }),
+  ).toBeVisible({ timeout: 30_000 });
+});
+
 test("keeps the scenario list and chat usable at 390px", async ({ page }) => {
   test.skip(
     process.env.SCENARIO_AI_MODE !== "mock",

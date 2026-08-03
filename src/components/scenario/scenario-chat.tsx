@@ -127,7 +127,7 @@ export function ScenarioChat({
 
         {reachedLimit ? (
           <p className="rounded-[var(--radius-control)] bg-scenario-soft px-4 py-3 text-sm font-bold text-scenario-strong">
-            已达到最大轮次，请结束训练查看报告。
+            对话已完成，请生成报告。
           </p>
         ) : (
           <form className="flex flex-col gap-3" onSubmit={submitMessage}>
@@ -163,7 +163,7 @@ export function ScenarioChat({
           }
           variant="secondary"
         >
-          结束并查看报告
+          {reachedLimit ? "生成并查看报告" : "结束并查看报告"}
         </SoftButton>
       </div>
     </section>

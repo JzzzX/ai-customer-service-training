@@ -98,7 +98,7 @@ describe("ScenarioTrainingService", () => {
     ).rejects.toThrow("场景不存在或未发布");
   });
 
-  it("automatically completes when the maximum learner turn is reached", async () => {
+  it("returns the final exchange before explicit report completion", async () => {
     const scenario = scenarioTemplates[0];
     let session = await service.start({
       learnerId,
@@ -115,8 +115,16 @@ describe("ScenarioTrainingService", () => {
     }
 
     expect(session.learnerTurnCount).toBe(scenario.maxTurns);
-    expect(session.status).toBe("completed");
-    expect(session.report).toBeDefined();
+    expect(session.status).toBe("active");
+    expect(session.report).toBeUndefined();
+
+    const completed = await service.complete({
+      learnerId,
+      sessionId: session.id,
+    });
+
+    expect(completed.status).toBe("completed");
+    expect(completed.report).toBeDefined();
   });
 
   it("attaches a live risk alert to the learner message and persists it", async () => {

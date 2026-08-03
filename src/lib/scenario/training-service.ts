@@ -119,7 +119,7 @@ export class ScenarioTrainingService {
 
     const [, riskAlert] = await Promise.all([streamCustomer, detectRisk]);
 
-    let updated = await this.store.appendExchange({
+    const updated = await this.store.appendExchange({
       learnerId: input.learnerId,
       sessionId: input.sessionId,
       expectedTurnCount: session.learnerTurnCount,
@@ -127,12 +127,6 @@ export class ScenarioTrainingService {
       customerReply: customerChunks.join(""),
       riskAlert,
     });
-    if (updated.learnerTurnCount >= updated.maxTurns) {
-      updated = await this.complete({
-        learnerId: input.learnerId,
-        sessionId: input.sessionId,
-      });
-    }
     return { session: updated, customerChunks, riskAlert };
   }
 
