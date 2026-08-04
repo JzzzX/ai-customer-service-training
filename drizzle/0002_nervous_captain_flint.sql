@@ -1,0 +1,1 @@
+ALTER TABLE "review_decisions" ADD CONSTRAINT "review_decisions_report_unique" UNIQUE("evaluation_report_id");

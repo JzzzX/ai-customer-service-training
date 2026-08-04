@@ -1,0 +1,1 @@
+ALTER TABLE "evaluation_reports" ADD COLUMN "low_confidence" boolean DEFAULT false NOT NULL;

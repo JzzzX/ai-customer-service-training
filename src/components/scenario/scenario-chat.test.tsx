@@ -1,0 +1,356 @@
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+
+import type { ScenarioSession } from "@/lib/scenario/schema";
+import { scenarioTemplates } from "@/lib/scenario/templates";
+
+const mocks = vi.hoisted(() => ({
+  sendScenarioMessageAction: vi.fn(),
+  completeScenarioAction: vi.fn(),
+}));
+
+vi.mock("@/app/practice/scenario/actions", () => ({
+  sendScenarioMessageAction: mocks.sendScenarioMessageAction,
+  completeScenarioAction: mocks.completeScenarioAction,
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}));
+
+import { ScenarioChat } from "./scenario-chat";
+
+const sessionId = "00000000-0000-4000-8000-000000000010";
+const initialSession: ScenarioSession = {
+  id: sessionId,
+  learnerId: "00000000-0000-4000-8000-000000000002",
+  scenarioId: scenarioTemplates[0].id,
+  scenarioVersionId: scenarioTemplates[0].versionId,
+  status: "active",
+  mode: "mock",
+  learnerTurnCount: 0,
+  maxTurns: 12,
+  messages: [
+    {
+      id: "00000000-0000-4000-8000-000000000020",
+      role: "customer",
+      content: scenarioTemplates[0].openingMessage,
+      createdAt: "2026-07-29T08:00:00.000Z",
+    },
+  ],
+  startedAt: "2026-07-29T08:00:00.000Z",
+  updatedAt: "2026-07-29T08:00:00.000Z",
+};
+
+describe("ScenarioChat", () => {
+  it("continues the conversation and reveals the scripted customer reply", async () => {
+    const learnerMessage = "想先了解狗狗的体重和现在怎么喂。";
+    const customerReply = scenarioTemplates[0].customerTurns[0];
+    const updated: ScenarioSession = {
+      ...initialSession,
+      learnerTurnCount: 1,
+      messages: [
+        ...initialSession.messages,
+        {
+          id: "00000000-0000-4000-8000-000000000021",
+          role: "learner",
+          content: learnerMessage,
+          createdAt: "2026-07-29T08:01:00.000Z",
+        },
+        {
+          id: "00000000-0000-4000-8000-000000000022",
+          role: "customer",
+          content: customerReply,
+          createdAt: "2026-07-29T08:01:00.000Z",
+        },
+      ],
+      updatedAt: "2026-07-29T08:01:00.000Z",
+    };
+    mocks.sendScenarioMessageAction.mockResolvedValue({
+      result: {
+        session: updated,
+        customerChunks: ["体重大概2.1公斤，", "现在的粮会泡软再喂。"],
+      },
+    });
+
+    render(
+      <ScenarioChat
+        initialSession={initialSession}
+        scenarioTitle={scenarioTemplates[0].title}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("回复顾客"), {
+      target: { value: learnerMessage },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+
+    expect(await screen.findByText(learnerMessage)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText(customerReply)).toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText("训练进度 8%")).toBeInTheDocument(),
+    );
+  });
+
+  it("keeps the finish action visible without exposing scoring details", () => {
+    render(
+      <ScenarioChat
+        initialSession={initialSession}
+        scenarioTitle={scenarioTemplates[0].title}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "结束并查看报告" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("需求与宠物信息挖掘"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("starts report generation after revealing the final customer reply", async () => {
+    const learnerMessage = "我会确认需求后给出合适建议。";
+    const finalSession: ScenarioSession = {
+      ...initialSession,
+      learnerTurnCount: 11,
+      messages: [
+        ...initialSession.messages,
+        ...Array.from({ length: 11 }, (_, index) => [
+          {
+            id: `00000000-0000-4000-8000-${String(index + 30).padStart(12, "0")}`,
+            role: "learner" as const,
+            content: `第${index + 1}轮回复`,
+            createdAt: "2026-07-29T08:01:00.000Z",
+          },
+          {
+            id: `00000000-0000-4000-8000-${String(index + 60).padStart(12, "0")}`,
+            role: "customer" as const,
+            content: `第${index + 1}轮顾客回复`,
+            createdAt: "2026-07-29T08:01:00.000Z",
+          },
+        ]).flat(),
+      ],
+    };
+    const updated: ScenarioSession = {
+      ...finalSession,
+      learnerTurnCount: 12,
+      messages: [
+        ...finalSession.messages,
+        {
+          id: "00000000-0000-4000-8000-000000000071",
+          role: "learner",
+          content: learnerMessage,
+          createdAt: "2026-07-29T08:02:00.000Z",
+        },
+        {
+          id: "00000000-0000-4000-8000-000000000072",
+          role: "customer",
+          content: "好的，那我先了解了。",
+          createdAt: "2026-07-29T08:02:00.000Z",
+        },
+      ],
+    };
+    mocks.sendScenarioMessageAction.mockResolvedValue({
+      result: {
+        session: updated,
+        customerChunks: ["好的，那我先了解了。"],
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        createReportResponse([
+          { phase: "analyzing" },
+          { phase: "scoring" },
+          { phase: "saving" },
+          { report: { totalScore: 90 } },
+          { session: { status: "completed" } },
+        ]),
+      ),
+    );
+
+    render(
+      <ScenarioChat
+        initialSession={finalSession}
+        scenarioTitle={scenarioTemplates[0].title}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("回复顾客"), {
+      target: { value: learnerMessage },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+
+    expect(await screen.findByText("好的，那我先了解了。"))
+      .toBeInTheDocument();
+    expect(await screen.findByText("报告已生成")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "查看训练报告" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("正在生成训练报告")).not.toBeInTheDocument();
+  });
+
+  it("generates a report in place when the learner ends early", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        createReportResponse([
+          { phase: "analyzing" },
+          { phase: "scoring" },
+          { phase: "saving" },
+          { report: { totalScore: 70 } },
+        ]),
+      ),
+    );
+
+    render(
+      <ScenarioChat
+        initialSession={initialSession}
+        scenarioTitle={scenarioTemplates[0].title}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "结束并查看报告" }));
+
+    expect(await screen.findByText("报告已生成")).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      `/api/scenario/complete/${initialSession.id}`,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+
+  it("keeps the conversation and allows a failed report to be retried", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockRejectedValueOnce(new Error("评测服务暂时不可用"))
+        .mockResolvedValueOnce(
+          createReportResponse([{ report: { totalScore: 80 } }]),
+        ),
+    );
+
+    render(
+      <ScenarioChat
+        initialSession={initialSession}
+        scenarioTitle={scenarioTemplates[0].title}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "结束并查看报告" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "评测服务暂时不可用",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "重新生成报告" }));
+    expect(await screen.findByText("报告已生成")).toBeInTheDocument();
+  });
+
+  it("shows an error when the report stream closes without a report", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        createReportResponse([{ phase: "analyzing" }, { phase: "saving" }]),
+      ),
+    );
+
+    render(
+      <ScenarioChat
+        initialSession={initialSession}
+        scenarioTitle={scenarioTemplates[0].title}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "结束并查看报告" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "报告生成失败",
+    );
+  });
+
+  it("renders a warning risk alert card attached to the learner message", () => {
+    const sessionWithRisk: ScenarioSession = {
+      ...initialSession,
+      learnerTurnCount: 1,
+      messages: [
+        ...initialSession.messages,
+        {
+          id: "00000000-0000-4000-8000-000000000021",
+          role: "learner",
+          content: "这款粮保证不软便。",
+          createdAt: "2026-07-29T08:01:00.000Z",
+          riskAlert: {
+            riskLabel: "绝对化产品承诺",
+            suggestion: "避免使用绝对化承诺，建议改为更稳妥的说法。",
+            severity: "warning",
+          },
+        },
+      ],
+    };
+
+    render(
+      <ScenarioChat
+        initialSession={sessionWithRisk}
+        scenarioTitle={scenarioTemplates[0].title}
+      />,
+    );
+
+    expect(
+      screen.getByText("风险提示 · 绝对化产品承诺"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("避免使用绝对化承诺，建议改为更稳妥的说法。"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders a danger risk alert card for severe violations", () => {
+    const sessionWithDanger: ScenarioSession = {
+      ...initialSession,
+      learnerTurnCount: 1,
+      messages: [
+        ...initialSession.messages,
+        {
+          id: "00000000-0000-4000-8000-000000000031",
+          role: "learner",
+          content: "你别废话了。",
+          createdAt: "2026-07-29T08:01:00.000Z",
+          riskAlert: {
+            riskLabel: "攻击性语言",
+            suggestion: "请使用专业、礼貌的表达。",
+            severity: "danger",
+          },
+        },
+      ],
+    };
+
+    render(
+      <ScenarioChat
+        initialSession={sessionWithDanger}
+        scenarioTitle={scenarioTemplates[0].title}
+      />,
+    );
+
+    expect(
+      screen.getByText("严重风险提示 · 攻击性语言"),
+    ).toBeInTheDocument();
+  });
+
+});
+
+function createReportResponse(events: unknown[]): Response {
+  const body = events
+    .map((event) => `data: ${JSON.stringify(event)}\n\n`)
+    .join("");
+  return new Response(body, {
+    headers: { "Content-Type": "text/event-stream" },
+  });
+}
