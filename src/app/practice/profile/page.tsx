@@ -16,10 +16,25 @@ import {
 } from "@/lib/runtime/services";
 
 type ProfileTab = "tasks" | "quiz" | "scenario";
+type ScenarioStatus = "all" | "active" | "completed";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
   dateStyle: "medium",
   timeStyle: "short",
+  timeZone: "Asia/Shanghai",
+});
+
+const timelineDateFormatter = new Intl.DateTimeFormat("zh-CN", {
+  month: "long",
+  day: "numeric",
+  weekday: "short",
+  timeZone: "Asia/Shanghai",
+});
+
+const timelineDateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
   timeZone: "Asia/Shanghai",
 });
 
@@ -33,11 +48,12 @@ const categoryLabels: Record<string, string> = {
 export default async function ProfilePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ tab?: string }>;
+  searchParams?: Promise<{ tab?: string; scenarioStatus?: string }>;
 } = {}) {
   const user = await requireUser();
   const params = await searchParams;
   const tab = parseTab(params?.tab);
+  const scenarioStatus = parseScenarioStatus(params?.scenarioStatus);
   const scenarioTemplates =
     await getScenarioTemplateStore().listPublished();
   const [quizProgress, scenarioProgress] = await Promise.all([
@@ -122,7 +138,7 @@ export default async function ProfilePage({
         {tab === "tasks" ? <TaskPanel assignments={assignments} /> : null}
         {tab === "quiz" ? <QuizPanel progress={quizProgress} /> : null}
         {tab === "scenario" ? (
-          <ScenarioPanel progress={scenarioProgress} />
+          <ScenarioPanel progress={scenarioProgress} status={scenarioStatus} />
         ) : null}
       </div>
     </main>
@@ -131,6 +147,10 @@ export default async function ProfilePage({
 
 function parseTab(input: string | undefined): ProfileTab {
   return input === "quiz" || input === "scenario" ? input : "tasks";
+}
+
+function parseScenarioStatus(input: string | undefined): ScenarioStatus {
+  return input === "active" || input === "completed" ? input : "all";
 }
 
 function ProgressSummaryCard({
@@ -358,105 +378,247 @@ function QuizPanel({
 
 function ScenarioPanel({
   progress,
+  status,
 }: {
   progress: Awaited<
     ReturnType<ReturnType<typeof getScenarioTrainingService>["getProgress"]>
   >;
+  status: ScenarioStatus;
+}) {
+  const allSessions = [
+    ...progress.activeSessions,
+    ...progress.completedSessions,
+  ].sort((left, right) => sessionActivityAt(right) - sessionActivityAt(left));
+  const filteredSessions = allSessions.filter((session) =>
+    status === "all" ? true : session.status === status,
+  );
+  const groups = Array.from(
+    filteredSessions.reduce((grouped, session) => {
+      const sessions = grouped.get(session.scenarioId) ?? [];
+      sessions.push(session);
+      grouped.set(session.scenarioId, sessions);
+      return grouped;
+    }, new Map<string, typeof allSessions>()),
+  )
+    .map(([scenarioId, sessions]) => ({ scenarioId, sessions }))
+    .sort(
+      (left, right) =>
+        sessionActivityAt(right.sessions[0]) -
+        sessionActivityAt(left.sessions[0]),
+    );
+
+  return (
+    <section className="mt-8 animate-fade-in-up">
+      <SectionHeading
+        title="实战时间线"
+        description="相同场景已合并，最新会话可直接操作，更早记录按需展开。"
+      />
+      <nav aria-label="实战记录筛选" className="mt-4 flex gap-2 overflow-x-auto">
+        <ScenarioFilterLink
+          active={status === "all"}
+          count={allSessions.length}
+          label="全部"
+          status="all"
+        />
+        <ScenarioFilterLink
+          active={status === "active"}
+          count={progress.activeSessions.length}
+          label="进行中"
+          status="active"
+        />
+        <ScenarioFilterLink
+          active={status === "completed"}
+          count={progress.completedSessions.length}
+          label="已完成"
+          status="completed"
+        />
+      </nav>
+
+      {groups.length === 0 ? (
+        <EmptyPanel
+          className="mt-4"
+          title={status === "active" ? "没有进行中的实战" : "还没有实战记录"}
+          actionHref="/practice/scenario"
+          actionLabel="开始实战"
+        />
+      ) : (
+        <ol className="mt-6 space-y-5">
+          {groups.map((group, index) => {
+            const latest = group.sessions[0];
+            const currentDate = timelineDateKey(latest);
+            const previousDate =
+              index > 0 ? timelineDateKey(groups[index - 1].sessions[0]) : null;
+
+            return (
+              <li className="relative pl-7 sm:pl-9" key={group.scenarioId}>
+                {index < groups.length - 1 ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute bottom-[-1.5rem] left-[5px] top-3 w-px bg-scenario/25 sm:left-[7px]"
+                  />
+                ) : null}
+                <span
+                  aria-hidden="true"
+                  className="absolute left-0 top-2 size-3 rounded-full border-[3px] border-surface bg-scenario shadow-[0_0_0_2px_rgba(138,160,200,0.2)] sm:size-4"
+                />
+                {currentDate !== previousDate ? (
+                  <p className="mb-2 text-sm font-black text-ink-soft">
+                    {timelineDateFormatter.format(new Date(sessionDate(latest)))}
+                  </p>
+                ) : null}
+                <ScenarioHistoryCard sessions={group.sessions} />
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+function ScenarioFilterLink({
+  active,
+  count,
+  label,
+  status,
+}: {
+  active: boolean;
+  count: number;
+  label: string;
+  status: ScenarioStatus;
 }) {
   return (
-    <section className="mt-8 space-y-9 animate-fade-in-up">
-      <div>
-        <SectionHeading
-          title="进行中的实战"
-          description="中途离开的会话会保留在这里，可以继续完成。"
-        />
-        {progress.activeSessions.length === 0 ? (
-          <EmptyPanel
-            className="mt-4"
-            title="没有进行中的实战"
-            actionHref="/practice/scenario"
-            actionLabel="开始实战"
-          />
-        ) : (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {progress.activeSessions.map((session) => (
-              <SoftCard
-                className="flex items-center justify-between gap-4"
-                key={session.id}
-              >
-                <div className="min-w-0">
-                  <SoftBadge variant="scenario">
-                    {categoryLabels[session.category] ?? "情景实战"}
-                  </SoftBadge>
-                  <p className="mt-2 truncate font-black text-ink">{session.title}</p>
-                  <p className="mt-1 text-xs text-ink-faint">
-                    已进行 {session.learnerTurnCount} / {session.maxTurns} 轮
-                  </p>
-                </div>
-                <SoftButtonLink
-                  href={`/practice/scenario/session/${session.id}`}
-                  variant="scenario"
-                  size="sm"
-                >
-                  继续训练
-                </SoftButtonLink>
-              </SoftCard>
-            ))}
+    <Link
+      aria-current={active ? "page" : undefined}
+      className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+        active
+          ? "bg-scenario text-white"
+          : "bg-surface-muted text-ink-soft hover:text-ink"
+      }`}
+      href={`/practice/profile?tab=scenario&scenarioStatus=${status}`}
+    >
+      {label} {count}
+    </Link>
+  );
+}
+
+function ScenarioHistoryCard({
+  sessions,
+}: {
+  sessions: Array<
+    | Awaited<
+        ReturnType<ReturnType<typeof getScenarioTrainingService>["getProgress"]>
+      >["activeSessions"][number]
+    | Awaited<
+        ReturnType<ReturnType<typeof getScenarioTrainingService>["getProgress"]>
+      >["completedSessions"][number]
+  >;
+}) {
+  const latest = sessions[0];
+  const earlier = sessions.slice(1);
+
+  return (
+    <SoftCard className="p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <SoftBadge variant="scenario">
+              {categoryLabels[latest.category] ?? "情景实战"}
+            </SoftBadge>
+            {sessions.length > 1 ? (
+              <span className="text-xs font-bold text-ink-faint">
+                共 {sessions.length} 次
+              </span>
+            ) : null}
           </div>
-        )}
+          <h3 className="mt-2 text-base font-black text-ink sm:text-lg">
+            {latest.title}
+          </h3>
+          <ScenarioSessionMeta session={latest} />
+        </div>
+        <ScenarioSessionAction latest session={latest} />
       </div>
 
-      <div>
-        <SectionHeading title="已完成记录" description="最近 20 次已完成的实战报告。" />
-        {progress.completedSessions.length === 0 ? (
-          <EmptyPanel
-            className="mt-4"
-            title="还没有完成的实战记录"
-            actionHref="/practice/scenario"
-            actionLabel="选择场景"
-          />
-        ) : (
-          <ul className="mt-4 grid gap-3">
-            {progress.completedSessions.map((session) => (
+      {earlier.length > 0 ? (
+        <details className="group mt-4 border-t border-scenario/15 pt-3">
+          <summary className="cursor-pointer list-none text-sm font-bold text-ink-soft transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+            <span className="inline-flex items-center gap-2">
+              <span aria-hidden="true" className="transition-transform group-open:rotate-90">
+                ›
+              </span>
+              展开更早 {earlier.length} 次记录
+            </span>
+          </summary>
+          <ul className="mt-3 divide-y divide-scenario/10 rounded-2xl bg-surface-muted px-4">
+            {earlier.map((session) => (
               <li
-                className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-card)] bg-surface px-5 py-4 shadow-[var(--shadow-soft)]"
+                className="flex flex-wrap items-center justify-between gap-3 py-3"
                 key={session.id}
               >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-bold text-ink">{session.title}</p>
-                    <SoftBadge
-                      variant={session.verdict === "passed" ? "success" : "warning"}
-                    >
-                      {session.verdict === "passed" ? "通过" : "需要重练"}
-                    </SoftBadge>
-                  </div>
-                  <p className="mt-1 text-xs text-ink-faint">
-                    {categoryLabels[session.category] ?? "情景实战"} ·{" "}
-                    {session.completedAt
-                      ? dateTimeFormatter.format(new Date(session.completedAt))
-                      : "已完成"}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <p className="text-2xl font-black text-scenario-strong">
-                    {session.score ?? 0}分
-                  </p>
-                  <SoftButtonLink
-                    href={`/practice/scenario/report/${session.id}`}
-                    variant="secondary"
-                    size="sm"
-                  >
-                    查看完整报告
-                  </SoftButtonLink>
-                </div>
+                <ScenarioSessionMeta session={session} />
+                <ScenarioSessionAction session={session} />
               </li>
             ))}
           </ul>
-        )}
-      </div>
-    </section>
+        </details>
+      ) : null}
+    </SoftCard>
   );
+}
+
+type ScenarioSession = Parameters<typeof ScenarioHistoryCard>[0]["sessions"][number];
+
+function ScenarioSessionMeta({ session }: { session: ScenarioSession }) {
+  return (
+    <p className="mt-1 text-xs text-ink-faint">
+      {dateTimeFormatter.format(new Date(sessionDate(session)))} ·{" "}
+      {session.status === "active"
+        ? `已进行 ${session.learnerTurnCount} / ${session.maxTurns} 轮`
+        : `${session.score ?? 0} 分 · ${
+            session.verdict === "passed" ? "通过" : "需要重练"
+          }`}
+    </p>
+  );
+}
+
+function ScenarioSessionAction({
+  latest = false,
+  session,
+}: {
+  latest?: boolean;
+  session: ScenarioSession;
+}) {
+  return session.status === "active" ? (
+    <SoftButtonLink
+      href={`/practice/scenario/session/${session.id}`}
+      variant="scenario"
+      size="sm"
+    >
+      {latest ? "继续最新" : "继续训练"}
+    </SoftButtonLink>
+  ) : (
+    <SoftButtonLink
+      href={`/practice/scenario/report/${session.id}`}
+      variant="secondary"
+      size="sm"
+    >
+      {latest ? "查看完整报告" : "查看报告"}
+    </SoftButtonLink>
+  );
+}
+
+function sessionDate(session: ScenarioSession) {
+  return session.status === "completed" && session.completedAt
+    ? session.completedAt
+    : session.updatedAt;
+}
+
+function sessionActivityAt(session: ScenarioSession) {
+  return new Date(sessionDate(session)).getTime();
+}
+
+function timelineDateKey(session: ScenarioSession) {
+  return timelineDateKeyFormatter.format(new Date(sessionDate(session)));
 }
 
 function SectionHeading({

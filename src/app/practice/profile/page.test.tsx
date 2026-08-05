@@ -103,15 +103,28 @@ describe("ProfilePage", () => {
     expect(mocks.listAssignments).not.toHaveBeenCalled();
   });
 
-  it("renders active sessions and completed report links for the scenario tab", async () => {
+  it("groups scenario history on a timeline and collapses earlier sessions", async () => {
     render(
       await ProfilePage({
         searchParams: Promise.resolve({ tab: "scenario" }),
       }),
     );
 
-    expect(screen.getByText("继续训练")).toBeInTheDocument();
-    expect(screen.getByText("给3个月泰迪推荐主粮")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "全部 3" })).toHaveAttribute(
+      "href",
+      "/practice/profile?tab=scenario&scenarioStatus=all",
+    );
+    expect(screen.getByRole("link", { name: "进行中 1" })).toHaveAttribute(
+      "href",
+      "/practice/profile?tab=scenario&scenarioStatus=active",
+    );
+    expect(screen.getAllByText("处理中场景")).toHaveLength(1);
+    expect(screen.getByText("共 2 次")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "继续最新" })).toHaveAttribute(
+      "href",
+      "/practice/scenario/session/00000000-0000-4000-8000-000000000022",
+    );
+    expect(screen.getByText("展开更早 1 次记录")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "查看完整报告" }),
     ).toHaveAttribute(
@@ -119,6 +132,25 @@ describe("ProfilePage", () => {
       "/practice/scenario/report/00000000-0000-4000-8000-000000000021",
     );
     expect(mocks.listAssignments).not.toHaveBeenCalled();
+  });
+
+  it("filters the timeline without mixing completed sessions into active groups", async () => {
+    render(
+      await ProfilePage({
+        searchParams: Promise.resolve({
+          tab: "scenario",
+          scenarioStatus: "active",
+        }),
+      }),
+    );
+
+    expect(screen.getByRole("link", { name: "进行中 1" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByText("处理中场景")).toBeInTheDocument();
+    expect(screen.queryByText("给3个月泰迪推荐主粮")).not.toBeInTheDocument();
+    expect(screen.queryByText(/展开更早/)).not.toBeInTheDocument();
   });
 
   it("falls back to tasks for an unknown tab", async () => {
@@ -206,6 +238,23 @@ function scenarioProgress() {
       },
     ],
     completedSessions: [
+      {
+        id: "00000000-0000-4000-8000-000000000023",
+        learnerId,
+        scenarioId: "st_aaaaaaaaaaaaaaaaaaaaaaaa",
+        scenarioVersionId: "sv_aaaaaaaaaaaaaaaaaaaaaaaa",
+        title: "处理中场景",
+        category: "presale",
+        status: "completed",
+        mode: "mock",
+        learnerTurnCount: 8,
+        maxTurns: 8,
+        startedAt: "2026-07-30T08:00:00.000Z",
+        updatedAt: "2026-07-30T08:10:00.000Z",
+        completedAt: "2026-07-30T08:10:00.000Z",
+        score: 82,
+        verdict: "passed",
+      },
       {
         id: "00000000-0000-4000-8000-000000000021",
         learnerId,
