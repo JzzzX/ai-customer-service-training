@@ -12,6 +12,12 @@ test-results/
 !.env.example
 *.db
 *.db-journal
+.venv/
+__pycache__/
+.pytest_cache/
+.coverage
+.runtime/
+frontend/dist/
 
 # Private enterprise sources and generated import artifacts
 /TOC售前客服知识库/

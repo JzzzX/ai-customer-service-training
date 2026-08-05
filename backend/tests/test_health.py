@@ -1,0 +1,14 @@
+from fastapi.testclient import TestClient
+
+from main import create_app
+
+
+def test_health_endpoint_reports_service_identity() -> None:
+    response = TestClient(create_app()).get("/api/v1/health")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "service": "ai-customer-service-training-api",
+        "status": "ok",
+        "version": "0.1.0",
+    }

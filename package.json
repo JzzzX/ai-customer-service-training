@@ -28,7 +28,9 @@
     "test:watch": "vitest",
     "test:e2e": "SCENARIO_AI_MODE=mock playwright test",
     "test:e2e:scenario": "SCENARIO_AI_MODE=mock pnpm exec playwright test tests/e2e/scenario-smoke.spec.ts --grep mock",
-    "test:e2e:live": "E2E_BASE_URL=https://ai-customer-service-training.vercel.app RUN_LIVE_AI_SMOKE=true pnpm exec playwright test tests/e2e/scenario-smoke.spec.ts --grep live"
+    "test:e2e:live": "E2E_BASE_URL=https://ai-customer-service-training.vercel.app RUN_LIVE_AI_SMOKE=true pnpm exec playwright test tests/e2e/scenario-smoke.spec.ts --grep live",
+    "check:company-stack": "bash tests/scripts/company-stack-scripts.sh && cd backend && .venv/bin/python -m pytest -q && cd .. && npm --prefix frontend test && npm --prefix frontend run build",
+    "test:e2e:company-stack": "env -u NO_COLOR playwright test -c playwright.company-stack.config.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0",

@@ -11,5 +11,9 @@ export default defineConfig([
     "coverage/**",
     "playwright-report/**",
     "test-results/**",
+    "backend/.venv/**",
+    "backend/**/__pycache__/**",
+    "frontend/dist/**",
+    "frontend/node_modules/**",
   ]),
 ]);

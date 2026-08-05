@@ -1,0 +1,51 @@
+:root {
+  color: #1f2933;
+  background: #f6f7f9;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+.app-header,
+.app-footer,
+.app-main {
+  width: min(960px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 24px 0;
+}
+
+.app-main {
+  min-height: calc(100vh - 140px);
+}
+
+.app-footer {
+  padding: 20px 0;
+  color: #66737f;
+  font-size: 14px;
+}
+
+.status-card {
+  padding: 28px;
+  border-radius: 20px;
+  background: white;
+  box-shadow: 0 16px 50px rgb(31 41 51 / 8%);
+}
+
+.eyebrow {
+  color: #647eaa;
+  font-size: 12px;
+  font-weight: 700;
+}
