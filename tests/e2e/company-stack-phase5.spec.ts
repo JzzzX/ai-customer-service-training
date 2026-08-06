@@ -29,5 +29,5 @@ test("administrator manages resources, reviews a report, and sees audit history"
   await page.getByRole("button", { name: "通过复核" }).first().click();
 
   await page.goto("/admin/history");
-  await expect(page.getByText("review_decision")).toBeVisible();
+  await expect(page.getByRole("cell", { name: "review_decision" }).first()).toBeVisible();
 });
