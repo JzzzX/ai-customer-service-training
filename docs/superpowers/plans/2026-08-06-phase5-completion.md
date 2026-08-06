@@ -135,13 +135,13 @@
 
 **Interfaces:**
 - Acceptance report records exact commands, pass counts, commit SHAs, migration report hashes, deployment guard results, and any external prerequisite such as company MySQL credentials without calling that prerequisite complete.
-- Roadmap marks all six Phase5 checkboxes only when the corresponding automated evidence exists, sets current execution to `6/6`, overall progress to `100%`, links plan/report, and preserves the rollback rule for a real production window.
+- Roadmap marks all six Phase5 scope checkboxes only when the corresponding automated evidence exists, sets the five implementation tasks to `5/5`, overall progress to `100%`, links plan/report, and preserves the rollback rule for a real production window.
 
-- [ ] **Step 1: Run backend focused tests and full `cd backend && .venv/bin/python -m pytest -q`**.
-- [ ] **Step 2: Run frontend focused tests, full Vitest, Vite build, legacy Next tests, direct ESLint/type checks/Drizzle check/Next build, and company-stack Playwright including Phase5.
-- [ ] **Step 3: Run the migration rehearsal and deployment guard matrix again from a clean temporary directory; save deterministic report hashes.
-- [ ] **Step 4: Write the acceptance report and update Roadmap only with observed evidence; explicitly separate local MySQL-compatible validation from a real company database cutover when credentials are absent.
-- [ ] **Step 5: Run `git status --short --branch`, inspect staged paths, commit with `docs(roadmap): 完成阶段五管理端与切换验收`, push the same commit to `origin main` and `gitea main`, and compare all three SHAs.
+- [x] **Step 1: Run backend focused tests and full `cd backend && .venv/bin/python -m pytest -q`**; 90 tests pass.
+- [x] **Step 2: Run frontend focused tests, full Vitest, Vite build, legacy Next tests, direct ESLint/type checks/Drizzle check/Next build, and company-stack Playwright including Phase5; all observed results are recorded in the acceptance report.
+- [x] **Step 3: Run the migration rehearsal and deployment guard matrix again from a clean temporary directory; save deterministic report hashes.
+- [x] **Step 4: Write the acceptance report and update Roadmap only with observed evidence; local MySQL-compatible validation is separated from the real company database cutover prerequisite.
+- [x] **Step 5: Run `git status --short --branch`, inspect staged paths, commit with `docs(roadmap): 完成阶段五管理端与切换验收`, push the same commit to `origin main` and `gitea main`, and compare all three SHAs.
 
 ## Self-review checklist
 

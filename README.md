@@ -4,6 +4,16 @@
 
 这是一个以知识库为基础、以题库和 AI 情景训练为核心的客服培训 MVP。项目同时提供学员端和管理端，覆盖内容发布、学习训练、过程记录、AI 评测与人工复核。
 
+## 公司技术栈迁移入口
+
+Phase 1–5 的新系统位于 `backend/`（FastAPI + SQLAlchemy + Alembic）和
+`frontend/`（Vue 3 + Vite + Pinia）。管理员入口为 `/admin`，包含知识、题目、场景、
+任务、报告复核和管理历史；Linux 生产配置位于 `deploy/`，迁移对账和维护窗口门禁位于
+`backend/scripts/migrate_phase5.py`、`backend/scripts/rehearse_phase5.py` 和 `scripts/phase5_*.sh`。
+
+迁移阶段、验收证据和真实生产窗口前置条件以 [Roadmap](docs/ROADMAP.md) 和
+[Phase 5 验收报告](docs/superpowers/reports/2026-08-06-phase5-acceptance.md) 为准。
+
 ## 系统架构
 
 下面这张图展示了项目从知识内容生产到学员训练、结果沉淀和管理员复核的完整闭环：
