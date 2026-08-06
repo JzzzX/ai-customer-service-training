@@ -1,6 +1,6 @@
 # 开发交接说明
 
-本文是当前 `main` 的运行与维护入口。历史阶段计划保留在 `docs/superpowers/`，不应替代本文或当前 [Roadmap](ROADMAP.md)。
+本文是当前 `main` 的运行与维护入口。历史计划、规格和阶段报告保留在[审计归档](archive/README.md)，不应替代本文、[统一验收标准](ACCEPTANCE.md)或当前 [Roadmap](ROADMAP.md)。
 
 ## 当前边界
 
@@ -12,6 +12,8 @@
 - 飞书 OAuth + JWT Cookie；Ark Provider，测试时只能通过配置显式启用 Mock。
 
 当前 `main` 已删除旧前端和旧 ORM 运行代码；可恢复的旧快照是双远程标签 `legacy-next-final-bb8d164`。
+
+Vercel 已不是当前部署目标。GitHub 上旧 Vercel 集成产生的 Production 失败不代表当前代码测试失败，应由仓库管理员断开旧集成，不恢复已经退役的配置。
 
 ## 目录导航
 
@@ -102,4 +104,4 @@ backend/.venv/bin/python backend/scripts/migrate_legacy.py reconcile \
 7. 两次隔离 PostgreSQL/MySQL 演练的行数、哈希、孤儿和抽样结果一致。
 8. 公司开发、DBA、运维和飞书管理员确认真实切换窗口、密钥、Ark、域名和观察指标。
 
-只有代码、数据和生产三条轨道都通过，才能把整体迁移标记为 100%。
+逐项签字和证据边界见 [ACCEPTANCE.md](ACCEPTANCE.md)。只有代码、数据和生产三条轨道都通过，才能把整体迁移标记为 100%。

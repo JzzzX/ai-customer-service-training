@@ -1,6 +1,6 @@
 # 模拟对话与报告生成解耦 Implementation Plan
 
-> 历史迁移记录，不是当前运行说明。当前入口见 `README.md` 与 `docs/AGENT-HANDOFF.md`。
+> 历史迁移记录，不是当前运行说明。当前入口见[项目 README](../../../../README.md)与[开发交接说明](../../../AGENT-HANDOFF.md)。
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 

@@ -1,5 +1,7 @@
 # Phase 6 验收报告：彻底迁移与旧技术栈退役
 
+> 历史验收记录，不是当前运行说明。当前状态以[统一验收标准](../../../ACCEPTANCE.md)和 [Roadmap](../../../ROADMAP.md) 为准。
+
 日期：2026-08-06
 分支：`main`
 旧系统快照：`legacy-next-final-bb8d164` → `bb8d164b51412b193e5d9e4513bce5e15b501186`

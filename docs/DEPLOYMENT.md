@@ -2,6 +2,8 @@
 
 本文只描述当前 Vue/FastAPI/MySQL 系统。旧系统仅作为标签快照保留，回滚源码标签为 `legacy-next-final-bb8d164`，不作为当前部署方案。
 
+Vercel 已退役且不是生产目标；仓库管理员应断开残留自动部署集成，不要恢复旧 Next/Vercel 配置。当前生产形态固定为 Linux + Nginx + systemd + Uvicorn。
+
 ## 运行拓扑
 
 ```mermaid
@@ -87,4 +89,4 @@ dry-run 只输出顺序，不会停止服务、删除数据或切 DNS。真实�
 - 应用问题：通过 systemd/Nginx 恢复上一份已验证的 Vue/FastAPI 构建。
 - 源码追溯：检出 `legacy-next-final-bb8d164` 到隔离目录，仅供审计或临时回退，不覆盖当前 `main`。
 
-生产切换是否完成以 [Roadmap](ROADMAP.md) 的“数据迁移”和“生产切换”轨道为准；本地测试通过不能替代公司权限下的真实演练。
+生产切换是否完成以[统一验收标准](ACCEPTANCE.md)和 [Roadmap](ROADMAP.md) 的“数据迁移”“生产切换”轨道为准；本地测试通过不能替代公司权限下的真实演练。

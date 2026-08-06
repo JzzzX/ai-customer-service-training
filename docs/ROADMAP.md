@@ -6,7 +6,7 @@
 
 阶段 1 至阶段 5 定义为公司标准新栈基础工程；Phase 6 负责真实异构迁移、功能等价、旧栈退役和生产切换。旧系统源码已经冻结于双远程标签 `legacy-next-final-bb8d164`，不再进入 `main`。在工程、数据、生产三条验收轨道全部通过前，不标记整体迁移 100%。
 
-权威技术基准为 [PROJECT_TECH_STACK.md](PROJECT_TECH_STACK.md)，完整迁移设计为 [公司技术栈迁移设计](superpowers/specs/2026-08-05-company-stack-migration-design.md)。
+权威技术基准为 [PROJECT_TECH_STACK.md](PROJECT_TECH_STACK.md)，当前验收结论以 [ACCEPTANCE.md](ACCEPTANCE.md) 为准；迁移前的完整设计已进入[历史归档](archive/legacy-migration/specs/2026-08-05-company-stack-migration-design.md)。
 
 ## 总体进度
 
@@ -23,7 +23,7 @@
 
 | 轨道 | 当前状态 | 完成条件 |
 | --- | --- | --- |
-| 工程重构 | Phase 1–5 已完成，Phase 6 65% | main 仅保留 Vue/FastAPI/MySQL 技术栈，旧功能逐项等价 |
+| 工程重构 | **代码级已完成** | `main` 仅保留 Vue/FastAPI/MySQL 技术栈，旧功能逐项等价；交接时复跑自动化门禁 |
 | 数据迁移 | 工具与自动化验证完成，真实演练未开始 | PostgreSQL → MySQL 快照、导入、对账，两次真实隔离演练通过 |
 | 生产切换 | 未开始 | 公司维护窗口、DNS 切换、观察期和旧系统下线完成 |
 
@@ -71,7 +71,7 @@
 
 - [x] 迁移知识、题目、场景、任务、审核和历史管理页面。
 - [x] 建立 Nginx、systemd、Uvicorn 与 Linux 生产配置。
-- [x] 完成两次隔离迁移演练；同一 SQLAlchemy Core 路径支持 `mysql+pymysql`，当前环境以隔离 SQLite 完成可重复证据。
+- [x] 完成两次隔离 SQLite 迁移路径演练；同一 SQLAlchemy Core 路径支持 `mysql+pymysql`，该证据不等同于真实 PostgreSQL/MySQL 异构演练。
 - [x] 对账账号、内容、任务、会话、消息、报告和审核记录，覆盖行数、外键孤儿和确定性哈希。
 - [x] 固化维护窗口只读、最终增量、失败恢复和入口切换顺序；真实窗口执行由外部维护授权触发。
 - [x] 固化生产切换、监控观察和旧系统下线验收门禁；未获得公司连接信息前不执行真实 DNS/下线操作。
@@ -86,7 +86,7 @@
 - [x] 将公司栈 Playwright 配置与 E2E 测试迁入 `frontend/`，测试转换为 JavaScript 并通过 6/6。
 - [x] 从 `main` 删除旧前端、旧 ORM、根 TypeScript/TSX 运行代码和旧构建配置；旧代码仅保留在标签。
 - [ ] 用 PostgreSQL 旧结构 fixture 和 MySQL 8.0 完成两次独立真实隔离演练，核对数量、外键、哈希、顺序和抽样聚合。
-- [ ] 生成 Phase 6 三轨验收报告；代码轨、数据轨、生产轨分别签字，不提前标记整体 100%。
+- [x] 生成 Phase 6 三轨验收文档，分别记录代码、数据和生产状态，不提前标记整体 100%。
 - [ ] 由公司开发、DBA、运维和飞书管理员完成维护窗口、DNS 切换、观察期和旧系统下线。
 
 ## 最近完成迭代
@@ -103,9 +103,9 @@
 
 ## 当前执行
 
-目标：阶段 6 代码级重构和旧栈退役已收口，继续完成真实 PostgreSQL/MySQL 演练和公司生产切换。实施依据为 [Phase 6 验收报告](superpowers/reports/2026-08-06-phase6-acceptance.md) 和 [迁移矩阵](PHASE6-MIGRATION-MATRIX.md)。
+目标：阶段 6 代码级重构和旧栈退役已收口，继续完成真实 PostgreSQL/MySQL 演练和公司生产切换。实施依据为[统一验收标准](ACCEPTANCE.md)和[迁移矩阵](PHASE6-MIGRATION-MATRIX.md)；原始阶段材料仅在[历史归档](archive/README.md)中保留。
 
-计划任务进度：**7/10**，工程轨道进行中，数据和生产轨道待公司环境。
+计划任务进度：**7/10**，代码工程轨道已完成；第 8–10 项需要公司环境、签字和生产权限。
 
 1. [x] 冻结旧系统标签并建立四列功能/数据对应矩阵。
 2. [x] 补齐目标 MySQL 模型、关联关系、来源字段和 Alembic 迁移。
@@ -154,7 +154,7 @@
 | `7cafd56` | 全量迁移对账与隔离演练工具 | 5 项迁移测试、确定性快照、两次隔离报告一致；MySQL URL 双 pair 参数已支持 |
 | `c640360` | Linux 配置与切换预检门禁 | 部署脚本测试通过，Nginx/systemd 模板、生产 env 校验和 dry-run 顺序已固化 |
 | `fd5aaca` | 公司栈 E2E 迁移与旧冒烟删除 | frontend Playwright 6/6；配置和测试全部为 JavaScript |
-| 待提交 | Phase 6 旧栈退役与文档收口 | 根目录无 TS/TSX、旧 ORM/前端配置；三轨验收报告记录真实演练和生产前置条件 |
+| `412244d` | Phase 6 旧栈退役与迁移验收收口 | 根目录无 TS/TSX、旧 ORM/前端配置；三轨验收记录真实演练和生产前置条件 |
 
 ## 风险与阻塞
 

@@ -1,6 +1,6 @@
 # 阶段 4：AI 实战与训练记录完成实施计划
 
-> 历史迁移记录，不是当前运行说明。当前入口见 `README.md` 与 `docs/AGENT-HANDOFF.md`。
+> 历史迁移记录，不是当前运行说明。当前入口见[项目 README](../../../../README.md)与[开发交接说明](../../../AGENT-HANDOFF.md)。
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
