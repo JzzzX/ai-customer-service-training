@@ -6,5 +6,13 @@ class Base(DeclarativeBase):
 
 
 from app.models.user import FeishuIdentity, User
+from app.models.learning import Assignment, KnowledgeProgress, ScenarioProgressSummary
 
-__all__ = ["Base", "FeishuIdentity", "User"]
+__all__ = [
+    "Assignment",
+    "Base",
+    "FeishuIdentity",
+    "KnowledgeProgress",
+    "ScenarioProgressSummary",
+    "User",
+]

@@ -59,6 +59,78 @@ body {
   box-shadow: 0 16px 50px rgb(31 41 51 / 8%);
 }
 
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.overview-card,
+.assignment-card {
+  padding: 22px;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 12px 36px rgb(31 41 51 / 6%);
+}
+
+.overview-card {
+  display: grid;
+  gap: 8px;
+}
+
+.overview-card strong {
+  font-size: 22px;
+}
+
+.overview-card span,
+.overview-state,
+.empty-state,
+.section-heading span,
+.assignment-card li span {
+  color: #66737f;
+  font-size: 14px;
+}
+
+.overview-state {
+  margin-top: 20px;
+}
+
+.error-state {
+  color: #b54747;
+}
+
+.assignment-card {
+  margin-top: 16px;
+}
+
+.section-heading,
+.assignment-card li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.assignment-card ul {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.assignment-card li {
+  padding-top: 12px;
+  border-top: 1px solid #edf0f3;
+}
+
+@media (max-width: 560px) {
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .auth-card {
   max-width: 520px;
   margin: 10vh auto 0;
