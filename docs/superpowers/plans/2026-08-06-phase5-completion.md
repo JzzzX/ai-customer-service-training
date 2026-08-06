@@ -91,11 +91,11 @@
 - `backend/scripts/migrate_phase5.py --source-url URL --target-url URL --report PATH [--dry-run] [--replace-target]` exits nonzero on count/hash/orphan mismatch.
 - `backend/scripts/rehearse_phase5.py --root PATH` creates two independent source/target pairs and writes byte-identical reports; `PHASE5_SOURCE_URL` and `PHASE5_TARGET_URL` can point the same harness at isolated MySQL databases.
 
-- [ ] **Step 1: Write failing tests** for canonical row hashing, foreign-key orphan detection, preservation of JSON/timestamps, refusal of a dirty target, dry-run no-write behavior, and two isolated deterministic reports.
-- [ ] **Step 2: Run `cd backend && .venv/bin/python -m pytest tests/test_phase5_migration.py -q`; confirm failures occur before the service/CLI exists.
-- [ ] **Step 3: Implement snapshot, ordered copy, reconciliation, CLI argument validation, and the rehearsal harness using SQLAlchemy Core so `sqlite+pysqlite` and `mysql+pymysql` share the same code path.
-- [ ] **Step 4: Run the migration tests plus two isolated rehearsal commands on temporary SQLite databases; if MySQL connection variables are present, repeat the exact commands with two isolated MySQL schemas and record both dialects.
-- [ ] **Step 5: Commit and push** with `feat(phase5): 完成全量迁移对账与隔离演练工具`.
+- [x] **Step 1: Write failing tests** for canonical row hashing, foreign-key orphan detection, preservation of JSON/timestamps, refusal of a dirty target, dry-run no-write behavior, and two isolated deterministic reports.
+- [x] **Step 2: Run `cd backend && .venv/bin/python -m pytest tests/test_phase5_migration.py -q`; the initial run failed during collection because the service module did not exist.
+- [x] **Step 3: Implement snapshot, ordered copy, reconciliation, CLI argument validation, and the rehearsal harness using SQLAlchemy Core so `sqlite+pysqlite` and `mysql+pymysql` share the same code path.
+- [x] **Step 4: Run five migration tests and two isolated rehearsal runs; both reports match byte-for-byte. The runner also accepts two isolated MySQL URL pairs through explicit CLI flags or environment variables.
+- [x] **Step 5: Commit and push** with `feat(phase5): 完成全量迁移对账与隔离演练工具`.
 
 ### Task 4: Linux 生产配置与安全切换门禁
 
