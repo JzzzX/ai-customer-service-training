@@ -41,3 +41,9 @@ class LearnerOverviewResponse(BaseModel):
     assignments: list[AssignmentResponse]
     knowledge: KnowledgeProgressResponse
     scenario: ScenarioProgressResponse
+
+
+class AssignmentPageResponse(BaseModel):
+    items: list[AssignmentResponse]
+    total: int
+    next_offset: int | None = None

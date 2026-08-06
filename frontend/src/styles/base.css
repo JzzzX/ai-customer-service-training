@@ -90,6 +90,16 @@ body {
 .admin-table td { padding: 14px 16px; border-bottom: 1px solid #edf0f3; text-align: left; }
 .admin-table th { color: #66737f; font-size: 13px; }
 .secondary-action { border: 0; border-radius: 8px; background: #647eaa; color: white; cursor: pointer; padding: 8px 12px; }
+.admin-form { display: grid; gap: 16px; max-width: 720px; margin-top: 24px; }
+.admin-form label { display: grid; gap: 7px; color: #66737f; font-size: 13px; font-weight: 700; }
+.admin-form input,
+.admin-form select,
+.admin-form textarea { width: 100%; box-sizing: border-box; border: 1px solid #d9e0e7; border-radius: 10px; padding: 11px 12px; background: #fff; color: #1f2933; font: inherit; }
+.admin-form textarea { min-height: 100px; resize: vertical; }
+.admin-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.admin-draft-card { display: grid; gap: 8px; margin-top: 16px; padding: 18px; border: 1px solid #e1e7ed; border-radius: 14px; background: #fff; }
+.admin-draft-card span,
+.admin-draft-card small { color: #66737f; }
 
 .app-main {
   min-height: calc(100vh - 140px);

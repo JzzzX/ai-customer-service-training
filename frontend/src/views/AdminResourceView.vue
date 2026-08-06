@@ -88,6 +88,7 @@ function formatValue(value) {
         <tbody>
           <tr v-for="item in rows" :key="item.id || item.report_id || item.resource_id">
             <td v-for="column in tableColumns" :key="column[0]">{{ formatValue(item[column[0]]) }}</td>
+            <td v-if="props.resource === 'questions'"><RouterLink :to="`/admin/questions/${item.id}/review`">审核</RouterLink></td>
           </tr>
         </tbody>
       </table>

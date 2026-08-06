@@ -227,3 +227,69 @@ def test_admin_resources_and_review_decision_are_audited() -> None:
 
 def test_phase5_audit_table_is_registered() -> None:
     assert "admin_audit_events" in Base.metadata.tables
+
+
+def test_phase6_admin_writes_and_learner_assignment_endpoint() -> None:
+    client, sessions = make_client()
+    seed_admin_resources(sessions)
+
+    created = client.post(
+        "/api/v1/admin/assignments",
+        json={
+            "learner_id": "learner-1",
+            "assignment_type": "quiz",
+            "target_id": "quiz-1",
+        },
+    )
+    assert created.status_code == 201
+    assert created.json()["assignment"]["target_label"] == "退货专题"
+
+    review = client.patch(
+        "/api/v1/admin/questions/question-1/review",
+        json={
+            "status": "approved",
+            "prompt": "第一步应当做什么？",
+            "comment": "来源和答案已核对。",
+        },
+    )
+    assert review.status_code == 200
+    assert review.json()["status"] == "published"
+
+    published = client.post("/api/v1/admin/quiz-sets/quiz-1/publish")
+    assert published.status_code == 200
+    assert published.json()["question_count"] == 1
+
+    learner_client, learner_sessions = make_client(role="learner")
+    seed_admin_resources(learner_sessions)
+    assignments = learner_client.get("/api/v1/me/assignments")
+    assert assignments.status_code == 200
+    assert assignments.json()["items"][0]["target_label"] == "退货咨询"
+
+
+def test_phase6_review_detail_is_admin_only() -> None:
+    client, sessions = make_client()
+    seed_admin_resources(sessions)
+    detail = client.get("/api/v1/admin/reviews/report-1")
+    assert detail.status_code == 200
+    assert detail.json()["report"]["id"] == "report-1"
+
+    learner, learner_sessions = make_client(role="learner")
+    seed_admin_resources(learner_sessions)
+    assert learner.get("/api/v1/admin/reviews/report-1").status_code == 403
+
+
+def test_phase6_scenario_draft_generation_is_admin_only() -> None:
+    client, _ = make_client()
+    response = client.post(
+        "/api/v1/admin/scenario-drafts/generate",
+        json={"category": "logistics", "count": 2},
+    )
+    assert response.status_code == 200
+    assert len(response.json()["scenarios"]) == 2
+    assert response.json()["scenarios"][0]["category"] == "logistics"
+
+    learner, _ = make_client(role="learner")
+    assert learner.post(
+        "/api/v1/admin/scenario-drafts/generate",
+        json={"category": "logistics", "count": 1},
+    ).status_code == 403

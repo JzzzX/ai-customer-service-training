@@ -1,10 +1,14 @@
 import { defineStore } from 'pinia'
 
 import {
+  createAdminAssignment,
   decideAdminReview,
+  generateAdminScenarioDrafts,
   getAdminOverview,
   listAdminHistory,
   listAdminResource,
+  publishAdminQuizSet,
+  reviewAdminQuestion,
 } from '../api/admin'
 
 const resourceNames = ['knowledge', 'questions', 'scenarios', 'assignments', 'reviews', 'history']
@@ -58,6 +62,20 @@ export const useAdminStore = defineStore('admin', {
       ))
       this.resources.reviews = { ...this.resources.reviews, items: reviews }
       return result
+    },
+    async createAssignment(payload) {
+      return createAdminAssignment(payload)
+    },
+    async reviewQuestion(questionId, payload) {
+      const result = await reviewAdminQuestion(questionId, payload)
+      await this.loadResource('questions', { limit: 100 })
+      return result
+    },
+    async publishQuizSet(quizSetId) {
+      return publishAdminQuizSet(quizSetId)
+    },
+    async generateScenarioDrafts(payload) {
+      return generateAdminScenarioDrafts(payload)
     },
   },
 })

@@ -86,6 +86,27 @@ class ArkScenarioProvider(ConversationProvider, LiveRiskProvider, EvaluationProv
                 retryable=True,
             ) from error
 
+    def generate_scenario_drafts(self, category: str, count: int) -> list[dict[str, object]]:
+        raw = self._complete(
+            "scenario_generation",
+            {"category": category, "count": count},
+        )
+        data = _parse_json(raw, code="SCENARIO_AI_INVALID_RESPONSE")
+        scenarios = data.get("scenarios")
+        if not isinstance(scenarios, list) or len(scenarios) != count:
+            raise ProviderError(
+                "SCENARIO_AI_INVALID_RESPONSE",
+                "Ark 场景生成结果数量不正确。",
+                retryable=True,
+            )
+        if any(not isinstance(item, dict) for item in scenarios):
+            raise ProviderError(
+                "SCENARIO_AI_INVALID_RESPONSE",
+                "Ark 场景生成结果格式不正确。",
+                retryable=True,
+            )
+        return [dict(item) for item in scenarios]
+
     def _complete(self, operation: str, payload: dict[str, object]) -> str:
         if self.settings.scenario_ai_mode != "ark" or not self.settings.ark_base_url or not self.settings.ark_api_key or not self.settings.ark_model:
             raise ProviderError("SCENARIO_AI_NOT_CONFIGURED", "Ark Provider 尚未完成配置。", retryable=False)

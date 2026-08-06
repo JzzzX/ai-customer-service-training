@@ -115,6 +115,7 @@ class AdminRepository:
         items = [
             {
                 "id": question.id,
+                "quiz_set_id": question.quiz_set_id,
                 "question_key": question.question_key,
                 "prompt": question.prompt,
                 "question_type": question.question_type,

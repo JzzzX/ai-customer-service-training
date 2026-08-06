@@ -30,3 +30,55 @@ class ReviewDecisionResponse(BaseModel):
     corrected_score: int | None
     comment: str
     created_at: datetime
+
+
+class AssignmentCreateRequest(BaseModel):
+    learner_id: str = Field(min_length=1, max_length=64)
+    assignment_type: Literal["quiz", "scenario"]
+    target_id: str = Field(min_length=1, max_length=64)
+    due_at: datetime | None = None
+
+
+class QuestionReviewUpdateRequest(BaseModel):
+    status: Literal["approved", "rejected"]
+    prompt: str | None = Field(default=None, min_length=1, max_length=10000)
+    options: list[str] | None = Field(default=None, min_length=2)
+    correct_answers: list[str] | None = Field(default=None, min_length=1)
+    explanation: str | None = Field(default=None, max_length=10000)
+    category: str | None = Field(default=None, max_length=128)
+    difficulty: Literal["easy", "medium", "hard"] | None = None
+    comment: str = Field(default="", max_length=2000)
+
+
+class PublishQuizSetResponse(BaseModel):
+    id: str
+    status: str
+    question_count: int
+
+
+class AdminReviewDetailResponse(BaseModel):
+    report: dict[str, Any]
+    messages: list[dict[str, Any]]
+    decisions: list[dict[str, Any]]
+
+
+class ScenarioDraftGenerateRequest(BaseModel):
+    category: Literal["presale", "logistics", "damage_shortage", "complaint"]
+    count: int = Field(default=3, ge=1, le=5)
+
+
+class ScenarioDraftGenerateResponse(BaseModel):
+    scenarios: list[dict[str, Any]]
+
+
+class AdminQuestionDetailResponse(BaseModel):
+    id: str
+    quiz_set_id: str | None = None
+    prompt: str
+    options: list[str]
+    correct_answers: list[str]
+    explanation: str
+    category: str
+    difficulty: str
+    status: str
+    latest_review: dict[str, Any] | None = None
