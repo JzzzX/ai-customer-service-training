@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
 
 import { useAuthStore } from '../stores/auth'
 import { useOverviewStore } from '../stores/overview'
@@ -28,6 +29,7 @@ onMounted(() => overview.loadOverview())
       <strong>身份与个人中心迁移</strong>
       <span>飞书身份、Cookie 会话与服务端角色权限已接入新系统。</span>
     </div>
+    <RouterLink class="profile-scenario-link" to="/practice/scenario">进入 AI 实战训练 →</RouterLink>
     <p v-if="overview.status === 'loading'" class="overview-state">正在加载训练进度…</p>
     <p v-else-if="overview.status === 'error'" class="overview-state error-state">
       {{ overview.error }}

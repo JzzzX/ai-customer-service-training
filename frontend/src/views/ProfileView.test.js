@@ -31,7 +31,12 @@ describe('ProfileView', () => {
       },
     }
 
-    const wrapper = mount(ProfileView, { global: { plugins: [pinia] } })
+    const wrapper = mount(ProfileView, {
+      global: {
+        plugins: [pinia],
+        stubs: { RouterLink: { template: '<a><slot /></a>' } },
+      },
+    })
 
     expect(wrapper.text()).toContain('测试学员')
     expect(wrapper.text()).toContain('learner@example.test')

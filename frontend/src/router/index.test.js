@@ -42,4 +42,14 @@ describe('router', () => {
       '/practice/quiz/topics/returns',
     )
   })
+
+  it('requires login before entering scenario history', async () => {
+    const auth = { user: null, ensureLoaded: async () => {} }
+    const router = createAppRouter({ history: createMemoryHistory(), auth })
+    router.push('/practice/scenario/history')
+    await router.isReady()
+
+    expect(router.currentRoute.value.name).toBe('login')
+    expect(router.currentRoute.value.query.redirect).toBe('/practice/scenario/history')
+  })
 })
