@@ -127,7 +127,7 @@
 | `a919d08` | 公司栈 Phase 4 E2E 与验收种子 | 8 场景 E2E seed、报告重试解锁、Playwright 4/4 |
 | `2062183` | 阶段 5 管理端与生产切换实施计划 | 计划覆盖管理员、迁移、Linux 部署、切换门禁和阶段验收 |
 | `0cde302` | 管理员资源 API 与审核审计 | 后端 Phase5 聚焦测试、管理员权限拒绝、Alembic 升降级通过 |
-| 待提交 | Vue 管理端与管理员 E2E | Vue 38 项、Vite build、Phase5 Playwright 2/2 |
+| `fc0daa0` | Vue 管理端与管理员 E2E | Vue 38 项、Vite build、Phase5 Playwright 2/2 |
 
 ## 风险与阻塞
 
