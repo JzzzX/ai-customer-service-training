@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import MigrationHealthView from '../views/MigrationHealthView.vue'
 import ProfileView from '../views/ProfileView.vue'
+import QuizTopicsView from '../views/QuizTopicsView.vue'
 
 export const routes = [
   { path: '/', redirect: '/profile' },
@@ -17,6 +18,11 @@ export const routes = [
     path: '/migration/health',
     name: 'migration-health',
     component: MigrationHealthView,
+  },
+  {
+    path: '/practice/quiz/topics',
+    name: 'quiz-topics',
+    component: QuizTopicsView,
   },
 ]
 

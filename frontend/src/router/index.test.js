@@ -21,4 +21,13 @@ describe('router', () => {
 
     expect(router.currentRoute.value.name).toBe('profile')
   })
+
+  it('keeps the published quiz catalog readable without login', async () => {
+    const auth = { user: null, ensureLoaded: async () => {} }
+    const router = createAppRouter({ history: createMemoryHistory(), auth })
+    router.push('/practice/quiz/topics')
+    await router.isReady()
+
+    expect(router.currentRoute.value.name).toBe('quiz-topics')
+  })
 })
