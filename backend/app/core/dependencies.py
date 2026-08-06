@@ -41,3 +41,13 @@ def auth_required() -> AppError:
         message="请先使用飞书登录。",
         status_code=401,
     )
+
+
+def admin_required(user: User = Depends(get_current_user)) -> User:
+    if user.role != "admin":
+        raise AppError(
+            code="ADMIN_REQUIRED",
+            message="仅管理员可以访问管理端。",
+            status_code=403,
+        )
+    return user

@@ -24,9 +24,11 @@ from app.models.scenario import (
     TrainingMessage,
     TrainingSession,
 )
+from app.models.admin import AdminAuditEvent
 
 __all__ = [
     "Assignment",
+    "AdminAuditEvent",
     "Base",
     "FeishuIdentity",
     "KnowledgeProgress",

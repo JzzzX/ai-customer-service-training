@@ -40,11 +40,11 @@
 - `AdminService.decide_review(report_id, reviewer_id, payload) -> ReviewDecision` creates a decision and `AdminAuditEvent` in one transaction; a missing report raises `REVIEW_NOT_FOUND`.
 - Endpoints are `/api/v1/admin/overview`, `/knowledge`, `/questions`, `/scenarios`, `/assignments`, `/reviews`, `/reviews/{report_id}/decision`, and `/history`.
 
-- [ ] **Step 1: Write failing tests** for role rejection, resource list shape, review decision persistence/audit event, idempotent latest-review display, and migration table creation.
-- [ ] **Step 2: Run the focused tests** with `cd backend && .venv/bin/python -m pytest tests/test_phase5_admin.py -q`; expect failures for missing dependency, models, and routes.
-- [ ] **Step 3: Implement the model, migration, repository, service, schemas, dependency, and router** with transaction boundaries and bounded `limit` values.
-- [ ] **Step 4: Run the focused tests again** and then `cd backend && .venv/bin/python -m pytest tests/test_phase5_admin.py tests/test_scenario_api.py -q`.
-- [ ] **Step 5: Commit and push** with `feat(phase5): 建立管理员管理与审计 API`.
+- [x] **Step 1: Write failing tests** for role rejection, resource list shape, review decision persistence/audit event, idempotent latest-review display, and migration table creation.
+- [x] **Step 2: Run the focused tests** with `cd backend && .venv/bin/python -m pytest tests/test_phase5_admin.py -q`; the initial run failed on missing routes and model registration.
+- [x] **Step 3: Implement the model, migration, repository, service, schemas, dependency, and router** with transaction boundaries and bounded `limit` values.
+- [x] **Step 4: Run the focused tests again** and Alembic upgrade → downgrade → upgrade; focused tests pass and the migration round-trip completes.
+- [x] **Step 5: Commit and push** with `feat(phase5): 建立管理员管理与审计 API`.
 
 ### Task 2: Vue 管理端页面与管理员 E2E
 
