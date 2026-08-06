@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     jwt_secret: str = "development-only-secret-change-before-production"
     jwt_access_minutes: int = 15
     jwt_refresh_days: int = 7
+    scenario_ai_mode: Literal["mock", "ark"] = "mock"
+    ark_base_url: str = ""
+    ark_api_key: str = ""
+    ark_model: str = ""
+    ark_timeout_seconds: float = 15.0
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
