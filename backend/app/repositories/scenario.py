@@ -137,6 +137,19 @@ class ScenarioRepository:
         cursor: str | None = None,
         limit: int = 20,
     ) -> list[dict[str, object]]:
+        groups, _next_cursor = self.list_history_groups_page(
+            learner_id, status=status, cursor=cursor, limit=limit
+        )
+        return groups
+
+    def list_history_groups_page(
+        self,
+        learner_id: str,
+        *,
+        status: str = "all",
+        cursor: str | None = None,
+        limit: int = 20,
+    ) -> tuple[list[dict[str, object]], str | None]:
         sessions = list(self.database.scalars(self._history_query(learner_id, status)).all())
         groups: dict[str, dict[str, object]] = {}
         for session in sessions:
@@ -171,7 +184,10 @@ class ScenarioRepository:
             reverse=True,
         )
         offset = _cursor_offset(cursor)
-        return ordered[offset : offset + max(1, min(limit, 100))]
+        page_size = max(1, min(limit, 100))
+        page = ordered[offset : offset + page_size]
+        next_cursor = str(offset + page_size) if offset + page_size < len(ordered) else None
+        return page, next_cursor
 
     def list_history_sessions(
         self,
