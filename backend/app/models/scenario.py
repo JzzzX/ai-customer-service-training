@@ -16,6 +16,9 @@ class Scenario(Base):
     category: Mapped[str] = mapped_column(String(64), index=True)
     summary: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(32), default="draft", index=True)
+    created_by_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -58,6 +61,9 @@ class ScenarioVersion(Base):
     mock_mode: Mapped[bool] = mapped_column(Boolean, default=True)
     customer_persona: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     difficulty: Mapped[str] = mapped_column(String(32), default="medium")
+    created_by_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     scenario_focus: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(32), default="draft", index=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

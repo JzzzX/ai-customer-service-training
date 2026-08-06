@@ -41,6 +41,10 @@ class KnowledgeVersion(Base):
     coverage: Mapped[dict[str, int]] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(32), default="draft", index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -144,6 +148,10 @@ class QuizSet(Base):
     quiz_hash: Mapped[str | None] = mapped_column(
         String(64), unique=True, index=True, nullable=True
     )
+    source_quiz_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_by_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     description: Mapped[str] = mapped_column(Text, default="")
     passing_score: Mapped[int] = mapped_column(Integer, default=80)
     status: Mapped[str] = mapped_column(String(32), default="draft", index=True)
@@ -180,6 +188,12 @@ class Question(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     quiz_set_id: Mapped[str | None] = mapped_column(
         ForeignKey("quiz_sets.id", ondelete="CASCADE"), index=True
+    )
+    knowledge_version_id: Mapped[str | None] = mapped_column(
+        ForeignKey("knowledge_versions.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    created_by_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     question_key: Mapped[str | None] = mapped_column(
         String(128), nullable=True, index=True
@@ -252,6 +266,7 @@ class QuizAttempt(Base):
     __tablename__ = "quiz_attempts"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    assignment_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     learner_id: Mapped[str] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )
@@ -263,6 +278,7 @@ class QuizAttempt(Base):
     )
     question_ids: Mapped[list[str]] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(32), default="in_progress", index=True)
+    origin: Mapped[str] = mapped_column(String(32), default="quiz")
     correct_count: Mapped[int] = mapped_column(Integer, default=0)
     total_questions: Mapped[int] = mapped_column(Integer)
     score: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -296,6 +312,7 @@ class QuizAnswer(Base):
     question_id: Mapped[str] = mapped_column(
         ForeignKey("questions.id", ondelete="RESTRICT"), index=True
     )
+    source_question_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
     selected_answers: Mapped[list[str]] = mapped_column(JSON)
     is_correct: Mapped[bool] = mapped_column(Boolean)
     answered_at: Mapped[datetime] = mapped_column(
