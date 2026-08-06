@@ -1,0 +1,850 @@
+[
+  {
+    "scenario_id": "st_777777777777777777777777",
+    "version_id": "sv_777777777777777777777777",
+    "scenario_key": "complaint-refusal-to-eat",
+    "version_key": "complaint-refusal-to-eat-v1",
+    "version": 1,
+    "knowledge_version_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "title": "宠物突然拒食",
+    "category": "complaint",
+    "summary": "了解拒食背景，区分适口性与潜在健康风险。",
+    "opening_message": "新粮吃了两天，今天突然一口都不吃，是不是粮有问题？",
+    "hidden_facts": [
+      "成年猫",
+      "换粮未过渡",
+      "精神状态暂时正常"
+    ],
+    "customer_turns": [
+      "是3岁的猫，换粮时直接全换了，没有慢慢过渡。",
+      "目前精神还正常，也会喝水，就是不肯吃这个粮。",
+      "那我现在是换回旧粮，还是继续让它适应？"
+    ],
+    "scoring_dimensions": [
+      {
+        "name": "宠物及产品信息收集",
+        "weight": 20,
+        "signals": [
+          "年龄",
+          "产品"
+        ]
+      },
+      {
+        "name": "情绪接纳和同理心",
+        "weight": 20,
+        "signals": [
+          "理解",
+          "担心"
+        ]
+      },
+      {
+        "name": "健康风险识别",
+        "weight": 25,
+        "signals": [
+          "症状",
+          "精神"
+        ]
+      },
+      {
+        "name": "解决方案及升级判断",
+        "weight": 20,
+        "signals": [
+          "停喂",
+          "观察"
+        ]
+      },
+      {
+        "name": "诉求确认和明确完结",
+        "weight": 15,
+        "signals": [
+          "诉求",
+          "跟进"
+        ]
+      }
+    ],
+    "critical_risks": [
+      {
+        "label": "越界健康诊断",
+        "patterns": [
+          "肯定是肠炎",
+          "一定没问题"
+        ]
+      },
+      {
+        "label": "危险喂养建议",
+        "patterns": [
+          "继续加量",
+          "不用停喂"
+        ]
+      }
+    ],
+    "reference_flow": [
+      "接纳情绪并确认信息",
+      "了解喂食时间和症状",
+      "识别紧急风险",
+      "给出观察或就医路径",
+      "确认后续跟进"
+    ],
+    "reference_reply": "理解您担心猫咪突然拒食。先确认换粮方式、精神状态和其他症状，避免直接判断产品问题。",
+    "source_locators": [
+      {
+        "source_path": "售前_客诉接待问题划分.xlsx",
+        "anchor": "sheet:Sheet1/row:1",
+        "kind": "excel",
+        "sheet": "Sheet1",
+        "row": 1
+      }
+    ],
+    "max_turns": 12,
+    "mock_mode": true,
+    "customer_persona": {
+      "temperament": "anxious",
+      "knowledgeLevel": "high",
+      "mood": "担心产品有问题，希望明确原因和下一步。"
+    },
+    "difficulty": "medium",
+    "scenario_focus": "拒食风险识别",
+    "status": "published"
+  },
+  {
+    "scenario_id": "st_888888888888888888888888",
+    "version_id": "sv_888888888888888888888888",
+    "scenario_key": "complaint-vomiting",
+    "version_key": "complaint-vomiting-v1",
+    "version": 1,
+    "knowledge_version_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "title": "食用后呕吐软便",
+    "category": "complaint",
+    "summary": "识别健康风险，避免越界诊断并完成客诉升级。",
+    "opening_message": "狗狗吃完你们的粮又吐又拉，是不是中毒了？",
+    "hidden_facts": [
+      "幼犬",
+      "首次喂食量较大",
+      "已连续呕吐两次"
+    ],
+    "customer_turns": [
+      "是5个月幼犬，第一次喂就给了满满一碗。",
+      "已经吐了两次，还有点没精神，我现在很着急。",
+      "你能不能直接告诉我是不是这个粮导致的？"
+    ],
+    "scoring_dimensions": [
+      {
+        "name": "宠物及产品信息收集",
+        "weight": 20,
+        "signals": [
+          "年龄",
+          "喂食"
+        ]
+      },
+      {
+        "name": "情绪接纳和同理心",
+        "weight": 20,
+        "signals": [
+          "抱歉",
+          "着急"
+        ]
+      },
+      {
+        "name": "健康风险识别",
+        "weight": 25,
+        "signals": [
+          "症状",
+          "就医"
+        ]
+      },
+      {
+        "name": "解决方案及升级判断",
+        "weight": 20,
+        "signals": [
+          "停喂",
+          "升级"
+        ]
+      },
+      {
+        "name": "诉求确认和明确完结",
+        "weight": 15,
+        "signals": [
+          "确认",
+          "回复"
+        ]
+      }
+    ],
+    "critical_risks": [
+      {
+        "label": "越界健康诊断",
+        "patterns": [
+          "肯定是肠炎",
+          "不用看医生"
+        ]
+      },
+      {
+        "label": "危险喂养建议",
+        "patterns": [
+          "继续加量",
+          "强行喂"
+        ]
+      }
+    ],
+    "reference_flow": [
+      "接纳情绪并确认信息",
+      "了解喂食量和症状持续时间",
+      "识别连续呕吐风险",
+      "建议停止喂食并就医",
+      "按客诉流程升级跟进"
+    ],
+    "reference_reply": "出现连续呕吐和精神不佳时不能做确定性诊断，应建议停止喂食并及时就医，同时按客诉流程升级跟进。",
+    "source_locators": [
+      {
+        "source_path": "售前_客诉接待问题划分.xlsx",
+        "anchor": "sheet:Sheet1/row:5",
+        "kind": "excel",
+        "sheet": "Sheet1",
+        "row": 5
+      }
+    ],
+    "max_turns": 12,
+    "mock_mode": true,
+    "customer_persona": {
+      "temperament": "anxious",
+      "knowledgeLevel": "medium",
+      "mood": "宠物呕吐拉稀很焦急，倾向于把责任归到产品上。"
+    },
+    "difficulty": "hard",
+    "scenario_focus": "宠物健康风险升级",
+    "status": "published"
+  },
+  {
+    "scenario_id": "st_666666666666666666666666",
+    "version_id": "sv_666666666666666666666666",
+    "scenario_key": "damage-packaging",
+    "version_key": "damage-packaging-v1",
+    "version": 1,
+    "knowledge_version_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "title": "包装和产品破损",
+    "category": "damage_shortage",
+    "summary": "区分外箱与商品破损并给出合规解决方案。",
+    "opening_message": "收到的罐头箱子都压扁了，还有两罐漏液，怎么办？",
+    "hidden_facts": [
+      "外箱明显受压",
+      "两罐漏液",
+      "其余罐头外观正常"
+    ],
+    "customer_turns": [
+      "外箱有明显挤压，两罐在漏液，其他看起来正常。",
+      "我应该拍外箱、面单还是每一罐都拍？",
+      "没漏的那些还能不能留，漏的两罐怎么处理？"
+    ],
+    "scoring_dimensions": [
+      {
+        "name": "凭证收集",
+        "weight": 20,
+        "signals": [
+          "照片",
+          "面单"
+        ]
+      },
+      {
+        "name": "仓库快递及责任判断",
+        "weight": 20,
+        "signals": [
+          "快递",
+          "核实"
+        ]
+      },
+      {
+        "name": "问题类型判断",
+        "weight": 20,
+        "signals": [
+          "破损",
+          "外箱"
+        ]
+      },
+      {
+        "name": "解决及赔偿方案",
+        "weight": 25,
+        "signals": [
+          "售后",
+          "方案"
+        ]
+      },
+      {
+        "name": "情绪安抚和闭环",
+        "weight": 15,
+        "signals": [
+          "抱歉",
+          "确认"
+        ]
+      }
+    ],
+    "critical_risks": [
+      {
+        "label": "未经核实承诺赔偿",
+        "patterns": [
+          "随便赔",
+          "不用凭证"
+        ]
+      },
+      {
+        "label": "要求顾客承担内部核查",
+        "patterns": [
+          "你自己找仓库",
+          "联系供应商"
+        ]
+      }
+    ],
+    "reference_flow": [
+      "确认破损范围",
+      "收集外箱和商品照片",
+      "提醒不要喂食漏液产品",
+      "提供补发或售后方案",
+      "说明跟进节点"
+    ],
+    "reference_reply": "先安抚并确认破损范围，收集外箱、面单和商品照片；提醒不要喂食漏液产品，再按核实结果提供方案。",
+    "source_locators": [
+      {
+        "source_path": "售前_客诉接待问题划分.xlsx",
+        "anchor": "sheet:Sheet1/row:22",
+        "kind": "excel",
+        "sheet": "Sheet1",
+        "row": 22
+      }
+    ],
+    "max_turns": 12,
+    "mock_mode": true,
+    "customer_persona": {
+      "temperament": "irritable",
+      "knowledgeLevel": "low",
+      "mood": "收到破损商品很不满，要求立刻给方案。"
+    },
+    "difficulty": "hard",
+    "scenario_focus": "破损取证与售后",
+    "status": "published"
+  },
+  {
+    "scenario_id": "st_555555555555555555555555",
+    "version_id": "sv_555555555555555555555555",
+    "scenario_key": "damage-shortage",
+    "version_key": "damage-shortage-v1",
+    "version": 1,
+    "knowledge_version_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "title": "错发或漏发商品",
+    "category": "damage_shortage",
+    "summary": "收集必要凭证并判断错发、漏发处理路径。",
+    "opening_message": "我买了两袋猫粮，箱子里怎么只有一袋？",
+    "hidden_facts": [
+      "外箱完整",
+      "面单重量可见",
+      "顾客保留了开箱视频"
+    ],
+    "customer_turns": [
+      "外箱看着是完整的，快递面单也还在。",
+      "我有开箱视频，需要拍哪些位置给你？",
+      "核实以后是补发还是退款？大概怎么跟进？"
+    ],
+    "scoring_dimensions": [
+      {
+        "name": "凭证收集",
+        "weight": 20,
+        "signals": [
+          "照片",
+          "视频"
+        ]
+      },
+      {
+        "name": "仓库快递及责任判断",
+        "weight": 20,
+        "signals": [
+          "仓库",
+          "核实"
+        ]
+      },
+      {
+        "name": "问题类型判断",
+        "weight": 20,
+        "signals": [
+          "错发",
+          "漏发"
+        ]
+      },
+      {
+        "name": "解决及赔偿方案",
+        "weight": 25,
+        "signals": [
+          "补发",
+          "方案"
+        ]
+      },
+      {
+        "name": "情绪安抚和闭环",
+        "weight": 15,
+        "signals": [
+          "抱歉",
+          "跟进"
+        ]
+      }
+    ],
+    "critical_risks": [
+      {
+        "label": "未经核实承诺赔偿",
+        "patterns": [
+          "随便赔",
+          "直接双倍赔"
+        ]
+      },
+      {
+        "label": "要求顾客承担内部核查",
+        "patterns": [
+          "你自己找仓库",
+          "不用凭证"
+        ]
+      }
+    ],
+    "reference_flow": [
+      "确认订单和异常类型",
+      "收集面单和开箱凭证",
+      "判断责任路径",
+      "给出补发或售后方案",
+      "说明反馈节点"
+    ],
+    "reference_reply": "先核对订单明细，再收集外箱、面单、箱内商品和开箱视频；完成核查后按规则提供补发或售后方案。",
+    "source_locators": [
+      {
+        "source_path": "售前_客诉接待问题划分.xlsx",
+        "anchor": "sheet:Sheet1/row:37",
+        "kind": "excel",
+        "sheet": "Sheet1",
+        "row": 37
+      }
+    ],
+    "max_turns": 12,
+    "mock_mode": true,
+    "customer_persona": {
+      "temperament": "calm",
+      "knowledgeLevel": "medium",
+      "mood": "发现少货有点不快，但愿意配合提供凭证。"
+    },
+    "difficulty": "medium",
+    "scenario_focus": "漏发凭证与售后",
+    "status": "published"
+  },
+  {
+    "scenario_id": "st_444444444444444444444444",
+    "version_id": "sv_444444444444444444444444",
+    "scenario_key": "logistics-address",
+    "version_key": "logistics-address-v1",
+    "version": 1,
+    "knowledge_version_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "title": "修改地址与拦截",
+    "category": "logistics",
+    "summary": "判断订单状态并处理地址修改或快递拦截。",
+    "opening_message": "地址填错了，马上帮我改一下，别寄到原地址。",
+    "hidden_facts": [
+      "订单已出库",
+      "新旧地址同城",
+      "顾客尚未联系快递"
+    ],
+    "customer_turns": [
+      "订单已经显示出库了，新地址和原地址在同一个城市。",
+      "我还没联系快递，你们这边能直接改成功吗？",
+      "要是拦截失败，我还能做什么？"
+    ],
+    "scoring_dimensions": [
+      {
+        "name": "订单及物流信息确认",
+        "weight": 20,
+        "signals": [
+          "订单",
+          "地址"
+        ]
+      },
+      {
+        "name": "规则准确性",
+        "weight": 25,
+        "signals": [
+          "核实",
+          "规则"
+        ]
+      },
+      {
+        "name": "处理路径正确性",
+        "weight": 25,
+        "signals": [
+          "联系",
+          "拦截"
+        ]
+      },
+      {
+        "name": "时效说明与沟通体验",
+        "weight": 15,
+        "signals": [
+          "抱歉",
+          "进度"
+        ]
+      },
+      {
+        "name": "明确下一步及闭环",
+        "weight": 15,
+        "signals": [
+          "下一步",
+          "确认"
+        ]
+      }
+    ],
+    "critical_risks": [
+      {
+        "label": "虚构物流时效",
+        "patterns": [
+          "保证今天到",
+          "肯定能拦截"
+        ]
+      },
+      {
+        "label": "未核实直接赔付",
+        "patterns": [
+          "不用核实直接赔",
+          "马上全额赔偿"
+        ]
+      }
+    ],
+    "reference_flow": [
+      "确认订单和物流状态",
+      "尝试联系快递拦截",
+      "不承诺一定成功",
+      "说明签收协调路径",
+      "约定跟进节点"
+    ],
+    "reference_reply": "先确认订单和物流状态，再按规则尝试联系快递拦截或改址，但不承诺一定成功。",
+    "source_locators": [
+      {
+        "source_path": "销售场景.md",
+        "anchor": "h:销售场景/正确跟单",
+        "kind": "markdown"
+      }
+    ],
+    "max_turns": 12,
+    "mock_mode": true,
+    "customer_persona": {
+      "temperament": "irritable",
+      "knowledgeLevel": "low",
+      "mood": "急躁想立刻改地址，希望马上解决。"
+    },
+    "difficulty": "medium",
+    "scenario_focus": "地址修改与拦截",
+    "status": "published"
+  },
+  {
+    "scenario_id": "st_333333333333333333333333",
+    "version_id": "sv_333333333333333333333333",
+    "scenario_key": "logistics-stale",
+    "version_key": "logistics-stale-v1",
+    "version": 1,
+    "knowledge_version_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "title": "物流长时间未更新",
+    "category": "logistics",
+    "summary": "核实在途物流节点并给出可追踪的处理路径。",
+    "opening_message": "我的快递三天没动了，到底什么时候能到？",
+    "hidden_facts": [
+      "订单已发货",
+      "最后节点为转运中心",
+      "顾客后天出差"
+    ],
+    "customer_turns": [
+      "订单号我可以发，物流最后显示在转运中心。",
+      "我后天就出差了，能保证明天送到吗？",
+      "如果明天不到，你们接下来准备怎么处理？"
+    ],
+    "scoring_dimensions": [
+      {
+        "name": "订单及物流信息确认",
+        "weight": 20,
+        "signals": [
+          "订单",
+          "单号"
+        ]
+      },
+      {
+        "name": "规则准确性",
+        "weight": 25,
+        "signals": [
+          "核实",
+          "签收"
+        ]
+      },
+      {
+        "name": "处理路径正确性",
+        "weight": 25,
+        "signals": [
+          "联系",
+          "工单"
+        ]
+      },
+      {
+        "name": "时效说明与沟通体验",
+        "weight": 15,
+        "signals": [
+          "理解",
+          "预计"
+        ]
+      },
+      {
+        "name": "明确下一步及闭环",
+        "weight": 15,
+        "signals": [
+          "跟进",
+          "确认"
+        ]
+      }
+    ],
+    "critical_risks": [
+      {
+        "label": "虚构物流时效",
+        "patterns": [
+          "保证今天到",
+          "百分百明天到"
+        ]
+      },
+      {
+        "label": "未核实直接赔付",
+        "patterns": [
+          "不用核实直接赔",
+          "马上全额赔偿"
+        ]
+      }
+    ],
+    "reference_flow": [
+      "确认订单号和物流节点",
+      "区分在途或异常",
+      "按规则联系快递或创建工单",
+      "说明合理时效",
+      "约定反馈节点"
+    ],
+    "reference_reply": "先核实订单号和最后物流节点，再联系快递查询。不能保证具体到达时间，但会说明预计反馈节点。",
+    "source_locators": [
+      {
+        "source_path": "销售场景.md",
+        "anchor": "h:销售场景/正确跟单",
+        "kind": "markdown"
+      }
+    ],
+    "max_turns": 12,
+    "mock_mode": true,
+    "customer_persona": {
+      "temperament": "anxious",
+      "knowledgeLevel": "low",
+      "mood": "担心出差前收不到货，反复确认到达时间。"
+    },
+    "difficulty": "medium",
+    "scenario_focus": "物流异常跟进",
+    "status": "published"
+  },
+  {
+    "scenario_id": "st_222222222222222222222222",
+    "version_id": "sv_222222222222222222222222",
+    "scenario_key": "presale-price-objection",
+    "version_key": "presale-price-objection-v1",
+    "version": 1,
+    "knowledge_version_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "title": "处理价格和赠品异议",
+    "category": "presale",
+    "summary": "回应价格顾虑，解释价值并设置后续跟进。",
+    "opening_message": "你家这个粮比别家贵，能不能便宜点再多送点？",
+    "hidden_facts": [
+      "顾客养成年猫",
+      "重视适口性",
+      "正在对比两家店"
+    ],
+    "customer_turns": [
+      "是一只4岁的英短，之前买的粮它不太爱吃。",
+      "我主要怕买回去又浪费，所以才想要赠品。",
+      "如果没有更低价格，你能说明一下为什么值得买吗？"
+    ],
+    "scoring_dimensions": [
+      {
+        "name": "需求与宠物信息挖掘",
+        "weight": 25,
+        "signals": [
+          "年龄",
+          "品种"
+        ]
+      },
+      {
+        "name": "场景化卖点表达",
+        "weight": 20,
+        "signals": [
+          "适合",
+          "需求"
+        ]
+      },
+      {
+        "name": "产品及宠物知识准确",
+        "weight": 20,
+        "signals": [
+          "产品",
+          "喂食"
+        ]
+      },
+      {
+        "name": "异议处理与替代价值",
+        "weight": 20,
+        "signals": [
+          "理解",
+          "价值"
+        ]
+      },
+      {
+        "name": "关联推荐及跟单闭环",
+        "weight": 15,
+        "signals": [
+          "推荐",
+          "后续"
+        ]
+      }
+    ],
+    "critical_risks": [
+      {
+        "label": "虚构优惠或赠品",
+        "patterns": [
+          "保证送",
+          "一定赠送"
+        ]
+      },
+      {
+        "label": "绝对化产品承诺",
+        "patterns": [
+          "百分百有效",
+          "一定治好"
+        ]
+      }
+    ],
+    "reference_flow": [
+      "确认宠物信息",
+      "了解适口性诉求",
+      "说明与需求相关的价值",
+      "只介绍有效活动",
+      "约定后续跟进"
+    ],
+    "reference_reply": "理解您担心适口性和浪费。先确认猫咪当前饮食，再说明与需求相关的产品特点，并只介绍当前有效活动。",
+    "source_locators": [
+      {
+        "source_path": "销售场景.md",
+        "anchor": "h:销售场景/客户谈价格，怎么正确回应",
+        "kind": "markdown"
+      }
+    ],
+    "max_turns": 12,
+    "mock_mode": true,
+    "customer_persona": {
+      "temperament": "bargain_hunting",
+      "knowledgeLevel": "medium",
+      "mood": "正在对比两家店，担心买错浪费。"
+    },
+    "difficulty": "hard",
+    "scenario_focus": "价格异议处理",
+    "status": "published"
+  },
+  {
+    "scenario_id": "st_111111111111111111111111",
+    "version_id": "sv_111111111111111111111111",
+    "scenario_key": "presale-puppy-food",
+    "version_key": "presale-puppy-food-v1",
+    "version": 1,
+    "knowledge_version_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "title": "给3个月泰迪推荐主粮",
+    "category": "presale",
+    "summary": "根据幼犬情况和预算完成主粮推荐与关联建议。",
+    "opening_message": "我家泰迪刚满3个月，想换一款主粮，有推荐吗？",
+    "hidden_facts": [
+      "体重2.1kg",
+      "当前吃泡软粮",
+      "预算每月约200元"
+    ],
+    "customer_turns": [
+      "体重大概2.1公斤，现在的粮会泡软再喂。",
+      "肠胃还可以，但偶尔会软便，我有点担心换粮。",
+      "预算一个月两百左右，还需要搭配其他东西吗？"
+    ],
+    "scoring_dimensions": [
+      {
+        "name": "需求与宠物信息挖掘",
+        "weight": 25,
+        "signals": [
+          "年龄",
+          "体重"
+        ]
+      },
+      {
+        "name": "场景化卖点表达",
+        "weight": 20,
+        "signals": [
+          "适合",
+          "需求"
+        ]
+      },
+      {
+        "name": "产品及宠物知识准确",
+        "weight": 20,
+        "signals": [
+          "主粮",
+          "换粮"
+        ]
+      },
+      {
+        "name": "异议处理与替代价值",
+        "weight": 20,
+        "signals": [
+          "理解",
+          "价格"
+        ]
+      },
+      {
+        "name": "关联推荐及跟单闭环",
+        "weight": 15,
+        "signals": [
+          "搭配",
+          "确认"
+        ]
+      }
+    ],
+    "critical_risks": [
+      {
+        "label": "虚构优惠或赠品",
+        "patterns": [
+          "保证送",
+          "一定赠送"
+        ]
+      },
+      {
+        "label": "绝对化产品承诺",
+        "patterns": [
+          "保证不软便",
+          "百分百有效"
+        ]
+      }
+    ],
+    "reference_flow": [
+      "确认宠物年龄、品种、体重和当前饮食",
+      "了解健康情况、核心诉求与预算",
+      "用需求对应产品卖点",
+      "处理价格或活动异议",
+      "完成关联推荐并确认下一步"
+    ],
+    "reference_reply": "理解您担心幼犬换粮后肠胃不适。可以先确认当前主粮和软便频率，再按7天换粮法逐步过渡，并结合预算推荐适龄主粮。",
+    "source_locators": [
+      {
+        "source_path": "销售场景.md",
+        "anchor": "h:销售场景/正确推荐产品",
+        "kind": "markdown"
+      }
+    ],
+    "max_turns": 12,
+    "mock_mode": true,
+    "customer_persona": {
+      "temperament": "calm",
+      "knowledgeLevel": "medium",
+      "mood": "新手养幼犬，想挑一款合适的粮。"
+    },
+    "difficulty": "easy",
+    "scenario_focus": "幼犬主粮推荐",
+    "status": "published"
+  }
+]
