@@ -22,7 +22,7 @@ class PublishedCatalogRepository:
     def list_topics(self) -> list[TopicCatalog]:
         statement: Select[tuple[str, str, str, str, int]] = (
             select(
-                QuizSet.id,
+                func.coalesce(QuizSet.topic_key, QuizSet.id).label("id"),
                 QuizSet.label,
                 QuizSet.description,
                 KnowledgeVersion.id.label("knowledge_version"),
@@ -43,11 +43,12 @@ class PublishedCatalogRepository:
             )
             .group_by(
                 QuizSet.id,
+                QuizSet.topic_key,
                 QuizSet.label,
                 QuizSet.description,
                 KnowledgeVersion.id,
             )
-            .order_by(QuizSet.label, QuizSet.id)
+            .order_by(QuizSet.label, QuizSet.topic_key, QuizSet.id)
         )
         return [
             TopicCatalog(

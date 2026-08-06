@@ -113,10 +113,20 @@ class KnowledgeUnit(Base):
 
 class QuizSet(Base):
     __tablename__ = "quiz_sets"
+    __table_args__ = (
+        UniqueConstraint(
+            "knowledge_version_id",
+            "topic_key",
+            name="uq_quiz_sets_version_topic",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     knowledge_version_id: Mapped[str] = mapped_column(
         ForeignKey("knowledge_versions.id", ondelete="RESTRICT"), index=True
+    )
+    topic_key: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, index=True
     )
     label: Mapped[str] = mapped_column(String(255))
     quiz_hash: Mapped[str | None] = mapped_column(
@@ -145,10 +155,20 @@ class QuizSet(Base):
 
 class Question(Base):
     __tablename__ = "questions"
+    __table_args__ = (
+        UniqueConstraint(
+            "quiz_set_id",
+            "question_key",
+            name="uq_questions_set_key",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     quiz_set_id: Mapped[str] = mapped_column(
         ForeignKey("quiz_sets.id", ondelete="CASCADE"), index=True
+    )
+    question_key: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, index=True
     )
     knowledge_unit_id: Mapped[str | None] = mapped_column(
         ForeignKey("knowledge_units.id", ondelete="RESTRICT"),
