@@ -20,7 +20,7 @@ export default defineConfig({
   webServer: [
     {
       command:
-        "APP_ENV=test DATABASE_URL=sqlite+pysqlite:///./company-stack-e2e.db backend/.venv/bin/python -m uvicorn main:app --app-dir backend --host 127.0.0.1 --port 8005",
+        "cd backend && APP_ENV=test DATABASE_URL=sqlite+pysqlite:///./company-stack-e2e.db .venv/bin/alembic upgrade head && APP_ENV=test DATABASE_URL=sqlite+pysqlite:///./company-stack-e2e.db .venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8005",
       url: "http://127.0.0.1:8005/api/v1/health",
       reuseExistingServer: !process.env.CI,
     },
