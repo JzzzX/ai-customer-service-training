@@ -129,7 +129,7 @@
 | `0cde302` | 管理员资源 API 与审核审计 | 后端 Phase5 聚焦测试、管理员权限拒绝、Alembic 升降级通过 |
 | `fc0daa0` | Vue 管理端与管理员 E2E | Vue 38 项、Vite build、Phase5 Playwright 2/2 |
 | `7cafd56` | 全量迁移对账与隔离演练工具 | 5 项迁移测试、确定性快照、两次隔离报告一致；MySQL URL 双 pair 参数已支持 |
-| 待提交 | Linux 配置与切换预检门禁 | 部署脚本测试通过，Nginx/systemd 模板、生产 env 校验和 dry-run 顺序已固化 |
+| `c640360` | Linux 配置与切换预检门禁 | 部署脚本测试通过，Nginx/systemd 模板、生产 env 校验和 dry-run 顺序已固化 |
 
 ## 风险与阻塞
 
