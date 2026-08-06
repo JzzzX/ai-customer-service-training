@@ -69,12 +69,12 @@
 - Admin routes use `meta: { requiresAuth: true, requiresAdmin: true }`; the router redirects authenticated learners to `/profile` and unauthenticated users to `/login`.
 - In `APP_ENV=test`, `POST /api/v1/auth/test-login?role=admin` issues a cookie for the seeded `e2e-admin`; the query parameter is rejected outside test mode.
 
-- [ ] **Step 1: Write failing Vitest tests** for admin route metadata/redirect, store loading and review action, and table rendering of status/empty/error states.
-- [ ] **Step 2: Run `cd frontend && npm test -- --run src/views/AdminViews.test.js src/router/index.test.js`; expect missing-module or assertion failures.
-- [ ] **Step 3: Implement API/store/views/router guard/nav and the deterministic test admin seed** without duplicating learner pages.
-- [ ] **Step 4: Run focused Vitest and `npm --prefix frontend run build`; fix accessibility, mobile overflow, and API error mapping before proceeding.
-- [ ] **Step 5: Run the Phase5 Playwright spec** against the seeded company-stack server; it must cover learner denial, admin login, resource tabs, review decision, and history refresh.
-- [ ] **Step 6: Commit and push** with `feat(phase5): 完成管理员 Vue 管理端与复核闭环`.
+- [x] **Step 1: Write failing Vitest tests** for admin route metadata/redirect, store loading and review action, and table rendering of status/empty/error states.
+- [x] **Step 2: Run `cd frontend && npm test -- --run src/views/AdminViews.test.js src/router/index.test.js`; the initial run failed on missing API/store/view modules.
+- [x] **Step 3: Implement API/store/views/router guard/nav and the deterministic test admin seed** without duplicating learner pages.
+- [x] **Step 4: Run focused Vitest and `npm --prefix frontend run build`; Vue tests, build, and the full backend regression pass.
+- [x] **Step 5: Run the Phase5 Playwright spec** against the seeded company-stack server; learner denial, admin resources, review decision, and history refresh pass 2/2.
+- [x] **Step 6: Commit and push** with `feat(phase5): 完成管理员 Vue 管理端与复核闭环`.
 
 ### Task 3: 全量迁移快照、复制与两次隔离演练
 

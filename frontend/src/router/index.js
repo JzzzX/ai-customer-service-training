@@ -1,6 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import LoginView from '../views/LoginView.vue'
+import AdminDashboardView from '../views/AdminDashboardView.vue'
+import AdminHistoryView from '../views/AdminHistoryView.vue'
+import AdminReviewsView from '../views/AdminReviewsView.vue'
+import AdminResourceView from '../views/AdminResourceView.vue'
 import MigrationHealthView from '../views/MigrationHealthView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import QuizAttemptView from '../views/QuizAttemptView.vue'
@@ -14,6 +18,36 @@ import ScenarioStartView from '../views/ScenarioStartView.vue'
 export const routes = [
   { path: '/', redirect: '/profile' },
   { path: '/login', name: 'login', component: LoginView, meta: { guest: true } },
+  {
+    path: '/admin',
+    name: 'admin-dashboard',
+    component: AdminDashboardView,
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  ...[
+    ['knowledge', '知识版本'],
+    ['questions', '题目'],
+    ['scenarios', '场景'],
+    ['assignments', '任务'],
+  ].map(([resource, title]) => ({
+    path: `/admin/${resource}`,
+    name: `admin-${resource}`,
+    component: AdminResourceView,
+    props: { resource, title },
+    meta: { requiresAuth: true, requiresAdmin: true },
+  })),
+  {
+    path: '/admin/reviews',
+    name: 'admin-reviews',
+    component: AdminReviewsView,
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  {
+    path: '/admin/history',
+    name: 'admin-history',
+    component: AdminHistoryView,
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
   {
     path: '/profile',
     name: 'profile',
@@ -74,6 +108,9 @@ export function createAppRouter({ history = createWebHistory(), auth }) {
     await auth.ensureLoaded()
     if (to.meta.requiresAuth && !auth.user) {
       return { name: 'login', query: { redirect: to.fullPath } }
+    }
+    if (to.meta.requiresAdmin && auth.user?.role !== 'admin') {
+      return { name: 'profile' }
     }
     if (to.meta.guest && auth.user) return { name: 'profile' }
     return true

@@ -7,7 +7,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sqlalchemy import select, update
 
 from app.core.database import get_database
-from app.models import KnowledgeUnit, KnowledgeVersion, Question, QuizSet, User
+from app.models import (
+    EvaluationReport,
+    KnowledgeUnit,
+    KnowledgeVersion,
+    Question,
+    QuizSet,
+    ScenarioVersion,
+    TrainingSession,
+    User,
+)
 from app.services.phase4_migration import migrate_phase4
 from app.services.quiz.publication import canonical_quiz_hash
 
@@ -27,6 +36,16 @@ def main() -> int:
                 is_active=True,
             )
             session.add(learner)
+        admin = session.get(User, "e2e-admin")
+        if not admin:
+            admin = User(
+                id="e2e-admin",
+                email="e2e-admin@example.test",
+                name="端到端管理员",
+                role="admin",
+                is_active=True,
+            )
+            session.add(admin)
 
         session.execute(
             update(KnowledgeVersion)
@@ -122,6 +141,38 @@ def main() -> int:
 
         session.flush()
         migrate_phase4(session, phase4_payloads)
+
+        review_version = session.scalar(
+            select(ScenarioVersion).where(ScenarioVersion.status == "published")
+        )
+        review_session = session.get(TrainingSession, "e2e-review-session")
+        if review_version and not review_session:
+            review_session = TrainingSession(
+                id="e2e-review-session",
+                learner_id=learner.id,
+                knowledge_version_id=version.id,
+                scenario_version_id=review_version.id,
+                status="completed",
+                mode="mock",
+                turn_count=1,
+                max_turns=review_version.max_turns,
+            )
+            review_session.report = EvaluationReport(
+                id="e2e-review-report",
+                knowledge_version_id=version.id,
+                total_score=62,
+                verdict="needs_retry",
+                dimensions=[{"key": "policy", "score": 62}],
+                strengths=[],
+                omissions=["确认订单"],
+                risks=[],
+                recommendations=["补充确认"],
+                confidence=0.62,
+                low_confidence=True,
+                needs_review=True,
+                review_trigger="e2e_seed",
+            )
+            session.add(review_session)
 
         quiz_set = session.scalar(
             select(QuizSet).where(QuizSet.quiz_hash == "f" * 64)

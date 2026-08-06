@@ -12,6 +12,9 @@ describe('App', () => {
           path: '/migration/health',
           component: { template: '<h1>系统状态</h1>' },
         },
+        { path: '/profile', component: { template: '<span />' } },
+        { path: '/practice/scenario', component: { template: '<span />' } },
+        { path: '/admin', component: { template: '<span />' } },
       ],
     })
     router.push('/migration/health')

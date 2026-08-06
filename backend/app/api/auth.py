@@ -1,6 +1,8 @@
 from datetime import UTC, datetime, timedelta
 from secrets import token_urlsafe
 
+from typing import Literal
+
 from fastapi import APIRouter, Cookie, Depends, Query, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -106,6 +108,7 @@ def current_user(user: User = Depends(get_current_user)) -> CurrentUserResponse:
 @router.post("/test-login", status_code=204)
 def test_login(
     response: Response,
+    role: Literal["learner", "admin"] = Query(default="learner"),
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
 ) -> None:
@@ -116,8 +119,8 @@ def test_login(
             message="测试登录仅在测试环境可用。",
             status_code=404,
         )
-    user = UserRepository(session).get("e2e-learner")
-    if not user or not user.is_active or user.role != "learner":
+    user = UserRepository(session).get(f"e2e-{role}")
+    if not user or not user.is_active or user.role != role:
         raise AppError(
             code="E2E_SEED_MISSING",
             message="测试学员尚未初始化。",
