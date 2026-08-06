@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "knowledge_version_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "topics": [
+    {
+      "id": "returns",
+      "label": "退换货",
+      "description": "售后政策",
+      "passing_score": 80,
+      "quiz_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "questions": [
+        {
+          "id": "qq_returns_1",
+          "knowledge_unit_key": "ku_returns_1",
+          "question_type": "single_choice",
+          "prompt": "退换货期限是多久？",
+          "options": ["七天", "三十天"],
+          "correct_answers": ["七天"],
+          "explanation": "依据售后政策。",
+          "category": "returns",
+          "difficulty": "easy",
+          "position": 1,
+          "sources": [
+            {
+              "source_path": "faq.md",
+              "kind": "markdown",
+              "anchor": "h:退换货",
+              "path": ["售后", "退换货"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shipping",
+      "label": "物流",
+      "description": "物流政策",
+      "passing_score": 80,
+      "quiz_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "questions": [
+        {
+          "id": "qq_shipping_1",
+          "knowledge_unit_key": "ku_shipping_1",
+          "question_type": "true_false",
+          "prompt": "发货前可以修改地址吗？",
+          "options": ["正确", "错误"],
+          "correct_answers": ["正确"],
+          "explanation": "联系客服处理。",
+          "category": "shipping",
+          "difficulty": "medium",
+          "position": 1,
+          "sources": [
+            {
+              "source_path": "faq.xlsx",
+              "kind": "excel",
+              "anchor": "sheet:物流!A2",
+              "path": ["物流"]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "export_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+}
