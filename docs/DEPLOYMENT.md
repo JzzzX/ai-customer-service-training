@@ -1,143 +1,90 @@
-# 公司 Linux + MySQL 部署与运维
+# 部署与切换说明
 
-Phase 5 的生产形态是 Nginx 提供 `frontend/dist`、systemd 管理仅监听本机
-`127.0.0.1:8005` 的 Uvicorn，FastAPI 使用 `mysql+pymysql` 和 `utf8mb4`。旧系统仍保留
-为回滚入口，维护窗口的真实只读、最终增量和 DNS 操作由值班人员按门禁执行。
+本文只描述当前 Vue/FastAPI/MySQL 系统。旧系统仅作为标签快照保留，回滚源码标签为 `legacy-next-final-bb8d164`，不作为当前部署方案。
 
-## Linux 安装与启动
+## 运行拓扑
+
+```mermaid
+flowchart LR
+  Client["浏览器"] --> Nginx["Nginx :443"]
+  Nginx --> Static["frontend/dist"]
+  Nginx --> API["Uvicorn :8005"]
+  API --> DB["MySQL 8 utf8mb4"]
+  API --> Feishu["飞书 OAuth"]
+  API --> Ark["Ark API"]
+```
+
+## 安装与构建
 
 ```bash
 ./install.sh
-APP_ENV=production ./build.sh
-sudo install -m 0644 deploy/systemd/ai-customer-service-training.service \
-  /etc/systemd/system/ai-customer-service-training.service
-sudo install -m 0644 deploy/nginx/ai-customer-service-training.conf \
-  /etc/nginx/conf.d/ai-customer-service-training.conf
-sudo install -m 0600 deploy/env/backend.env.example \
-  /etc/ai-customer-service-training/backend.env
-sudo systemctl daemon-reload
-sudo systemctl enable --now ai-customer-service-training
-sudo nginx -t && sudo systemctl reload nginx
+./build.sh
 ```
 
-`backend.env` 必须替换模板中的数据库、JWT、飞书和 Ark 凭据；密钥不进入 Git。
+`install.sh` 要求 Python 3.12+，在 `backend/.venv` 安装后端依赖，并安装 `frontend/package-lock.json` 锁定的 npm 依赖。`build.sh` 运行 pytest、Vitest 和 Vite production build；设置 `DEPLOY_DIR` 时会将 `frontend/dist` 同步到指定绝对路径。
 
-## 迁移演练与切换预检
+## 环境变量
 
-迁移 CLI 按稳定的外键顺序复制所有账号、内容、题库、任务、场景、会话、消息、报告、
-复核和管理审计表，并比较行数、孤儿外键和确定性 SHA-256。两次本地隔离演练：
+复制 `deploy/env/backend.env.example` 到受限目录（建议 `0600`），填写：
+
+- `DATABASE_URL=mysql+pymysql://...?...charset=utf8mb4`。
+- 至少 32 位随机 `JWT_SECRET`。
+- 飞书 `FEISHU_APP_CLIENT_ID`、`FEISHU_APP_CLIENT_SECRET` 和回调地址。
+- `SCENARIO_AI_MODE=ark`、`ARK_BASE_URL`、`ARK_API_KEY`、`ARK_MODEL`。
+
+生产配置由 Pydantic Settings 加载；生产环境拒绝 SQLite、短 JWT 和缺失飞书凭据。密钥不写入仓库、不放在迁移命令参数中。
+
+## systemd 与 Nginx
+
+1. 安装 Python 3.12、Node.js 和 Nginx。
+2. 将仓库部署到 `/opt/ai-customer-service-training`（或公司批准路径）。
+3. 安装 `deploy/systemd/ai-customer-service-training.service`，并通过 `EnvironmentFile` 指向受限后端环境文件。
+4. 执行 `backend/.venv/bin/alembic upgrade head`。
+5. 构建前端并将 Nginx 配置中的静态目录、域名和证书替换为实际值。
+6. 启动服务并检查：
 
 ```bash
-tmpdir=$(mktemp -d)
-(cd backend && .venv/bin/python scripts/rehearse_phase5.py \
-  --root "$tmpdir" --report "$tmpdir/phase5-rehearsal.json")
+systemctl daemon-reload
+systemctl enable --now ai-customer-service-training
+curl -fsS http://127.0.0.1:8005/api/v1/health
+nginx -t && systemctl reload nginx
 ```
 
-公司测试库可通过 `--source-url-1/--target-url-1`、`--source-url-2/--target-url-2`（或对应
-`PHASE5_REHEARSAL_*` 环境变量）运行两组隔离 `mysql+pymysql` 演练。正式维护窗口前先运行：
+Nginx 对 API/SSE 保持 `proxy_buffering off`，Uvicorn 仅监听本机 8005；外网流量统一经过 HTTPS 入口。
+
+## PostgreSQL → MySQL 切换
+
+先完成两次隔离数据库演练，再进入维护窗口：
 
 ```bash
-APP_ENV=production DATABASE_URL='mysql+pymysql://...?charset=utf8mb4' \
-JWT_SECRET='至少32字符的随机值' FEISHU_APP_CLIENT_ID='...' FEISHU_APP_CLIENT_SECRET='...' \
-PHASE5_ALLOW_DIRTY=true ./scripts/phase5_preflight.sh --manifest phase5-report.json
-./scripts/phase5_cutover.sh --dry-run --manifest phase5-report.json
+LEGACY_DATABASE_URL='postgresql+psycopg://...' \
+  backend/.venv/bin/python backend/scripts/migrate_legacy.py export \
+  --output /secure/legacy-snapshot.jsonl --manifest /secure/legacy-manifest.json
+
+DATABASE_URL='mysql+pymysql://...?charset=utf8mb4' \
+  backend/.venv/bin/python backend/scripts/migrate_legacy.py import \
+  --input /secure/legacy-snapshot.jsonl --report /secure/mysql-import-report.json \
+  --topic-fixture backend/tests/fixtures/legacy-topic-question-bank.json
+
+backend/.venv/bin/python backend/scripts/migrate_legacy.py reconcile \
+  --manifest /secure/legacy-manifest.json --report /secure/mysql-import-report.json
 ```
 
-`phase5_cutover.sh` 默认只允许 dry-run；真实门禁还需要人工设置
-`PHASE5_CONFIRM_CUTOVER=I_UNDERSTAND`，脚本不会自动删除旧系统、重置 Git 或切换 DNS。
+对账必须覆盖逐表行数、外键孤儿、关键字段 SHA-256、题组顺序、任务归属、会话消息数、报告数和用户抽样聚合。失败时恢复旧系统写入，不切 DNS。
 
-## 旧 Next.js + Vercel 回滚参考
-
-以下内容只服务于维护窗口前的旧系统回滚，不是 Phase 5 新系统的生产部署方式。
-
-- Web：Vercel Production
-- 数据库：Neon PostgreSQL
-- 认证：Auth.js Credentials（MVP 临时入口）
-- AI：Vercel AI Gateway 或 OpenAI 兼容接口
-- 本地要求：Node.js 24、pnpm 10.33
-
-Vercel 免费版足够承载 Web MVP。网页托管额度与模型调用费用是两条独立链路；免费
-托管不等于 AI 推理免费。
-
-生产环境禁止使用本地文件 Store 和本地测试账号回退。训练知识、题库、场景、练习记录和报告必须来自 Neon。
-
-## 生产环境变量
-
-在 Vercel Production 配置以下变量，不把值提交到 Git：
-
-```text
-DATABASE_URL
-AUTH_SECRET
-SEED_ADMIN_EMAIL
-SEED_ADMIN_PASSWORD
-SEED_LEARNER_EMAIL
-SEED_LEARNER_PASSWORD
-```
-
-当前免费 Web 托管的推荐生产配置是关闭 Vercel AI Gateway，直接使用从 Vercel 函数区域
-可达的公网 OpenAI 兼容接口：
-
-```text
-SCENARIO_AI_MODE=real
-AI_GATEWAY_ENABLED=false
-OPENAI_API_KEY
-OPENAI_BASE_URL
-OPENAI_MODEL
-```
-
-Vercel 免费版可以运行 Web Functions，但不能替模型服务承担网络可达性或模型费用。
-当前项目的外部接口使用自定义 `35772` 端口，并解析到 `198.18.0.0/15` 保留地址；
-本机之所以能调用，是因为请求经过本机 `utun6` VPN 路由。Vercel 函数不在这条 VPN
-网络内，因此在 `hkg1` 调用会在客户端 60 秒后超时。生产接入前必须提供公网 HTTPS
-443 转发入口，或在 Vercel 与模型服务之间部署可公网访问的代理；仅登录 Vercel CLI
-不会把 Vercel 运行时接入本机 VPN。
-
-如果改用 Vercel AI Gateway，将 `AI_GATEWAY_ENABLED` 设为 `true` 并配置
-`AI_GATEWAY_MODEL`；项目账户还必须具备 Gateway 可用账单/额度，当前账户曾返回 403。
-
-## 空数据库初始化
+## 维护窗口门禁
 
 ```bash
-pnpm db:migrate
-pnpm db:seed
-pnpm knowledge:publish:db
-pnpm quiz:publish:db
-pnpm scenario:publish:db
-pnpm production:verify:data
+APP_ENV=production ./scripts/phase6_preflight.sh --manifest /secure/mysql-import-report.json
+./scripts/phase6_cutover.sh --dry-run --manifest /secure/mysql-import-report.json
 ```
 
-其中 `quiz:publish:db` 会在40题通过知识版本、来源和冲突校验后自动发布正式题组，
-人工逐题复核不是 MVP 阻塞项。若使用从 Vercel 拉取的环境文件，可运行：
+dry-run 只输出顺序，不会停止服务、删除数据或切 DNS。真实切换需要值班人员明确设置 `PHASE6_CONFIRM_CUTOVER=I_UNDERSTAND`，并人工完成：冻结旧写入、最终快照、导入、对账、代表性冒烟、DNS 切换和观察期。旧源码快照仅从标签恢复，不重新合并到 `main`。
 
-```bash
-DOTENV_CONFIG_PATH=.env.production.local pnpm quiz:publish:db
-DOTENV_CONFIG_PATH=.env.production.local pnpm production:verify:data --formal
-```
+## 回滚
 
-`--formal` 现在检查正式题组是否已发布且引用活动知识版本，不再要求 40/40 人工审核：
+- 数据对账失败：恢复旧系统写入，保持旧入口，不切 DNS。
+- 应用问题：通过 systemd/Nginx 恢复上一份已验证的 Vue/FastAPI 构建。
+- 源码追溯：检出 `legacy-next-final-bb8d164` 到隔离目录，仅供审计或临时回退，不覆盖当前 `main`。
 
-```bash
-pnpm production:verify:data --formal
-```
-
-## 验收顺序
-
-```bash
-pnpm check
-pnpm test:e2e
-pnpm test:e2e:live
-```
-
-线上 AI 冒烟会使用现有测试学员完成 3 轮上下文对话、刷新恢复和报告生成；它不是常规 CI 测试，不应在每次提交中自动消耗模型额度。
-
-## 故障处理
-
-- `403 AI Gateway ... credit card`：网页托管仍可用；关闭 Gateway 改用从 Vercel 函数区域可达的外部 OpenAI 兼容接口，或配置 Gateway 账单/额度。
-- `Request timed out`：页面会统一显示中文兜底提示；先确认 `OPENAI_BASE_URL` 的公网 HTTPS、端口和上游白名单。当前自定义 `35772` 端口在 Vercel `hkg1` 超时，不能只凭本机请求成功判定生产可达。
-- AI 服务失败：页面应展示通用中文提示，不展示网关、密钥、URL 或内部错误细节。
-- 题库为空：先确认活动知识版本和 `DOTENV_CONFIG_PATH=.env.production.local pnpm quiz:publish:db` 是否完成。
-- 生产数据异常：先运行 `pnpm production:verify:data`，不要直接修改数据库中的版本指针。
-
-## 回滚原则
-
-优先在 Vercel 控制台将 Production 切回上一个 Ready 部署；Neon 迁移和版本发布均为不可变/幂等流程，禁止通过删除历史数据回滚。
+生产切换是否完成以 [Roadmap](ROADMAP.md) 的“数据迁移”和“生产切换”轨道为准；本地测试通过不能替代公司权限下的真实演练。

@@ -74,6 +74,12 @@ export const routes = [
     component: ProfileView,
     meta: { requiresAuth: true },
   },
+  // Legacy bookmarks from the former practice shell remain valid after the Vue migration.
+  { path: '/practice', redirect: '/profile' },
+  { path: '/practice/profile', redirect: '/profile' },
+  { path: '/practice/assignments', redirect: '/profile' },
+  { path: '/practice/history', redirect: '/profile' },
+  { path: '/practice/quiz', redirect: '/practice/quiz/topics' },
   {
     path: '/migration/health',
     name: 'migration-health',

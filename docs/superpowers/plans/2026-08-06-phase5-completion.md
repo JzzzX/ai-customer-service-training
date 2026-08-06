@@ -1,5 +1,7 @@
 # 阶段五管理端与生产切换实施计划
 
+> 历史迁移记录，不是当前运行说明。当前入口见 `README.md` 与 `docs/AGENT-HANDOFF.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 在不直接改动生产库的前提下，交付管理员管理闭环、MySQL 兼容迁移与对账工具、Linux 生产配置、维护窗口切换门禁和阶段级验收证据。

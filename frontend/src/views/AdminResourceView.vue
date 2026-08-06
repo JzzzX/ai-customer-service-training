@@ -83,7 +83,10 @@ function formatValue(value) {
     <div v-else class="admin-table-wrap">
       <table class="admin-table">
         <thead>
-          <tr><th v-for="column in tableColumns" :key="column[0]">{{ column[1] }}</th></tr>
+          <tr>
+            <th v-for="column in tableColumns" :key="column[0]">{{ column[1] }}</th>
+            <th v-if="props.resource === 'questions'">操作</th>
+          </tr>
         </thead>
         <tbody>
           <tr v-for="item in rows" :key="item.id || item.report_id || item.resource_id">

@@ -7,10 +7,20 @@ import pytest
 from sqlalchemy import Column, MetaData, String, Table, create_engine, select
 from sqlalchemy.orm import Session
 
-from app.models import Base, QuestionReview, QuizSet, User
+from app.models import (
+    Base,
+    KnowledgeProgress,
+    QuestionReview,
+    QuizAnswer,
+    QuizAttempt,
+    QuizSet,
+    ScenarioProgressSummary,
+    User,
+)
 from app.services.legacy_migration import (
     LEGACY_TABLES,
     SCHEMA_VERSION,
+    _load_topic_fixture,
     import_legacy_snapshot,
     export_legacy_snapshot,
     reconcile_legacy_manifest,
@@ -165,14 +175,15 @@ def legacy_rows() -> dict[str, list[dict[str, object]]]:
     return rows
 
 
-def write_snapshot(path: Path) -> None:
-    rows = legacy_rows()
+def write_snapshot(path: Path, rows: dict[str, list[dict[str, object]]] | None = None) -> None:
+    rows = rows or legacy_rows()
     with path.open("w", encoding="utf-8") as stream:
         stream.write(
             json.dumps(
                 {
                     "kind": "header",
                     "schema_version": SCHEMA_VERSION,
+                    "exported_at": "2026-08-06T01:02:03+00:00",
                     "source_commit": "legacy-next-final-bb8d164",
                     "tables": list(LEGACY_TABLES),
                 },
@@ -219,6 +230,15 @@ def test_legacy_snapshot_import_preserves_relations_and_omits_password(tmp_path:
         assert [question.id for question in quiz_set.questions] == ["question-1"]
         assert review is not None
         assert review.snapshot["status"] == "approved"
+        knowledge_progress = database.get(KnowledgeProgress, "user-1")
+        scenario_progress = database.get(ScenarioProgressSummary, "user-1")
+        assert knowledge_progress is not None
+        assert knowledge_progress.total_questions == 1
+        assert knowledge_progress.unique_answered_count == 1
+        assert knowledge_progress.accuracy == 100
+        assert knowledge_progress.attempt_count == 1
+        assert scenario_progress is not None
+        assert scenario_progress.completed_session_count == 0
 
 
 def test_legacy_import_refuses_non_empty_target(tmp_path: Path) -> None:
@@ -239,21 +259,36 @@ def test_legacy_import_refuses_non_empty_target(tmp_path: Path) -> None:
 def test_manifest_reconciliation_is_redacted(tmp_path: Path) -> None:
     manifest = tmp_path / "manifest.json"
     report = tmp_path / "reconcile.json"
+    manifest_value = {
+        "schema_version": SCHEMA_VERSION,
+        "source_commit": "legacy-next-final-bb8d164",
+        "row_counts": {name: 0 for name in LEGACY_TABLES},
+        "hash": "h" * 64,
+        "intentionally_omitted_fields": {"users": ["password_hash"]},
+    }
     manifest.write_text(
+        json.dumps(
+            manifest_value
+        ),
+        encoding="utf-8",
+    )
+    report.write_text(
         json.dumps(
             {
                 "schema_version": SCHEMA_VERSION,
                 "source_commit": "legacy-next-final-bb8d164",
-                "row_counts": {"users": 2},
-                "hash": "h" * 64,
-                "intentionally_omitted_fields": {"users": ["password_hash"]},
+                "source_snapshot_hash": "h" * 64,
+                "source": {"row_counts": manifest_value["row_counts"]},
+                "target": {"foreign_key_orphans": []},
+                "match": True,
+                "mapped_fact_hash": "m" * 64,
             }
         ),
         encoding="utf-8",
     )
     result = reconcile_legacy_manifest(manifest, report)
     assert result["reconciled"] is True
-    assert "password_hash" in result["intentionally_omitted_fields"]["users"]
+    assert result["reconciliation"]["checks"]["source_hash"] is True
     assert "learner@example.test" not in report.read_text(encoding="utf-8")
 
 
@@ -272,6 +307,93 @@ def test_exporter_writes_canonical_header_and_manifest(tmp_path: Path) -> None:
     )
 
     assert result["schema_version"] == 1
+    assert json.loads(snapshot.read_text(encoding="utf-8").splitlines()[0])["exported_at"]
     assert result["row_counts"]["users"] == 0
     assert json.loads(snapshot.read_text(encoding="utf-8").splitlines()[0])["kind"] == "header"
     assert manifest.exists()
+
+
+def test_topic_attempts_use_versioned_fixture_and_merge_into_quiz_attempts(tmp_path: Path) -> None:
+    rows = legacy_rows()
+    rows["topic_quiz_attempts"] = [
+        {
+            "id": "topic-attempt-1",
+            "learner_id": "user-1",
+            "topic_id": "returns",
+            "quiz_hash": "t" * 64,
+            "status": "passed",
+            "correct_count": 1,
+            "total_questions": 1,
+            "score": 100,
+            "completed_at": "2026-08-06T01:02:03+00:00",
+            "created_at": "2026-08-06T01:02:03+00:00",
+        }
+    ]
+    rows["topic_quiz_answers"] = [
+        {
+            "id": "topic-answer-1",
+            "topic_quiz_attempt_id": "topic-attempt-1",
+            "question_key": "qq_topic_1",
+            "selected_answers": ["七天"],
+            "is_correct": True,
+            "answered_at": "2026-08-06T01:02:03+00:00",
+        }
+    ]
+    snapshot = tmp_path / "legacy-topic.jsonl"
+    report = tmp_path / "topic-report.json"
+    write_snapshot(snapshot, rows)
+    fixture = tmp_path / "topic-fixture.json"
+    fixture.write_text(
+        json.dumps(
+            {
+                "schema_version": SCHEMA_VERSION,
+                "knowledge_version_hash": "k" * 64,
+                "topics": [
+                    {
+                        "id": "returns",
+                        "label": "退换货",
+                        "description": "售后政策",
+                        "quiz_hash": "t" * 64,
+                        "questions": [
+                            {
+                                "id": "qq_topic_1",
+                                "prompt": "退换货期限？",
+                                "options": ["七天", "三十天"],
+                                "correct_answers": ["七天"],
+                                "question_type": "single_choice",
+                                "category": "returns",
+                                "position": 1,
+                            }
+                        ],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    target_path = tmp_path / "topic-target.db"
+    engine = create_engine(f"sqlite+pysqlite:///{target_path}")
+    Base.metadata.create_all(engine)
+
+    result = import_legacy_snapshot(
+        snapshot,
+        f"sqlite+pysqlite:///{target_path}",
+        report,
+        topic_fixture=fixture,
+    )
+
+    assert result["match"] is True
+    with Session(engine) as database:
+        attempt = database.get(QuizAttempt, "topic-attempt-1")
+        assert attempt is not None
+        assert attempt.origin == "legacy_topic"
+        assert attempt.answers[0].question_id == "qq_topic_1"
+        assert database.get(QuizAnswer, "topic-answer-1") is not None
+
+
+def test_checked_in_topic_fixture_preserves_full_legacy_bank() -> None:
+    fixture = _load_topic_fixture(
+        Path(__file__).parent / "fixtures" / "legacy-topic-question-bank.json"
+    )
+    assert len(fixture["topics"]) == 5
+    assert sum(len(topic["questions"]) for topic in fixture["topics"]) == 350

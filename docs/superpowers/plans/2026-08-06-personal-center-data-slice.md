@@ -1,5 +1,7 @@
 # 个人中心数据切片 Implementation Plan
 
+> 历史迁移记录，不是当前运行说明。当前入口见 `README.md` 与 `docs/AGENT-HANDOFF.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 将任务、知识进度和实战覆盖摘要迁移到 FastAPI/Vue 个人中心，并保证服务端按当前用户隔离数据。

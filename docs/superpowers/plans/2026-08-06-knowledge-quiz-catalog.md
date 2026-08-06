@@ -1,5 +1,7 @@
 # 知识与题库目录迁移 Implementation Plan
 
+> 历史迁移记录，不是当前运行说明。当前入口见 `README.md` 与 `docs/AGENT-HANDOFF.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 为新 Vue/FastAPI 系统交付可读取已发布知识版本和专题题库目录的纵向切片，作为后续答题、判分与内容发布迁移的稳定边界。

@@ -1,5 +1,7 @@
 # 模拟对话与报告生成解耦 Implementation Plan
 
+> 历史迁移记录，不是当前运行说明。当前入口见 `README.md` 与 `docs/AGENT-HANDOFF.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** 解耦最后一轮顾客回复和报告评测，并在对话页显示阶段式报告生成进度。

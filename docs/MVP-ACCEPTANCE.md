@@ -1,81 +1,30 @@
-# MVP 验收矩阵
+# 当前系统验收基线
 
-最后更新：2026-08-03
+本文记录当前 Vue/FastAPI/MySQL 系统的工程验收基线。它不代表真实数据库、域名或生产切换已经完成；生产状态以 [Roadmap](ROADMAP.md) 和 [Phase 6 验收报告](superpowers/reports/2026-08-06-phase6-acceptance.md) 为准。
 
-## 结论
+## 工程能力
 
-### Web MVP：题库可自动发布，线上真实 AI 仍待外部接口可达
+| 范围 | 验收要求 | 当前证据 |
+| --- | --- | --- |
+| 身份与权限 | 飞书身份、JWT Cookie、学员/管理员边界、跨用户资源拒绝 | `backend/tests/test_auth_api.py`、`backend/tests/test_security.py` |
+| 知识与题库 | 版本、来源、审核、题组顺序、服务端判分、答题记录 | `backend/tests/test_catalog_api.py`、`backend/tests/test_quiz_attempt_api.py` |
+| 情景训练 | 可恢复会话、消息顺序、风险、报告 SSE、重试和历史 | `backend/tests/test_scenario_api.py`、`frontend/tests/e2e/company-stack-phase4.spec.js` |
+| 管理端 | 任务创建、题目审核/发布、场景草稿、报告复核、审计 | `backend/tests/test_phase5_admin.py`、`frontend/src/views/Admin*.vue` |
+| 浏览器闭环 | 登录、个人中心、答题、情景、管理员页面 | `frontend/tests/e2e/` |
 
-本地代码、数据库、UI、权限、题库和 Mock 情景闭环已通过自动化验证。Vercel Production
-登录、页面和函数均可达；已关闭 Vercel AI Gateway，改走外部 OpenAI 兼容接口，但真实
-AI 请求返回 `Request timed out.`。
-
-本机用同一外部接口完成完整情景请求约 2 秒；Vercel 函数部署在 `hkg1`，当前接口使用
-自定义 `35772` 端口并解析到仅能通过本机 `utun6` VPN 到达的 `198.18.0.0/15` 保留地址，
-线上在 60 秒后连接超时。证据指向 Vercel 函数到外部模型接口的网络可达性问题，不是
-Vercel 免费 Web 托管不能调用外部 API；仍需提供公网 HTTPS 443 转发入口或可公网访问
-的代理后，才能完成真实 AI 验收。
-
-### 正式培训内容版：题库技术门禁已达标
-
-40 道可追溯题已取消人工审核阻塞，改为通过知识版本、数量、来源和冲突校验后自动发布；管理员逐题复核保留为可选质量工具。350 道专题练习题可用于日常训练。
-
-## 三项重点任务
-
-| 验收项 | 验收口径 | 当前证据 | 结论 |
-|---|---|---|---|
-| 现代化前端 UI 重构 | 学员端、管理端、登录、测验、场景、报告统一视觉；桌面与 390px 无溢出 | 共享 UI 组件、现有响应式 E2E、页面测试 | 技术达标 |
-| 知识库测验题重新设置 | 5 个专题共 350 题；40 道正式题通过知识/来源门禁自动发布；10 题抽取满足题型和难度配额；服务端判分 | `question-bank.test.ts`、`select-question-group.test.ts`、题库发布测试、练习历史 E2E | 技术达标 |
-| AI 模拟对话修复 | 完整上下文；回答最新客服消息；重复/空回复保护；刷新恢复；报告生成；真实 AI 线上复验 | Provider、训练服务、聊天组件测试；Mock 场景 E2E；Vercel 直连 AI 冒烟返回 `Request timed out.` | 代码达标，线上被外部模型接口可达性阻塞 |
-
-## 功能验收清单
-
-- [x] 未登录访问学员区和管理区会被拦截。
-- [x] 学员不能访问管理端。
-- [x] 管理员可以进入题目审核、场景和训练记录管理页面。
-- [x] 5 个专题各有足够题量，题目和知识单元标识全局唯一。
-- [x] 专题练习每次抽取 10 题且不重复。
-- [x] 正确答案不直接序列化到学员浏览器作为判分依据。
-- [x] 练习结果按学员账号保存并可在历史记录查看。
-- [x] 8 个情景可开始、发送消息、刷新恢复、结束并查看报告。
-- [x] AI 模式和演示模式在页面与报告中明确标识。
-- [x] AI 基础设施错误不会向学员暴露网关、密钥、账单或底层超时信息。
-- [ ] Vercel Production 完成至少 3 轮真实 AI 对话并生成 AI 评分报告。
-- [x] 40 道正式题通过技术门禁并支持自动发布；人工复核不作为 MVP 阻塞项。
-
-## 自动化验证命令
+## 可重复命令
 
 ```bash
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm db:check
-pnpm build
-pnpm test:e2e
-pnpm test:e2e:live
-pnpm production:verify:data
-pnpm production:verify:data --formal
+./build.sh
+bash scripts/test_phase6_scripts.sh
+npm --prefix frontend run test:e2e:company-stack
 ```
 
-其中 `pnpm test:e2e` 固定使用 Mock 模式；`pnpm test:e2e:live` 才会访问线上真实 AI 并产生少量测试会话与模型调用。生产数据命令可通过 `DOTENV_CONFIG_PATH=.env.production.local` 指定 Vercel 拉取的环境文件。
+## 迁移与生产门槛
 
-## 2026-08-01 实测记录
+- PostgreSQL → MySQL 必须使用 `backend/scripts/migrate_legacy.py`，完成两次隔离数据库演练。
+- 对账必须覆盖逐表数量、外键孤儿、关键字段 SHA-256、题组顺序、任务归属、消息数、报告数和用户抽样。
+- 生产切换需要维护窗口冻结写入、最终快照、对账、代表性冒烟、DNS 切换和观察期。
+- 任一对账或冒烟失败，都保持旧入口并恢复旧系统写入；旧源码只从 `legacy-next-final-bb8d164` 标签恢复。
 
-- `pnpm lint`、`pnpm typecheck`、`pnpm test`：通过；70 个测试文件、200 个测试通过，Drizzle 检查和 Next.js 生产构建通过。
-- `pnpm test:e2e`：6 个 Mock 测试通过，1 个真实 AI 测试按条件跳过。
-- Neon 正式数据校验：通过；活动知识版本 1 个、题目 40 道、正式题组 1 个、已发布场景 8 个、管理员 1 个、学员 1 个、跨版本引用 0 个，当前人工复核记录 0/40 但不阻塞 MVP。
-- Neon `production:verify:data --formal`：通过；只要求存在 1 个与活动知识版本一致的正式题组。
-- Vercel Production AI 冒烟：未通过；已关闭 AI Gateway 后，第一轮直连外部模型请求在 60 秒后返回 `Request timed out.`。
-
-### 2026-08-03 线上复验
-
-- `AI_GATEWAY_ENABLED=false` 已写入 Vercel Production，部署 `dpl_C23jQ6LhB1BMTMX99wEDQdf6rBsv` 为 Ready，生产别名正常。
-- 生产环境校验曾错误地只接受 `AI_GATEWAY_ENABLED="true"`；已改为接受 `true/false`，并补充回归测试。
-- 生产登录与场景启动成功；消息请求进入直连模型路径，但 `pnpm test:e2e:live` 第一轮收到 `Request timed out.`。
-- 本机同一 `OPENAI_BASE_URL`、模型和完整对话提示请求成功；当前差异集中在 Vercel 函数到外部接口的网络路径。
-- 项目已补充 `Request timed out.` 的回归测试和公共错误脱敏；线上仍需公网模型入口才能恢复真实 AI。
-
-## 交付判定
-
-- Web MVP：自动题库发布、权限、知识小测和 Mock 情景闭环通过，可交付演示/试用；线上真实 AI 冒烟仍是完整 AI 交付的剩余条件。
-- 完整 AI MVP：还需满足线上真实 AI 3 轮对话、报告生成和 `production:verify:data --formal` 通过。
+因此，工程测试全部通过不等于生产切换通过；整体 100% 只在 [ROADMAP.md](ROADMAP.md) 三条轨道均完成后成立。

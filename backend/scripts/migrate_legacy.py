@@ -28,6 +28,15 @@ def build_parser() -> argparse.ArgumentParser:
     import_parser.add_argument("--input", type=Path, required=True)
     import_parser.add_argument("--report", type=Path, required=True)
     import_parser.add_argument("--replace-empty-target", action="store_true")
+    import_parser.add_argument(
+        "--target-name",
+        help="required with --replace-empty-target; must match the target database name",
+    )
+    import_parser.add_argument(
+        "--topic-fixture",
+        type=Path,
+        help="versioned static topic question fixture required when topic attempts exist",
+    )
 
     reconcile_parser = subparsers.add_parser("reconcile")
     reconcile_parser.add_argument("--manifest", type=Path, required=True)
@@ -56,6 +65,8 @@ def main() -> int:
             target_url,
             args.report,
             replace_empty_target=args.replace_empty_target,
+            target_name=args.target_name,
+            topic_fixture=args.topic_fixture,
         )
     else:
         result = reconcile_legacy_manifest(args.manifest, args.report)

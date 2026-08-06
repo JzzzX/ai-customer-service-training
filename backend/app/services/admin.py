@@ -96,7 +96,8 @@ class AdminService:
         if target is None or getattr(target, "status", "published") != "published":
             raise AppError(code="ASSIGNMENT_TARGET_NOT_FOUND", message="任务目标不存在或尚未发布。", status_code=404)
         assignment = Assignment(
-            id=f"assignment_{uuid4().hex}",
+            # Keep the company target schema's UUID-sized assignment key.
+            id=str(uuid4()),
             learner_id=payload.learner_id,
             assigned_by_id=admin_id,
             assignment_type=payload.assignment_type,

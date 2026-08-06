@@ -170,7 +170,7 @@ class QuizSet(Base):
     questions: Mapped[list["Question"]] = relationship(
         secondary=quiz_set_questions,
         back_populates="quiz_sets",
-        order_by="Question.position",
+        order_by=quiz_set_questions.c.position,
     )
     attempts: Mapped[list["QuizAttempt"]] = relationship(back_populates="quiz_set")
 

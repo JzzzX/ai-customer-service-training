@@ -1,5 +1,7 @@
 # 阶段 3 知识与题库完整迁移 Implementation Plan
 
+> 历史迁移记录，不是当前运行说明。当前入口见 `README.md` 与 `docs/AGENT-HANDOFF.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 完整交付 Vue/FastAPI 新系统的知识编译与发布、正式题组发布、专题取题、服务端判分、答题记录、覆盖率和可重复数据迁移对账，并把 Roadmap 阶段 3 标记为完成。

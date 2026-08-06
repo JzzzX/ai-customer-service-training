@@ -1,5 +1,7 @@
 # README and Engineering Handoff Implementation Plan
 
+> 历史迁移记录，不是当前运行说明。当前入口见 `README.md` 与 `docs/AGENT-HANDOFF.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make the current MVP understandable to company developers, state its verified delivery boundary accurately, and prepare a safe decision point for GitHub visibility.

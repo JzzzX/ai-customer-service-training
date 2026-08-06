@@ -1,6 +1,5 @@
 # Dependencies and build output
 node_modules/
-.next/
 out/
 coverage/
 playwright-report/
@@ -31,12 +30,5 @@ frontend/dist/
 .superpowers/
 .worktrees/
 *.log
-*.tsbuildinfo
-.vercel
 .iga/
 .trae/
-
-# One-off IGA verification assets (may contain preview credentials)
-/playwright.iga.config.ts
-/scripts/test-e2e-iga.ts
-/scripts/test-e2e-iga-failure.png

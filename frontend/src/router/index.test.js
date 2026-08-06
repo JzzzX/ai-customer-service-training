@@ -22,6 +22,15 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('profile')
   })
 
+  it('redirects legacy practice bookmarks to the Vue personal center', async () => {
+    const auth = { user: { id: 'user-1' }, ensureLoaded: async () => {} }
+    const router = createAppRouter({ history: createMemoryHistory(), auth })
+    router.push('/practice/assignments')
+    await router.isReady()
+
+    expect(router.currentRoute.value.name).toBe('profile')
+  })
+
   it('keeps the published quiz catalog readable without login', async () => {
     const auth = { user: null, ensureLoaded: async () => {} }
     const router = createAppRouter({ history: createMemoryHistory(), auth })

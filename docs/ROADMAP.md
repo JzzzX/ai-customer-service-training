@@ -4,9 +4,7 @@
 
 ## 当前结论
 
-项目正在从 Next.js、React、Auth.js、Drizzle、Neon、Vercel 单体迁移到公司统一的 Vue 3、Vite、FastAPI、SQLAlchemy、MySQL、飞书登录和 Linux 部署架构。
-
-阶段 1 至阶段 5 已完成新系统的工程基础和纵向功能实现，但旧系统仍在仓库中，且现有迁移演练尚未证明旧 PostgreSQL 到新 MySQL 的异构转换。Phase 6 专门收口数据转换、功能等价、旧栈退役和生产切换；在三个验收轨道全部通过前，不再宣称整体迁移 100%。旧版回滚源码已冻结于 `legacy-next-final-bb8d164` 标签。
+阶段 1 至阶段 5 定义为公司标准新栈基础工程；Phase 6 负责真实异构迁移、功能等价、旧栈退役和生产切换。旧系统源码已经冻结于双远程标签 `legacy-next-final-bb8d164`，不再进入 `main`。在工程、数据、生产三条验收轨道全部通过前，不标记整体迁移 100%。
 
 权威技术基准为 [PROJECT_TECH_STACK.md](PROJECT_TECH_STACK.md)，完整迁移设计为 [公司技术栈迁移设计](superpowers/specs/2026-08-05-company-stack-migration-design.md)。
 
@@ -18,15 +16,15 @@
 | 2. 身份与个人中心 | 100% | 已完成 | 用户与飞书身份、JWT Cookie、任务/进度摘要 API、Vue 个人中心数据联调 |
 | 3. 知识与题库 | 100% | 已完成 | 解析、版本门禁、正式题组、服务端判分、Vue 作答、迁移对账和 E2E 均已验收 |
 | 4. AI 实战与记录 | 100% | 已完成 | 场景迁移、可恢复多轮训练、风险识别、Ark/Mock、报告 SSE、历史时间线与 E2E 已验收 |
-| 5. 管理端与生产切换 | 100% | 已完成（新栈工程验收） | 管理端、同构迁移对账、Nginx/systemd、双远程更新门禁和维护窗口 dry-run 已通过 |
-| 6. 彻底迁移与旧栈退役 | 35% | 进行中 | 目标 schema provenance、PostgreSQL 快照/映射导入、任务/题目/题组/场景草稿/复核 API 与 Vue 管理页面已补齐；旧栈清理和生产切换尚未完成 |
+| 5. 新栈管理与部署基础 | 100% | 已完成（基础工程） | 管理端、Nginx/systemd、双远程更新门禁和维护窗口 dry-run 已具备 |
+| 6. 彻底迁移与旧栈退役 | 65% | 进行中 | 目标模型、异构快照/映射导入、功能等价 API/Vue、Playwright 迁移和旧运行代码退役已完成；真实 PostgreSQL/MySQL 演练与生产切换未完成 |
 
 ## 三条验收轨道
 
 | 轨道 | 当前状态 | 完成条件 |
 | --- | --- | --- |
-| 工程重构 | Phase 1–5 已完成，Phase 6 35% | main 仅保留 Vue/FastAPI/MySQL 技术栈，旧功能逐项等价 |
-| 数据迁移 | 未完成 | PostgreSQL → MySQL 快照、导入、对账，两次真实隔离演练通过 |
+| 工程重构 | Phase 1–5 已完成，Phase 6 65% | main 仅保留 Vue/FastAPI/MySQL 技术栈，旧功能逐项等价 |
+| 数据迁移 | 工具与自动化验证完成，真实演练未开始 | PostgreSQL → MySQL 快照、导入、对账，两次真实隔离演练通过 |
 | 生产切换 | 未开始 | 公司维护窗口、DNS 切换、观察期和旧系统下线完成 |
 
 ## 阶段明细
@@ -78,6 +76,19 @@
 - [x] 固化维护窗口只读、最终增量、失败恢复和入口切换顺序；真实窗口执行由外部维护授权触发。
 - [x] 固化生产切换、监控观察和旧系统下线验收门禁；未获得公司连接信息前不执行真实 DNS/下线操作。
 
+### 阶段 6：彻底迁移与旧栈退役
+
+- [x] 在 `bb8d164` 创建并双远程推送 `legacy-next-final-bb8d164` 旧系统快照标签。
+- [x] 建立旧功能、旧 PostgreSQL 表、新 API/页面、目标 MySQL 表四列对应矩阵。
+- [x] 补齐 `question_reviews`、`quiz_set_questions`、来源类型和旧 UUID/时间/版本/归属字段，并提供 Alembic 升降级链路。
+- [x] 使用 `psycopg[binary]==3.3.4` 实现版本化 JSONL 导出、映射导入、逐表事务、非空库门禁、幂等保护和脱敏对账报告。
+- [x] 补齐学员任务、管理员任务创建、题目审核/发布、Ark 场景草稿和报告复核 API 与 Vue 页面。
+- [x] 将公司栈 Playwright 配置与 E2E 测试迁入 `frontend/`，测试转换为 JavaScript 并通过 6/6。
+- [x] 从 `main` 删除旧前端、旧 ORM、根 TypeScript/TSX 运行代码和旧构建配置；旧代码仅保留在标签。
+- [ ] 用 PostgreSQL 旧结构 fixture 和 MySQL 8.0 完成两次独立真实隔离演练，核对数量、外键、哈希、顺序和抽样聚合。
+- [ ] 生成 Phase 6 三轨验收报告；代码轨、数据轨、生产轨分别签字，不提前标记整体 100%。
+- [ ] 由公司开发、DBA、运维和飞书管理员完成维护窗口、DNS 切换、观察期和旧系统下线。
+
 ## 最近完成迭代
 
 目标：完成阶段 3 的知识、题库、作答和迁移对账完整闭环。
@@ -92,19 +103,22 @@
 
 ## 当前执行
 
-目标：阶段 5 工程实现与自动化验收已收口；真实维护窗口按 [阶段 5 验收报告](superpowers/reports/2026-08-06-phase5-acceptance.md) 的外部前置条件执行。实施依据为 [阶段 5 完整迁移计划](superpowers/plans/2026-08-06-phase5-completion.md)。
+目标：阶段 6 代码级重构和旧栈退役已收口，继续完成真实 PostgreSQL/MySQL 演练和公司生产切换。实施依据为 [Phase 6 验收报告](superpowers/reports/2026-08-06-phase6-acceptance.md) 和 [迁移矩阵](PHASE6-MIGRATION-MATRIX.md)。
 
-计划任务进度：**5/5**，阶段 5 已完成工程验收。
+计划任务进度：**7/10**，工程轨道进行中，数据和生产轨道待公司环境。
 
-1. [x] 完成管理员角色依赖、知识/题目/场景/任务/审核/历史资源 API、审核决策和管理审计表。
-2. [x] 完成 Vue 管理端路由、资源表格、审核操作和管理员 E2E。
-3. [x] 完成全量迁移快照、MySQL URL 兼容复制、外键/哈希对账和两次隔离演练。
-4. [x] 完成 Nginx、systemd、Uvicorn、安装/构建/更新脚本和切换预检门禁。
-5. [x] 通过阶段级全量回归，形成 [阶段 5 验收报告](superpowers/reports/2026-08-06-phase5-acceptance.md) 并将阶段 5 标记为工程验收完成。
+1. [x] 冻结旧系统标签并建立四列功能/数据对应矩阵。
+2. [x] 补齐目标 MySQL 模型、关联关系、来源字段和 Alembic 迁移。
+3. [x] 实现 PostgreSQL 快照、异构映射、MySQL 导入和脱敏对账命令。
+4. [x] 补齐任务、题目审核/发布、场景草稿和报告复核 API 与 Vue 页面。
+5. [x] 将 Playwright 测试迁入前端并转换为 JavaScript，6/6 通过。
+6. [x] 删除 `main` 中旧前端、旧 ORM、根 TypeScript/TSX 和旧构建配置。
+7. [x] 重写 README、部署、交接和验收入口，明确三条验收轨道。
+8. [ ] 在两套隔离 PostgreSQL/MySQL 8.0 环境完成两次全量迁移演练与对账。
+9. [ ] 完成 Phase 6 代码/数据/生产三轨签字验收。
+10. [ ] 完成公司维护窗口、DNS 切换、观察期和旧系统下线。
 
-阶段 3 验收证据：后端 pytest **56 passed**；Vue Vitest **25 passed**、Vite build 通过；旧系统 Vitest **232 passed**；根项目 ESLint、直接 TypeScript 检查、Drizzle check 和 Next build 通过；公司技术栈 Playwright **3/3 passed**；完整导出 **5 个专题 / 350 道题**，两次隔离 SQLite rehearsal 的源/目标 hash 一致。
-
-阶段 4 验收证据：后端 pytest **82 passed**；Vue Vitest **35 passed**、Vite build 通过；旧系统 Vitest **232 passed**；根项目 ESLint、直接 TypeScript 检查、Drizzle check 和 Next build 通过；公司技术栈 Playwright **4/4 passed**（含 Phase 4）；规范化导出 **8 个场景**，两次隔离 SQLite rehearsal 均为 **8 场景 / 8 版本**，源/目标 hash `ef725b919d6f563238f8e892f3b749c13576c0a0de2ba1d0544f2f63e3cb7812` 一致。
+阶段 6 当前证据：后端 pytest **100 passed**；Vue Vitest **39 passed**、Vite build 通过；公司栈 Playwright **6/6 passed**；迁移工具单测覆盖快照头、字段映射、静态题库 fixture、非空库门禁、重复导入保护和脱敏报告。真实 PostgreSQL/MySQL 演练尚未执行。
 
 ## 已交付检查点
 
@@ -139,16 +153,17 @@
 | `fc0daa0` | Vue 管理端与管理员 E2E | Vue 38 项、Vite build、Phase5 Playwright 2/2 |
 | `7cafd56` | 全量迁移对账与隔离演练工具 | 5 项迁移测试、确定性快照、两次隔离报告一致；MySQL URL 双 pair 参数已支持 |
 | `c640360` | Linux 配置与切换预检门禁 | 部署脚本测试通过，Nginx/systemd 模板、生产 env 校验和 dry-run 顺序已固化 |
-| 待提交 | 阶段 5 全量回归与验收报告 | 后端 90、Vue 38、旧系统 232、公司栈 Playwright 6/6；迁移 hash/部署门禁证据已记录 |
+| `fd5aaca` | 公司栈 E2E 迁移与旧冒烟删除 | frontend Playwright 6/6；配置和测试全部为 JavaScript |
+| 待提交 | Phase 6 旧栈退役与文档收口 | 根目录无 TS/TSX、旧 ORM/前端配置；三轨验收报告记录真实演练和生产前置条件 |
 
 ## 风险与阻塞
 
-- 当前无代码阻塞；阶段 5 工程验收已完成。外部阻塞仅为公司 MySQL 连接、维护窗口授权和真实 DNS/旧系统下线执行条件。
+- 当前代码轨无已知阻塞；数据轨和生产轨外部阻塞为公司 PostgreSQL/MySQL 测试库、维护窗口授权和真实 DNS/旧系统下线执行条件。
 - 飞书正式联调需要公司的 App ID、App Secret、回调地址和应用可用范围配置。
-- MySQL 正式迁移需要公司测试库与生产库连接信息；在此之前使用隔离 SQLite 完成自动化行为验证。
+- MySQL 正式迁移需要公司测试库与生产库连接信息；当前仅完成 SQLite 行为测试和迁移工具单测，不能冒充真实异构演练。
 - 新系统未达到功能与数据验收门槛前，旧系统保持可写和可回退。
 - Ark 生产联调仍需要公司模型地址、模型名、密钥和超时配置；测试默认使用显式 `SCENARIO_AI_MODE=mock`，不会将 Ark 失败静默伪装为 Mock。
-- `pnpm check` 包装命令在当前运行环境因 pnpm 的 `ignored build scripts` 安全策略提前终止；同一验收矩阵已用仓库现有直接二进制完成 ESLint、TypeScript、Vitest、Drizzle check 和 Next build。
+- 生产 Ark、飞书、MySQL、域名和监控参数必须由公司持有权限的人员配置并留存演练报告。
 
 ## Roadmap 更新规则
 

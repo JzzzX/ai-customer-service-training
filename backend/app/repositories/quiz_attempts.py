@@ -42,7 +42,11 @@ class QuizAttemptRepository:
                     quiz_set_questions.c.quiz_set_id == quiz_set_id,
                     Question.status == "published",
                 )
-                .order_by(Question.position, Question.id)
+                .order_by(
+                    quiz_set_questions.c.position,
+                    Question.position,
+                    Question.id,
+                )
             )
         )
 

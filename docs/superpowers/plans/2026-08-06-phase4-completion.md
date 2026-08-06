@@ -1,5 +1,7 @@
 # 阶段 4：AI 实战与训练记录完成实施计划
 
+> 历史迁移记录，不是当前运行说明。当前入口见 `README.md` 与 `docs/AGENT-HANDOFF.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 在 Vue 3/FastAPI/SQLAlchemy 目标架构中完成场景目录、版本、可恢复多轮训练、实时风险、Ark/Mock Provider、报告 SSE、历史时间线和迁移演练，使阶段 4 形成可独立验收的纵向闭环。

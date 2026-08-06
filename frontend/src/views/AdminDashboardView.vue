@@ -9,6 +9,7 @@ const links = [
   ['knowledge', '知识版本'],
   ['questions', '题目'],
   ['scenarios', '场景'],
+  ['scenarios/generate', 'AI 场景草稿'],
   ['assignments', '任务'],
   ['reviews', '审核'],
   ['history', '管理历史'],
