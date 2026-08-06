@@ -7,7 +7,15 @@ from uuid import uuid4
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import KnowledgeProgress, KnowledgeVersion, Question, QuizAnswer, QuizAttempt, QuizSet
+from app.models import (
+    KnowledgeProgress,
+    KnowledgeVersion,
+    Question,
+    QuizAnswer,
+    QuizAttempt,
+    QuizSet,
+    quiz_set_questions,
+)
 from app.repositories.quiz_attempts import QuizAttemptRepository
 
 
@@ -259,8 +267,13 @@ class QuizAttemptService:
         active_set_ids = [quiz_set.id for quiz_set in active_sets]
         questions = list(
             self.session.scalars(
-                select(Question).where(
-                    Question.quiz_set_id.in_(active_set_ids or [""]),
+                select(Question)
+                .join(
+                    quiz_set_questions,
+                    quiz_set_questions.c.question_id == Question.id,
+                )
+                .where(
+                    quiz_set_questions.c.quiz_set_id.in_(active_set_ids or [""]),
                     Question.status == "published",
                 )
             )
@@ -284,9 +297,17 @@ class QuizAttemptService:
             )
         )
         set_by_id = {quiz_set.id: quiz_set for quiz_set in active_sets}
-        questions_by_set: dict[str, list[Question]] = {}
-        for question in questions:
-            questions_by_set.setdefault(question.quiz_set_id, []).append(question)
+        questions_by_set: dict[str, list[Question]] = {quiz_set.id: [] for quiz_set in active_sets}
+        question_rows = self.session.execute(
+            select(quiz_set_questions.c.quiz_set_id, Question)
+            .join(Question, Question.id == quiz_set_questions.c.question_id)
+            .where(
+                quiz_set_questions.c.quiz_set_id.in_(active_set_ids or [""]),
+                Question.status == "published",
+            )
+        )
+        for quiz_set_id, question in question_rows:
+            questions_by_set.setdefault(quiz_set_id, []).append(question)
         answers_by_attempt: dict[str, list[QuizAnswer]] = {}
         for answer in answers:
             answers_by_attempt.setdefault(answer.quiz_attempt_id, []).append(answer)

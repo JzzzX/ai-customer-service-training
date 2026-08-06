@@ -23,6 +23,7 @@ TABLE_ORDER = (
     "knowledge_units",
     "quiz_sets",
     "questions",
+    "quiz_set_questions",
     "quiz_attempts",
     "quiz_answers",
     "assignments",

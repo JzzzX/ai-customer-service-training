@@ -2,11 +2,13 @@ from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
+    Column,
     DateTime,
     ForeignKey,
     Integer,
     JSON,
     String,
+    Table,
     Text,
     UniqueConstraint,
     func,
@@ -14,6 +16,16 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models import Base
+
+
+quiz_set_questions = Table(
+    "quiz_set_questions",
+    Base.metadata,
+    Column("quiz_set_id", String(64), ForeignKey("quiz_sets.id", ondelete="CASCADE"), primary_key=True),
+    Column("question_id", String(64), ForeignKey("questions.id", ondelete="RESTRICT"), primary_key=True),
+    Column("position", Integer, nullable=False, default=0),
+    Column("points", Integer, nullable=False, default=1),
+)
 
 
 class KnowledgeVersion(Base):
@@ -148,7 +160,9 @@ class QuizSet(Base):
         back_populates="quiz_sets"
     )
     questions: Mapped[list["Question"]] = relationship(
-        back_populates="quiz_set", cascade="all, delete-orphan"
+        secondary=quiz_set_questions,
+        back_populates="quiz_sets",
+        order_by="Question.position",
     )
     attempts: Mapped[list["QuizAttempt"]] = relationship(back_populates="quiz_set")
 
@@ -164,7 +178,7 @@ class Question(Base):
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    quiz_set_id: Mapped[str] = mapped_column(
+    quiz_set_id: Mapped[str | None] = mapped_column(
         ForeignKey("quiz_sets.id", ondelete="CASCADE"), index=True
     )
     question_key: Mapped[str | None] = mapped_column(
@@ -190,11 +204,48 @@ class Question(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
-    quiz_set: Mapped[QuizSet] = relationship(back_populates="questions")
+    quiz_sets: Mapped[list[QuizSet]] = relationship(
+        secondary=quiz_set_questions,
+        back_populates="questions",
+        overlaps="quiz_set",
+    )
+    quiz_set: Mapped[QuizSet | None] = relationship(
+        foreign_keys=[quiz_set_id],
+        overlaps="quiz_sets,questions",
+    )
     knowledge_unit: Mapped[KnowledgeUnit | None] = relationship(
         back_populates="questions"
     )
     answers: Mapped[list["QuizAnswer"]] = relationship(back_populates="question")
+    reviews: Mapped[list["QuestionReview"]] = relationship(
+        back_populates="question", cascade="all, delete-orphan"
+    )
+
+
+class QuestionReview(Base):
+    __tablename__ = "question_reviews"
+    __table_args__ = (
+        UniqueConstraint(
+            "question_id",
+            "content_hash",
+            name="uq_question_reviews_question_hash",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    question_id: Mapped[str] = mapped_column(
+        ForeignKey("questions.id", ondelete="RESTRICT"), index=True
+    )
+    reviewer_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), index=True
+    )
+    content_hash: Mapped[str] = mapped_column(String(64))
+    snapshot: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+
+    question: Mapped[Question] = relationship(back_populates="reviews")
 
 
 class QuizAttempt(Base):
