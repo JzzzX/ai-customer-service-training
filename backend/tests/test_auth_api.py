@@ -95,6 +95,28 @@ def test_feishu_callback_binds_user_and_sets_session_cookies() -> None:
     }
 
 
+def test_test_login_sets_a_session_only_in_test_environment() -> None:
+    client, sessions = make_client()
+    with sessions() as database:
+        database.add(
+            User(
+                id="e2e-learner",
+                email="e2e@example.test",
+                name="端到端学员",
+                role="learner",
+                is_active=True,
+            )
+        )
+        database.commit()
+
+    response = client.post("/api/v1/auth/test-login")
+
+    assert response.status_code == 204
+    current_user = client.get("/api/v1/auth/me")
+    assert current_user.status_code == 200
+    assert current_user.json()["id"] == "e2e-learner"
+
+
 class FakeFeishuClient:
     def authorization_url(self, state: str) -> str:
         return f"https://accounts.feishu.cn/oauth?state={state}"

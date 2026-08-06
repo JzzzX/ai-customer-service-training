@@ -22,7 +22,7 @@ function retry() {
     <div class="quiz-topics-heading">
       <div>
         <h1>专题练习</h1>
-        <p>选择已发布专题开始练习，答题与服务端判分将在下一切片接入。</p>
+        <p>选择已发布专题开始练习，答案由服务端判分并记录训练进度。</p>
       </div>
       <small v-if="catalog.knowledgeVersion">
         知识版本 {{ catalog.knowledgeVersion }}

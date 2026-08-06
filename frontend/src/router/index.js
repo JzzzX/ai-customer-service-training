@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import MigrationHealthView from '../views/MigrationHealthView.vue'
 import ProfileView from '../views/ProfileView.vue'
+import QuizAttemptView from '../views/QuizAttemptView.vue'
 import QuizTopicsView from '../views/QuizTopicsView.vue'
 
 export const routes = [
@@ -23,6 +24,12 @@ export const routes = [
     path: '/practice/quiz/topics',
     name: 'quiz-topics',
     component: QuizTopicsView,
+  },
+  {
+    path: '/practice/quiz/topics/:topicId',
+    name: 'quiz-attempt',
+    component: QuizAttemptView,
+    meta: { requiresAuth: true },
   },
 ]
 

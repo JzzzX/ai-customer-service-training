@@ -103,6 +103,29 @@ def current_user(user: User = Depends(get_current_user)) -> CurrentUserResponse:
     )
 
 
+@router.post("/test-login", status_code=204)
+def test_login(
+    response: Response,
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> None:
+    """Issue the deterministic E2E session without exposing a production login path."""
+    if settings.app_env != "test":
+        raise AppError(
+            code="NOT_FOUND",
+            message="测试登录仅在测试环境可用。",
+            status_code=404,
+        )
+    user = UserRepository(session).get("e2e-learner")
+    if not user or not user.is_active or user.role != "learner":
+        raise AppError(
+            code="E2E_SEED_MISSING",
+            message="测试学员尚未初始化。",
+            status_code=503,
+        )
+    set_session_cookies(response, user=user, settings=settings)
+
+
 @router.post("/refresh", status_code=204)
 def refresh_session(
     response: Response,

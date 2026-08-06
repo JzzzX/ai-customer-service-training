@@ -30,4 +30,16 @@ describe('router', () => {
 
     expect(router.currentRoute.value.name).toBe('quiz-topics')
   })
+
+  it('requires login before entering a quiz attempt', async () => {
+    const auth = { user: null, ensureLoaded: async () => {} }
+    const router = createAppRouter({ history: createMemoryHistory(), auth })
+    router.push('/practice/quiz/topics/returns')
+    await router.isReady()
+
+    expect(router.currentRoute.value.name).toBe('login')
+    expect(router.currentRoute.value.query.redirect).toBe(
+      '/practice/quiz/topics/returns',
+    )
+  })
 })
