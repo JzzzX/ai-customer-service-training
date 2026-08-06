@@ -31,8 +31,9 @@ async function retry() {
   <section class="scenario-report-view">
     <div class="scenario-session-heading">
       <div>
-        <p class="eyebrow">训练报告</p>
-        <h1>{{ training.session?.title || '实战报告' }}</h1>
+        <p class="eyebrow">AI 实战</p>
+        <h1>训练报告</h1>
+        <p>{{ training.session?.title || '实战报告' }}</p>
       </div>
       <RouterLink to="/practice/scenario/history">返回历史</RouterLink>
     </div>

@@ -126,6 +126,11 @@ def stream_scenario_report(
     def events() -> Iterator[str]:
         try:
             for event in service.complete_stream(user.id, session_id):
+                if event["event"] == "report":
+                    # Streaming dependencies keep their SQLAlchemy session open until
+                    # the body is consumed; commit before yielding the terminal event
+                    # so a client retry cannot be blocked by SQLite/MySQL row locks.
+                    session.commit()
                 yield _sse_event(str(event["event"]), event)
         except TrainingError as error:
             yield _sse_event(

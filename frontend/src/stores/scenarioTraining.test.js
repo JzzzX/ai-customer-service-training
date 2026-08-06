@@ -5,7 +5,6 @@ import {
   completeScenarioReport,
   getScenarioSession,
   sendScenarioMessage,
-  startScenarioSession,
 } from '../api/scenario'
 import { useScenarioTrainingStore } from './scenarioTraining'
 

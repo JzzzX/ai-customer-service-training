@@ -50,7 +50,7 @@ export async function completeScenarioReport(sessionId, onEvent = () => {}) {
       credentials: 'same-origin',
       headers: { Accept: 'text/event-stream' },
     })
-  } catch (error) {
+  } catch {
     throw new ApiError({
       code: 'NETWORK_ERROR',
       message: '暂时无法连接服务，请稍后重试。',

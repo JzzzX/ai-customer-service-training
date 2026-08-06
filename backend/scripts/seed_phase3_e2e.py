@@ -1,4 +1,5 @@
 import sys
+import json
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -7,6 +8,7 @@ from sqlalchemy import select, update
 
 from app.core.database import get_database
 from app.models import KnowledgeUnit, KnowledgeVersion, Question, QuizSet, User
+from app.services.phase4_migration import migrate_phase4
 from app.services.quiz.publication import canonical_quiz_hash
 
 
@@ -82,6 +84,44 @@ def main() -> int:
                 )
                 session.add(unit)
             units.append(unit)
+
+        phase4_payload_path = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "phase4-export.json"
+        phase4_payloads = json.loads(phase4_payload_path.read_text(encoding="utf-8"))
+        for index, locator in enumerate(
+            sorted(
+                {
+                    (item["source_path"], item["anchor"]): item
+                    for payload in phase4_payloads
+                    for item in payload["source_locators"]
+                }.values(),
+                key=lambda item: (item["source_path"], item["anchor"]),
+            )
+        ):
+            unit_key = f"e2e-scenario-unit-{index}"
+            unit = session.scalar(
+                select(KnowledgeUnit).where(
+                    KnowledgeUnit.knowledge_version_id == version.id,
+                    KnowledgeUnit.unit_key == unit_key,
+                )
+            )
+            if not unit:
+                unit = KnowledgeUnit(
+                    id=unit_key,
+                    knowledge_version_id=version.id,
+                    unit_key=unit_key,
+                    title=f"E2E 场景知识 {index + 1}",
+                    content="用于 Phase 4 场景来源门禁和 Provider E2E 验收。",
+                    category_path=["E2E", "实战"],
+                    content_hash=canonical_quiz_hash(("e2e-scenario", index)),
+                    sources=[locator],
+                    can_use_for_quiz=False,
+                    can_use_for_scenario=True,
+                    can_use_for_evaluation=True,
+                )
+                session.add(unit)
+
+        session.flush()
+        migrate_phase4(session, phase4_payloads)
 
         quiz_set = session.scalar(
             select(QuizSet).where(QuizSet.quiz_hash == "f" * 64)
