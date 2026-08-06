@@ -1,0 +1,21 @@
+[Unit]
+Description=AI Customer Service Training FastAPI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ai-training
+Group=ai-training
+WorkingDirectory=/opt/ai-customer-service-training/backend
+EnvironmentFile=-/etc/ai-customer-service-training/backend.env
+ExecStart=/opt/ai-customer-service-training/backend/.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8005
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

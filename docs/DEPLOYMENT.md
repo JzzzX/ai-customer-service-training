@@ -1,6 +1,54 @@
-# Vercel + Neon 部署与运维
+# 公司 Linux + MySQL 部署与运维
 
-## 部署组成
+Phase 5 的生产形态是 Nginx 提供 `frontend/dist`、systemd 管理仅监听本机
+`127.0.0.1:8005` 的 Uvicorn，FastAPI 使用 `mysql+pymysql` 和 `utf8mb4`。旧系统仍保留
+为回滚入口，维护窗口的真实只读、最终增量和 DNS 操作由值班人员按门禁执行。
+
+## Linux 安装与启动
+
+```bash
+./install.sh
+APP_ENV=production ./build.sh
+sudo install -m 0644 deploy/systemd/ai-customer-service-training.service \
+  /etc/systemd/system/ai-customer-service-training.service
+sudo install -m 0644 deploy/nginx/ai-customer-service-training.conf \
+  /etc/nginx/conf.d/ai-customer-service-training.conf
+sudo install -m 0600 deploy/env/backend.env.example \
+  /etc/ai-customer-service-training/backend.env
+sudo systemctl daemon-reload
+sudo systemctl enable --now ai-customer-service-training
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+`backend.env` 必须替换模板中的数据库、JWT、飞书和 Ark 凭据；密钥不进入 Git。
+
+## 迁移演练与切换预检
+
+迁移 CLI 按稳定的外键顺序复制所有账号、内容、题库、任务、场景、会话、消息、报告、
+复核和管理审计表，并比较行数、孤儿外键和确定性 SHA-256。两次本地隔离演练：
+
+```bash
+tmpdir=$(mktemp -d)
+(cd backend && .venv/bin/python scripts/rehearse_phase5.py \
+  --root "$tmpdir" --report "$tmpdir/phase5-rehearsal.json")
+```
+
+公司测试库可通过 `--source-url-1/--target-url-1`、`--source-url-2/--target-url-2`（或对应
+`PHASE5_REHEARSAL_*` 环境变量）运行两组隔离 `mysql+pymysql` 演练。正式维护窗口前先运行：
+
+```bash
+APP_ENV=production DATABASE_URL='mysql+pymysql://...?charset=utf8mb4' \
+JWT_SECRET='至少32字符的随机值' FEISHU_APP_CLIENT_ID='...' FEISHU_APP_CLIENT_SECRET='...' \
+PHASE5_ALLOW_DIRTY=true ./scripts/phase5_preflight.sh --manifest phase5-report.json
+./scripts/phase5_cutover.sh --dry-run --manifest phase5-report.json
+```
+
+`phase5_cutover.sh` 默认只允许 dry-run；真实门禁还需要人工设置
+`PHASE5_CONFIRM_CUTOVER=I_UNDERSTAND`，脚本不会自动删除旧系统、重置 Git 或切换 DNS。
+
+## 旧 Next.js + Vercel 回滚参考
+
+以下内容只服务于维护窗口前的旧系统回滚，不是 Phase 5 新系统的生产部署方式。
 
 - Web：Vercel Production
 - 数据库：Neon PostgreSQL

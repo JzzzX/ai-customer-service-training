@@ -120,11 +120,11 @@
 - `phase5_cutover.sh --dry-run --manifest PATH` prints the maintenance-window sequence; without `--dry-run`, it refuses to run unless `PHASE5_CONFIRM_CUTOVER=I_UNDERSTAND` and a matching manifest are supplied. It never invokes `git reset --hard` or deletes the old system.
 - `update.sh` fetches both remotes and only performs `git merge --ff-only origin/<branch>` when the worktree is clean and `gitea/<branch>` has no divergent commits.
 
-- [ ] **Step 1: Write failing shell tests** for Bash syntax, production env rejection, Nginx/systemd invariants, dry-run output, confirmation refusal, and fast-forward-only update guards.
-- [ ] **Step 2: Run `bash scripts/test_phase5_scripts.sh`; confirm each assertion fails for the missing artifacts or guards.
-- [ ] **Step 3: Implement the config templates and scripts with quoted paths, explicit absolute deploy directories, no destructive cleanup, and clear Chinese operator errors.
-- [ ] **Step 4: Run the shell test, `bash -n` for every script, and a dry-run preflight against a generated matching migration manifest.
-- [ ] **Step 5: Commit and push** with `chore(phase5): 固化 Linux 部署与切换门禁`.
+- [x] **Step 1: Write failing shell tests** for Bash syntax, production env rejection, Nginx/systemd invariants, dry-run output, confirmation refusal, and fast-forward-only update guards.
+- [x] **Step 2: Run `bash scripts/test_phase5_scripts.sh`; the initial run failed because the Phase5 scripts/configuration were absent.
+- [x] **Step 3: Implement the config templates and scripts with quoted paths, explicit absolute deploy directories, no destructive cleanup, and clear Chinese operator errors.
+- [x] **Step 4: Run the shell test, `bash -n` for every script, and a dry-run preflight against a generated matching migration manifest; all checks pass.
+- [x] **Step 5: Commit and push** with `chore(phase5): 固化 Linux 部署与切换门禁`.
 
 ### Task 5: 阶段级回归、验收报告与 Roadmap 收口
 
