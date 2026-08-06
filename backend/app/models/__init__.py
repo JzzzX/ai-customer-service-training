@@ -16,6 +16,14 @@ from app.models.catalog import (
     QuizAttempt,
     QuizSet,
 )
+from app.models.scenario import (
+    EvaluationReport,
+    ReviewDecision,
+    Scenario,
+    ScenarioVersion,
+    TrainingMessage,
+    TrainingSession,
+)
 
 __all__ = [
     "Assignment",
@@ -26,9 +34,15 @@ __all__ = [
     "KnowledgeUnit",
     "KnowledgeVersion",
     "Question",
+    "EvaluationReport",
+    "ReviewDecision",
     "QuizAnswer",
     "QuizAttempt",
     "QuizSet",
     "ScenarioProgressSummary",
+    "Scenario",
+    "ScenarioVersion",
+    "TrainingMessage",
+    "TrainingSession",
     "User",
 ]
