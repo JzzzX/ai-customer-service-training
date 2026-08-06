@@ -1,14 +1,24 @@
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { createMemoryHistory } from 'vue-router'
 import { describe, expect, it } from 'vitest'
-import { routes } from './index'
+import { createAppRouter } from './index'
 
 describe('router', () => {
-  it('redirects the root route to the migration health page', async () => {
-    const router = createRouter({ history: createMemoryHistory(), routes })
+  it('redirects anonymous users to Feishu login', async () => {
+    const auth = { user: null, ensureLoaded: async () => {} }
+    const router = createAppRouter({ history: createMemoryHistory(), auth })
     router.push('/')
     await router.isReady()
 
-    expect(router.currentRoute.value.name).toBe('migration-health')
-    expect(router.currentRoute.value.fullPath).toBe('/migration/health')
+    expect(router.currentRoute.value.name).toBe('login')
+    expect(router.currentRoute.value.query.redirect).toBe('/profile')
+  })
+
+  it('allows authenticated users into the personal center', async () => {
+    const auth = { user: { id: 'user-1' }, ensureLoaded: async () => {} }
+    const router = createAppRouter({ history: createMemoryHistory(), auth })
+    router.push('/profile')
+    await router.isReady()
+
+    expect(router.currentRoute.value.name).toBe('profile')
   })
 })

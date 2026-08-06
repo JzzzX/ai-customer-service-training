@@ -5,6 +5,12 @@ import nextTypescript from "eslint-config-next/typescript";
 export default defineConfig([
   ...nextVitals,
   ...nextTypescript,
+  {
+    files: ["frontend/**/*.js"],
+    rules: {
+      "react-hooks/rules-of-hooks": "off",
+    },
+  },
   globalIgnores([
     ".next/**",
     ".vercel/**",

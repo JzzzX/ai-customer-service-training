@@ -5,4 +5,6 @@ class Base(DeclarativeBase):
     pass
 
 
-__all__ = ["Base"]
+from app.models.user import FeishuIdentity, User
+
+__all__ = ["Base", "FeishuIdentity", "User"]
