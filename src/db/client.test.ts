@@ -4,7 +4,12 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { createDatabaseClient, requireSqlitePath } from "./client";
+import {
+  assertDatabaseSchema,
+  createDatabaseClient,
+  requireSqlitePath,
+} from "./client";
+import { createTestDatabase } from "./test-support/create-test-database";
 
 describe("SQLite database client", () => {
   it("fails clearly when SQLITE_PATH is unavailable", () => {
@@ -40,6 +45,40 @@ describe("SQLite database client", () => {
     } finally {
       database.$client.close();
       rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects an empty database instead of treating it as a compatible schema", () => {
+    const database = createDatabaseClient(":memory:");
+    try {
+      expect(() => assertDatabaseSchema(database)).toThrow(
+        "SQLite schema is incompatible",
+      );
+    } finally {
+      database.$client.close();
+    }
+  });
+
+  it("rejects an old schema marker even when the marker table exists", () => {
+    const database = createDatabaseClient(":memory:");
+    try {
+      database.$client.exec(
+        "CREATE TABLE app_schema_marker (version integer PRIMARY KEY); INSERT INTO app_schema_marker VALUES (0);",
+      );
+      expect(() => assertDatabaseSchema(database)).toThrow(
+        "SQLite schema is incompatible",
+      );
+    } finally {
+      database.$client.close();
+    }
+  });
+
+  it("accepts the complete, versioned SQLite migration set", async () => {
+    const { client, database } = await createTestDatabase();
+    try {
+      expect(() => assertDatabaseSchema(database)).not.toThrow();
+    } finally {
+      client.close();
     }
   });
 });

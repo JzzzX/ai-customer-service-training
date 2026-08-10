@@ -1,15 +1,19 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { createDatabaseClient } from "../client";
 
 export async function createTestDatabase() {
   const database = createDatabaseClient(":memory:");
-  const migration = await readFile(
-    resolve(process.cwd(), "drizzle/0000_fixed_giant_man.sql"),
-    "utf8",
-  );
-  database.$client.exec(migration);
+  const migrationsDirectory = resolve(process.cwd(), "drizzle");
+  const migrationFiles = (await readdir(migrationsDirectory))
+    .filter((file) => /^\d{4}_.*\.sql$/.test(file))
+    .sort();
+  for (const migrationFile of migrationFiles) {
+    database.$client.exec(
+      await readFile(resolve(migrationsDirectory, migrationFile), "utf8"),
+    );
+  }
 
   return {
     client: database.$client,

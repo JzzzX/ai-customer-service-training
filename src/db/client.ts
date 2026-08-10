@@ -6,6 +6,28 @@ import { validateRuntimeEnvironment } from "@/lib/runtime/env";
 
 type Environment = Record<string, string | undefined>;
 
+export const DATABASE_SCHEMA_VERSION = 1;
+
+const requiredTables = [
+  "app_schema_marker",
+  "evaluation_reports",
+  "knowledge_sources",
+  "knowledge_units",
+  "knowledge_versions",
+  "questions",
+  "quiz_answers",
+  "quiz_attempts",
+  "quiz_set_questions",
+  "quiz_sets",
+  "scenario_versions",
+  "scenarios",
+  "topic_quiz_answers",
+  "topic_quiz_attempts",
+  "training_messages",
+  "training_sessions",
+  "users",
+] as const;
+
 export function requireSqlitePath(
   environment: Environment = process.env,
 ): string {
@@ -28,10 +50,48 @@ export function createDatabaseClient(sqlitePath: string) {
 
 export type DatabaseClient = ReturnType<typeof createDatabaseClient>;
 
+export function assertDatabaseSchema(database: DatabaseClient): void {
+  try {
+    const marker = database.$client
+      .prepare("SELECT version FROM app_schema_marker LIMIT 1")
+      .get() as { version?: number } | undefined;
+    const tables = new Set(
+      database.$client
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+        .all()
+        .map((row) => (row as { name: string }).name),
+    );
+    const integrity = database.$client.pragma("integrity_check", {
+      simple: true,
+    });
+
+    if (
+      marker?.version !== DATABASE_SCHEMA_VERSION ||
+      requiredTables.some((table) => !tables.has(table)) ||
+      integrity !== "ok"
+    ) {
+      throw new Error("incompatible");
+    }
+  } catch {
+    throw new Error(
+      "SQLite schema is incompatible. Run pnpm db:migrate before starting the application.",
+    );
+  }
+}
+
 let database: DatabaseClient | undefined;
 
 export function getDatabase() {
   validateRuntimeEnvironment();
-  database ??= createDatabaseClient(requireSqlitePath());
+  if (!database) {
+    const candidate = createDatabaseClient(requireSqlitePath());
+    try {
+      assertDatabaseSchema(candidate);
+      database = candidate;
+    } catch (error) {
+      candidate.$client.close();
+      throw error;
+    }
+  }
   return database;
 }

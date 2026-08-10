@@ -74,6 +74,10 @@ export const knowledgeVersions = sqliteTable(
       "knowledge_versions_publication_source_check",
       sql`${table.publicationSource} = 'cli'`,
     ),
+    check(
+      "knowledge_versions_status_check",
+      sql`${table.status} in ('draft', 'published', 'disabled', 'archived')`,
+    ),
   ],
 );
 
@@ -95,6 +99,10 @@ export const knowledgeSources = sqliteTable(
     unique("knowledge_sources_version_path_unique").on(
       table.knowledgeVersionId,
       table.sourcePath,
+    ),
+    check(
+      "knowledge_sources_kind_check",
+      sql`${table.kind} in ('markdown', 'excel', 'mindmap')`,
     ),
   ],
 );
@@ -158,6 +166,10 @@ export const quizSets = sqliteTable(
       "quiz_sets_publication_source_check",
       sql`${table.publicationSource} = 'cli'`,
     ),
+    check(
+      "quiz_sets_status_check",
+      sql`${table.status} in ('draft', 'published', 'disabled', 'archived')`,
+    ),
   ],
 );
 
@@ -189,6 +201,18 @@ export const questions = sqliteTable(
     ),
     index("questions_knowledge_unit_idx").on(table.knowledgeUnitId),
     index("questions_status_category_idx").on(table.status, table.category),
+    check(
+      "questions_type_check",
+      sql`${table.type} in ('single_choice', 'true_false')`,
+    ),
+    check(
+      "questions_difficulty_check",
+      sql`${table.difficulty} in ('easy', 'medium', 'hard')`,
+    ),
+    check(
+      "questions_status_check",
+      sql`${table.status} in ('draft', 'published', 'disabled', 'archived')`,
+    ),
   ],
 );
 
@@ -247,6 +271,10 @@ export const quizAttempts = sqliteTable(
       "quiz_attempts_score_check",
       sql`${table.score} is null or ${table.score} between 0 and 100`,
     ),
+    check(
+      "quiz_attempts_status_check",
+      sql`${table.status} in ('in_progress', 'passed', 'needs_retry')`,
+    ),
   ],
 );
 
@@ -297,6 +325,10 @@ export const topicQuizAttempts = sqliteTable(
       "topic_quiz_attempts_score_check",
       sql`${table.score} between 0 and 100`,
     ),
+    check(
+      "topic_quiz_attempts_status_check",
+      sql`${table.status} in ('in_progress', 'passed', 'needs_retry')`,
+    ),
   ],
 );
 
@@ -330,7 +362,13 @@ export const scenarios = sqliteTable(
     status: text("status", { enum: lifecycleStatus }).default("draft").notNull(),
     ...auditTimestamps(),
   },
-  (table) => [unique("scenarios_key_unique").on(table.scenarioKey)],
+  (table) => [
+    unique("scenarios_key_unique").on(table.scenarioKey),
+    check(
+      "scenarios_status_check",
+      sql`${table.status} in ('draft', 'published', 'disabled', 'archived')`,
+    ),
+  ],
 );
 
 export const scenarioVersions = sqliteTable(
@@ -364,7 +402,7 @@ export const scenarioVersions = sqliteTable(
     maxTurns: integer("max_turns").default(12).notNull(),
     mockMode: bool("mock_mode").default(true).notNull(),
     customerPersona: json<ScenarioTemplate["customerPersona"]>("customer_persona"),
-    difficulty: text("difficulty").default("medium"),
+    difficulty: text("difficulty", { enum: difficulties }).default("medium"),
     status: text("status", { enum: lifecycleStatus }).default("draft").notNull(),
     publishedAt: integer("published_at", { mode: "timestamp_ms" }),
     createdAt: timestamp("created_at").notNull(),
@@ -379,6 +417,14 @@ export const scenarioVersions = sqliteTable(
     check(
       "scenario_versions_publication_source_check",
       sql`${table.publicationSource} = 'cli'`,
+    ),
+    check(
+      "scenario_versions_difficulty_check",
+      sql`${table.difficulty} in ('easy', 'medium', 'hard')`,
+    ),
+    check(
+      "scenario_versions_status_check",
+      sql`${table.status} in ('draft', 'published', 'disabled', 'archived')`,
     ),
   ],
 );
@@ -412,6 +458,10 @@ export const trainingSessions = sqliteTable(
       table.startedAt,
     ),
     check("training_sessions_mode_check", sql`${table.mode} in ('mock', 'real')`),
+    check(
+      "training_sessions_status_check",
+      sql`${table.status} in ('in_progress', 'completed', 'needs_review', 'failed')`,
+    ),
   ],
 );
 
@@ -432,6 +482,10 @@ export const trainingMessages = sqliteTable(
     unique("training_messages_session_position_unique").on(
       table.trainingSessionId,
       table.position,
+    ),
+    check(
+      "training_messages_sender_check",
+      sql`${table.sender} in ('customer', 'learner', 'coach', 'system')`,
     ),
   ],
 );
@@ -470,6 +524,10 @@ export const evaluationReports = sqliteTable(
     check(
       "evaluation_reports_confidence_check",
       sql`${table.confidence} between 0 and 1`,
+    ),
+    check(
+      "evaluation_reports_verdict_check",
+      sql`${table.verdict} in ('passed', 'needs_retry')`,
     ),
   ],
 );
