@@ -9,6 +9,17 @@ export const BASE_DATA_BUNDLE_SCHEMA_VERSION = 1;
 type BaseRecord = Record<string, unknown>;
 
 const recordSchema = z.record(z.string(), z.unknown());
+const bcryptHashSchema = z.string().regex(/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/);
+const learnerSchema = z.object({
+  id: z.string().min(1),
+  email: z.string().email().refine((email) => email === email.trim().toLowerCase(), "email must be normalized"),
+  name: z.string().trim().min(1),
+  passwordHash: bcryptHashSchema,
+  isActive: z.literal(true),
+  lastLoginAt: z.number().int().nonnegative().nullable(),
+  createdAt: z.number().int().nonnegative(),
+  updatedAt: z.number().int().nonnegative(),
+}).strict();
 const countSchema = z.object({
   users: z.number().int().nonnegative(),
   knowledgeVersions: z.number().int().nonnegative(),
@@ -26,7 +37,7 @@ const bundleShape = z.object({
   exportedAt: z.string().datetime({ offset: true }),
   source: z.object({ kind: z.literal("neon-postgres"), database: z.string().min(1) }),
   counts: countSchema,
-  learners: z.array(recordSchema),
+  learners: z.array(learnerSchema),
   activeKnowledge: z.object({ version: recordSchema, sources: z.array(recordSchema), units: z.array(recordSchema) }),
   publishedQuiz: z.object({ sets: z.array(recordSchema), questions: z.array(recordSchema), links: z.array(recordSchema) }),
   publishedScenarios: z.object({ scenarios: z.array(recordSchema), versions: z.array(recordSchema) }),
@@ -84,8 +95,8 @@ export function parseBaseDataBundle(value: unknown): BaseDataBundleV1 {
 
 export function importBaseDataBundle(value: unknown, database: DatabaseClient): void {
   const bundle = parseBaseDataBundle(value);
-  ensureTargetIsEmpty(database);
-  database.$client.transaction(() => {
+  const transaction = database.$client.transaction(() => {
+    ensureTargetIsEmpty(database);
     insertRows(database, "users", bundle.learners);
     insertRows(database, "knowledge_versions", [bundle.activeKnowledge.version]);
     insertRows(database, "knowledge_sources", bundle.activeKnowledge.sources);
@@ -96,7 +107,8 @@ export function importBaseDataBundle(value: unknown, database: DatabaseClient): 
     insertRows(database, "scenarios", bundle.publishedScenarios.scenarios);
     insertRows(database, "scenario_versions", bundle.publishedScenarios.versions);
     verifyImportedDatabase(database, bundle);
-  })();
+  });
+  transaction.immediate();
 }
 
 /** A small read-only boundary so fixture tests do not need real Neon credentials. */
@@ -109,7 +121,7 @@ export interface PostgresBaseDataReader {
  * deliberately fixed: this command never interpolates user input or mutates Neon.
  */
 export async function exportBaseDataBundle(reader: PostgresBaseDataReader, sourceDatabase: string, exportedAt = new Date().toISOString()): Promise<BaseDataBundleV1> {
-  const learners = normaliseRows(await reader.query("SELECT id, email, name, password_hash AS \\\"passwordHash\\\", is_active AS \\\"isActive\\\", last_login_at AS \\\"lastLoginAt\\\", created_at AS \\\"createdAt\\\", updated_at AS \\\"updatedAt\\\" FROM users WHERE is_active = true AND role = 'learner' ORDER BY id"));
+  const learners = learnerSchema.array().parse(normaliseRows(await reader.query("SELECT id, email, name, password_hash AS \\\"passwordHash\\\", is_active AS \\\"isActive\\\", last_login_at AS \\\"lastLoginAt\\\", created_at AS \\\"createdAt\\\", updated_at AS \\\"updatedAt\\\" FROM users WHERE is_active = true AND role = 'learner' ORDER BY id")));
   const versions = normaliseRows(await reader.query("SELECT id, version_hash AS \\\"versionHash\\\", schema_version AS \\\"schemaVersion\\\", source_root AS \\\"sourceRoot\\\", status, is_active AS \\\"isActive\\\", coverage, published_at AS \\\"publishedAt\\\", created_at AS \\\"createdAt\\\" FROM knowledge_versions WHERE is_active = true AND status = 'published' ORDER BY id"));
   if (versions.length !== 1) throw new Error("Neon export requires exactly one active published knowledge version.");
   const knowledgeVersionId = stringField(versions[0], "id");
@@ -123,8 +135,9 @@ export async function exportBaseDataBundle(reader: PostgresBaseDataReader, sourc
     const sqliteSet = { ...set, publicationSource: "cli" };
     return withContentHash(sqliteSet, { set: sqliteSet, questions: questions.filter((question) => links.some((link) => link.quizSetId === set.id && link.questionId === question.id)), links: links.filter((link) => link.quizSetId === set.id) });
   });
-  const scenarios = normaliseRows(await reader.query("SELECT id, scenario_key AS \"scenarioKey\", title, category, status, created_at AS \"createdAt\", updated_at AS \"updatedAt\" FROM scenarios WHERE status = 'published' ORDER BY id"));
   const versionsForScenarios = normaliseRows(await reader.query(`SELECT id, scenario_id AS "scenarioId", version_key AS "versionKey", version, knowledge_version_id AS "knowledgeVersionId", background, summary, first_customer_message AS "firstCustomerMessage", controlled_variables AS "controlledVariables", hidden_facts AS "hiddenFacts", customer_turns AS "customerTurns", checkpoints, prohibitions, scoring_weights AS "scoringWeights", scoring_dimensions AS "scoringDimensions", critical_risks AS "criticalRisks", reference_flow AS "referenceFlow", reference_reply AS "referenceReply", sources, max_turns AS "maxTurns", mock_mode AS "mockMode", customer_persona AS "customerPersona", difficulty, status, published_at AS "publishedAt", created_at AS "createdAt" FROM scenario_versions WHERE knowledge_version_id = '${escapeSqlLiteral(knowledgeVersionId)}' AND status = 'published' ORDER BY id`));
+  const scenarioIds = [...new Set(versionsForScenarios.map((version) => stringField(version, "scenarioId")))];
+  const scenarios = scenarioIds.length === 0 ? [] : normaliseRows(await reader.query(`SELECT id, scenario_key AS "scenarioKey", title, category, status, created_at AS "createdAt", updated_at AS "updatedAt" FROM scenarios WHERE status = 'published' AND id IN (${scenarioIds.map((id) => `'${escapeSqlLiteral(id)}'`).join(", ")}) ORDER BY id`));
   const scenarioVersions = versionsForScenarios.map((version) => {
     const scenario = scenarios.find((candidate) => candidate.id === version.scenarioId);
     if (!scenario) throw new Error("Published scenario version references an unpublished scenario.");
@@ -150,6 +163,11 @@ function validateBundleContent(bundle: BaseDataBundleV1): void {
     const scenario = bundle.publishedScenarios.scenarios.find((item) => item.id === versionRow.scenarioId);
     if (!scenario || versionRow.status !== "published") throw new Error("Bundle contains an invalid published scenario version.");
     expectHash(versionRow, { scenario, version: without(versionRow, "contentHash") });
+  }
+  for (const scenario of bundle.publishedScenarios.scenarios) {
+    if (!bundle.publishedScenarios.versions.some((versionRow) => versionRow.scenarioId === scenario.id)) {
+      throw new Error("Bundle includes a published scenario without an active knowledge version.");
+    }
   }
 }
 
