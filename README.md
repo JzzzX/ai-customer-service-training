@@ -61,4 +61,6 @@ pnpm test:sqlite:concurrency
 
 Playwright 会准备独立临时 SQLite 数据库和 Mock AI 测试账号；不会使用个人 `.env.local` 的数据。真实公司网关验收另行运行 `pnpm test:e2e:live`，且只在获授权后进行。
 
+并发命令默认运行约 3 秒的 30-worker 烟测；在已获资源窗口的服务器上可设 `SQLITE_LOAD_DURATION_MS=600000 pnpm test:sqlite:concurrency` 执行 10 分钟 soak。当前浏览器 E2E 验证专题历史的跨学员隔离；报告会话的越权读取由 Repository 权限契约测试覆盖。
+
 详细部署边界见 [部署说明](docs/DEPLOYMENT.md)，接手代码时见 [工程交接](docs/AGENT-HANDOFF.md)。

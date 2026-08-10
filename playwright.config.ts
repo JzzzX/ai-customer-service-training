@@ -29,7 +29,8 @@ export default defineConfig({
         webServer: {
           command: "pnpm e2e:prepare && pnpm dev",
           url: "http://localhost:3000",
-          reuseExistingServer: !process.env.CI,
+          // E2E must never attach to a developer server using business SQLite data.
+          reuseExistingServer: false,
           env: {
             ...process.env,
             SQLITE_PATH: ".tmp/learner-lite-e2e.sqlite",

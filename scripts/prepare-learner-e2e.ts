@@ -17,6 +17,10 @@ const scenarioVersionId = randomUUID();
 async function main(): Promise<void> {
   await mkdir(dirname(sqlitePath), { recursive: true });
   await rm(sqlitePath, { force: true });
+  // WAL mode owns these sidecars; remove the complete known test database set
+  // before creating a fresh isolated E2E fixture.
+  await rm(`${sqlitePath}-wal`, { force: true });
+  await rm(`${sqlitePath}-shm`, { force: true });
   const database = createDatabaseClient(sqlitePath);
   try {
     const migrationDirectory = resolve(process.cwd(), "drizzle");
