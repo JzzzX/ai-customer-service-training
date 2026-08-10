@@ -64,11 +64,15 @@ export function assertDatabaseSchema(database: DatabaseClient): void {
     const integrity = database.$client.pragma("integrity_check", {
       simple: true,
     });
+    const foreignKeyViolations = database.$client.pragma(
+      "foreign_key_check",
+    ) as unknown[];
 
     if (
       marker?.version !== DATABASE_SCHEMA_VERSION ||
       requiredTables.some((table) => !tables.has(table)) ||
-      integrity !== "ok"
+      integrity !== "ok" ||
+      foreignKeyViolations.length !== 0
     ) {
       throw new Error("incompatible");
     }

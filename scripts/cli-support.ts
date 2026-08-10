@@ -83,10 +83,10 @@ export function requiredOption(name: string): string {
 }
 
 export function parseCsvFile(path: string): LearnerCsvRow[] { return parseLearnerCsv(readFileSync(resolve(path), "utf8")); }
-export async function backupDatabase(output: string): Promise<void> {
+export async function backupDatabase(output: string, database: DatabaseClient = getDatabase()): Promise<void> {
   const target = resolve(output);
   if (existsSync(target)) throw new Error(`备份目标已存在：${target}`);
-  const source = getDatabase().$client;
+  const source = database.$client;
   source.exec("PRAGMA wal_checkpoint(FULL)");
   await source.backup(target);
 }

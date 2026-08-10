@@ -81,4 +81,16 @@ describe("SQLite database client", () => {
       client.close();
     }
   });
+
+  it("rejects a schema containing orphaned foreign keys", async () => {
+    const { client, database } = await createTestDatabase();
+    try {
+      client.pragma("foreign_keys = OFF");
+      client.prepare("INSERT INTO knowledge_sources (id, knowledge_version_id, source_path, kind, source_hash, bytes, stats) VALUES ('orphan', 'missing', 'source.md', 'markdown', 'hash', 1, '{}')").run();
+      client.pragma("foreign_keys = ON");
+      expect(() => assertDatabaseSchema(database)).toThrow("SQLite schema is incompatible");
+    } finally {
+      client.close();
+    }
+  });
 });

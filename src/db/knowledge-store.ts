@@ -64,7 +64,7 @@ export function createKnowledgePackStore(
           .values({
             id: randomUUID(),
             ...publication.version,
-            contentHash: hashContent(publication.version),
+            contentHash: hashContent(publication),
             status: "published",
             isActive: true,
             publishedAt: new Date(),
@@ -116,7 +116,16 @@ function chunks<T>(items: T[], size: number): T[][] {
 }
 
 function hashContent(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+  return createHash("sha256").update(stableJson(value)).digest("hex");
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const object = value as Record<string, unknown>;
+    return `{${Object.keys(object).sort().map((key) => `${JSON.stringify(key)}:${stableJson(object[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 export type { PreparedKnowledgePublication };
