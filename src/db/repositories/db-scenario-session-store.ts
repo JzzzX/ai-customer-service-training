@@ -128,7 +128,8 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
             eq(trainingSessions.learnerId, input.learnerId),
           ),
         )
-        .limit(1),
+        .limit(1)
+        .all(),
       this.database
         .select({
           id: trainingMessages.id,
@@ -139,12 +140,14 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
         })
         .from(trainingMessages)
         .where(eq(trainingMessages.trainingSessionId, input.sessionId))
-        .orderBy(asc(trainingMessages.position)),
+        .orderBy(asc(trainingMessages.position))
+        .all(),
       this.database
         .select()
         .from(evaluationReports)
         .where(eq(evaluationReports.trainingSessionId, input.sessionId))
-        .limit(1),
+        .limit(1)
+        .all(),
     ]);
     const session = sessionRows[0];
     if (!session) {
@@ -243,8 +246,8 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
       )
       .orderBy(desc(trainingSessions.updatedAt), desc(trainingSessions.id));
     const rows = input.limit === undefined
-      ? await query
-      : await query.limit(input.limit);
+      ? query.all()
+      : query.limit(input.limit).all();
 
     return rows.map((row) => ({
       id: row.id,
