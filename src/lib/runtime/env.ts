@@ -6,12 +6,8 @@ type Environment = Record<string, string | undefined>;
 
 export const productionEnvironmentSchema = z
   .object({
-    DATABASE_URL: z
-      .string()
-      .url()
-      .startsWith("postgresql://"),
+    SQLITE_PATH: z.string().trim().min(1),
     AUTH_SECRET: z.string().min(32),
-    LOCAL_TEST_AUTH_ENABLED: z.literal("false").optional(),
     SCENARIO_AI_MODE: z.enum(["mock", "real"]).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_BASE_URL: z.string().url().optional(),
@@ -25,11 +21,7 @@ export const productionEnvironmentSchema = z
     }
     const requiredFields = environment.AI_GATEWAY_ENABLED === "true"
       ? (["AI_GATEWAY_MODEL"] as const)
-      : ([
-          "OPENAI_API_KEY",
-          "OPENAI_BASE_URL",
-          "OPENAI_MODEL",
-        ] as const);
+      : (["OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL"] as const);
     for (const field of requiredFields) {
       if (!environment[field]) {
         context.addIssue({

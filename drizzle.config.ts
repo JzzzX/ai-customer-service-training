@@ -3,13 +3,13 @@ import { defineConfig } from "drizzle-kit";
 
 config({ path: ".env.local", quiet: true });
 
-const databaseUrl = process.env.DATABASE_URL?.trim();
+const sqlitePath = process.env.SQLITE_PATH?.trim();
 
 export default defineConfig({
-  dialect: "postgresql",
+  dialect: "sqlite",
   schema: "./src/db/schema.ts",
   out: "./drizzle",
   strict: true,
   verbose: true,
-  ...(databaseUrl ? { dbCredentials: { url: databaseUrl } } : {}),
+  ...(sqlitePath ? { dbCredentials: { url: sqlitePath } } : {}),
 });

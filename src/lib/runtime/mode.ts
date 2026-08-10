@@ -1,18 +1,9 @@
-export type RuntimeMode = "local_demo" | "production";
+export type RuntimeMode = "sqlite";
 
 type Environment = Record<string, string | undefined>;
 
-export function resolveRuntimeMode(
-  environment: Environment = process.env,
-): RuntimeMode {
-  const nodeEnvironment = environment.NODE_ENV?.trim().toLowerCase();
-  const localRequested =
-    environment.LOCAL_TEST_AUTH_ENABLED?.trim().toLowerCase() === "true";
-  const hasDatabase = Boolean(environment.DATABASE_URL?.trim());
-
-  return nodeEnvironment !== "production" &&
-    localRequested &&
-    !hasDatabase
-    ? "local_demo"
-    : "production";
+/** The learner application always uses its configured SQLite database. */
+export function resolveRuntimeMode(_environment: Environment = process.env): RuntimeMode {
+  void _environment;
+  return "sqlite";
 }

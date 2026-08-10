@@ -1,17 +1,14 @@
-import { getTableConfig } from "drizzle-orm/pg-core";
+import { getTableConfig } from "drizzle-orm/sqlite-core";
 import { describe, expect, it } from "vitest";
 
 import {
-  assignments,
   evaluationReports,
   knowledgeUnits,
   knowledgeVersions,
   mvpTables,
   questions,
-  questionReviews,
   quizAttempts,
   quizSets,
-  reviewDecisions,
   scenarios,
   scenarioVersions,
   trainingSessions,
@@ -32,23 +29,22 @@ describe("MVP database schema", () => {
         .sort(),
     ).toEqual(
       [
-        "assignments",
         "evaluation_reports",
         "knowledge_sources",
         "knowledge_units",
         "knowledge_versions",
         "questions",
-        "question_reviews",
         "quiz_answers",
         "quiz_attempts",
         "quiz_set_questions",
         "quiz_sets",
-        "review_decisions",
         "scenario_versions",
         "scenarios",
         "training_messages",
         "training_sessions",
         "users",
+        "topic_quiz_answers",
+        "topic_quiz_attempts",
       ].sort(),
     );
   });
@@ -80,30 +76,19 @@ describe("MVP database schema", () => {
     );
   });
 
-  it("records content-hash approvals instead of mutating audit history", () => {
-    expect(mvpTables.questionReviews).toBe(questionReviews);
-    expect(columnNames(questionReviews)).toEqual(
-      expect.arrayContaining([
-        "question_id",
-        "reviewer_id",
-        "content_hash",
-        "snapshot",
-        "created_at",
-      ]),
-    );
-
+  it("uses text IDs, JSON text and millisecond timestamps for SQLite", () => {
     const questionConfig = getTableConfig(questions);
-    const reviewConfig = getTableConfig(questionReviews);
     expect(
       questionConfig.uniqueConstraints.map((item) => item.name),
     ).toContain("questions_version_key_unique");
-    expect(
-      reviewConfig.uniqueConstraints.map((item) => item.name),
-    ).toContain("question_reviews_question_hash_unique");
+    expect(users.id.getSQLType()).toBe("text");
+    expect(questions.options.getSQLType()).toBe("text");
+    expect(quizAttempts.startedAt.getSQLType()).toBe("integer");
+    expect(evaluationReports.confidence.getSQLType()).toBe("real");
   });
 
   it("links attempts and mock sessions to durable workflow state", () => {
-    expect(columnNames(quizAttempts)).toContain("assignment_id");
+    expect(columnNames(quizAttempts)).not.toContain("assignment_id");
     expect(columnNames(trainingSessions)).toContain("mode");
     expect(columnNames(evaluationReports)).toContain("recommendations");
 
@@ -122,20 +107,11 @@ describe("MVP database schema", () => {
     ).toContain("scenario_versions_key_unique");
   });
 
-  it("allows only one final review decision per evaluation report", () => {
-    expect(
-      getTableConfig(reviewDecisions).uniqueConstraints.map(
-        (item) => item.name,
-      ),
-    ).toContain("review_decisions_report_unique");
-  });
-
-  it("keeps credentials, roles and traceable version bindings explicit", () => {
+  it("keeps learner credentials and traceable version bindings explicit", () => {
     expect(columnNames(users)).toEqual(
       expect.arrayContaining([
         "email",
         "password_hash",
-        "role",
         "is_active",
       ]),
     );
@@ -168,16 +144,7 @@ describe("MVP database schema", () => {
         "training_session_id",
         "knowledge_version_id",
         "verdict",
-        "needs_review",
-      ]),
-    );
-    expect(columnNames(assignments)).toEqual(
-      expect.arrayContaining([
-        "learner_id",
-        "assigned_by_id",
-        "assignment_type",
-        "quiz_set_id",
-        "scenario_version_id",
+        "confidence",
       ]),
     );
   });

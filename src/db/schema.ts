@@ -1,149 +1,95 @@
 import { sql } from "drizzle-orm";
 import {
-  type AnyPgColumn,
-  boolean,
   check,
   index,
   integer,
-  jsonb,
-  numeric,
-  pgEnum,
-  pgTable,
   primaryKey,
+  real,
+  sqliteTable,
   text,
-  timestamp,
   unique,
   uniqueIndex,
-  uuid,
-} from "drizzle-orm/pg-core";
+} from "drizzle-orm/sqlite-core";
 
 import type { SourceLocator } from "@/lib/knowledge/schema";
-import type { QuizQuestionDraft } from "@/lib/quiz/schema";
 import type {
   ScenarioEvaluationReport,
   ScenarioRecommendation,
   ScenarioTemplate,
 } from "@/lib/scenario/schema";
 
-export const userRoleEnum = pgEnum("user_role", ["admin", "learner"]);
-export const knowledgeSourceKindEnum = pgEnum("knowledge_source_kind", [
-  "markdown",
-  "excel",
-  "mindmap",
-]);
-export const lifecycleStatusEnum = pgEnum("lifecycle_status", [
-  "draft",
-  "published",
-  "disabled",
-  "archived",
-]);
-export const questionTypeEnum = pgEnum("question_type", [
-  "single_choice",
-  "true_false",
-]);
-export const difficultyEnum = pgEnum("difficulty", [
-  "easy",
-  "medium",
-  "hard",
-]);
-export const quizAttemptStatusEnum = pgEnum("quiz_attempt_status", [
-  "in_progress",
-  "passed",
-  "needs_retry",
-]);
-export const assignmentTypeEnum = pgEnum("assignment_type", [
-  "quiz",
-  "scenario",
-]);
-export const assignmentStatusEnum = pgEnum("assignment_status", [
-  "assigned",
-  "in_progress",
-  "completed",
-]);
-export const trainingSessionStatusEnum = pgEnum("training_session_status", [
+const lifecycleStatus = ["draft", "published", "disabled", "archived"] as const;
+const questionTypes = ["single_choice", "true_false"] as const;
+const difficulties = ["easy", "medium", "hard"] as const;
+const quizAttemptStatuses = ["in_progress", "passed", "needs_retry"] as const;
+const trainingSessionStatuses = [
   "in_progress",
   "completed",
   "needs_review",
   "failed",
-]);
-export const messageSenderEnum = pgEnum("message_sender", [
-  "customer",
-  "learner",
-  "coach",
-  "system",
-]);
-export const evaluationVerdictEnum = pgEnum("evaluation_verdict", [
-  "passed",
-  "needs_retry",
-]);
-export const reviewTriggerEnum = pgEnum("review_trigger", [
-  "failed",
-  "critical_risk",
-  "low_confidence",
-  "random_sample",
-]);
-export const reviewDecisionStatusEnum = pgEnum("review_decision_status", [
-  "confirmed",
-  "adjusted",
-  "dismissed",
-]);
+] as const;
+const messageSenders = ["customer", "learner", "coach", "system"] as const;
+const evaluationVerdicts = ["passed", "needs_retry"] as const;
 
-export const users = pgTable(
+const timestamp = (name: string) =>
+  integer(name, { mode: "timestamp_ms" }).default(sql`(unixepoch() * 1000)`);
+const bool = (name: string) => integer(name, { mode: "boolean" });
+const json = <T>(name: string) => text(name, { mode: "json" }).$type<T>();
+
+export const users = sqliteTable(
   "users",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: text("id").primaryKey(),
     email: text("email").notNull(),
     name: text("name").notNull(),
     passwordHash: text("password_hash").notNull(),
-    role: userRoleEnum("role").default("learner").notNull(),
-    isActive: boolean("is_active").default(true).notNull(),
-    lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+    isActive: bool("is_active").default(true).notNull(),
+    lastLoginAt: integer("last_login_at", { mode: "timestamp_ms" }),
     ...auditTimestamps(),
   },
   (table) => [unique("users_email_unique").on(table.email)],
 );
 
-export const knowledgeVersions = pgTable(
+export const knowledgeVersions = sqliteTable(
   "knowledge_versions",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: text("id").primaryKey(),
     versionHash: text("version_hash").notNull(),
+    contentHash: text("content_hash").notNull(),
     schemaVersion: integer("schema_version").notNull(),
     sourceRoot: text("source_root").notNull(),
-    status: lifecycleStatusEnum("status").default("draft").notNull(),
-    isActive: boolean("is_active").default(false).notNull(),
-    coverage: jsonb("coverage").$type<Record<string, number>>().notNull(),
-    publishedAt: timestamp("published_at", { withTimezone: true }),
-    createdById: uuid("created_by_id").references(() => users.id, {
-      onDelete: "set null",
-    }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    publicationSource: text("publication_source").default("cli").notNull(),
+    status: text("status", { enum: lifecycleStatus }).default("draft").notNull(),
+    isActive: bool("is_active").default(false).notNull(),
+    coverage: json<Record<string, number>>("coverage").notNull(),
+    publishedAt: integer("published_at", { mode: "timestamp_ms" }),
+    createdAt: timestamp("created_at").notNull(),
   },
   (table) => [
     unique("knowledge_versions_hash_unique").on(table.versionHash),
     uniqueIndex("knowledge_versions_single_active_idx")
       .on(table.isActive)
-      .where(sql`${table.isActive} = true`),
+      .where(sql`${table.isActive} = 1`),
+    check(
+      "knowledge_versions_publication_source_check",
+      sql`${table.publicationSource} = 'cli'`,
+    ),
   ],
 );
 
-export const knowledgeSources = pgTable(
+export const knowledgeSources = sqliteTable(
   "knowledge_sources",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
-    knowledgeVersionId: uuid("knowledge_version_id")
+    id: text("id").primaryKey(),
+    knowledgeVersionId: text("knowledge_version_id")
       .notNull()
       .references(() => knowledgeVersions.id, { onDelete: "restrict" }),
     sourcePath: text("source_path").notNull(),
-    kind: knowledgeSourceKindEnum("kind").notNull(),
+    kind: text("kind", { enum: ["markdown", "excel", "mindmap"] }).notNull(),
     sourceHash: text("source_hash").notNull(),
     bytes: integer("bytes").notNull(),
-    stats: jsonb("stats").$type<Record<string, number>>().notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    stats: json<Record<string, number>>("stats").notNull(),
+    createdAt: timestamp("created_at").notNull(),
   },
   (table) => [
     unique("knowledge_sources_version_path_unique").on(
@@ -153,29 +99,27 @@ export const knowledgeSources = pgTable(
   ],
 );
 
-export const knowledgeUnits = pgTable(
+export const knowledgeUnits = sqliteTable(
   "knowledge_units",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
-    knowledgeVersionId: uuid("knowledge_version_id")
+    id: text("id").primaryKey(),
+    knowledgeVersionId: text("knowledge_version_id")
       .notNull()
       .references(() => knowledgeVersions.id, { onDelete: "restrict" }),
     unitKey: text("unit_key").notNull(),
     title: text("title").notNull(),
     content: text("content").notNull(),
-    categoryPath: jsonb("category_path").$type<string[]>().notNull(),
+    categoryPath: json<string[]>("category_path").notNull(),
     semanticKey: text("semantic_key"),
     contentHash: text("content_hash").notNull(),
-    sources: jsonb("sources").$type<SourceLocator[]>().notNull(),
-    hasConflict: boolean("has_conflict").default(false).notNull(),
-    canUseForQuiz: boolean("can_use_for_quiz").default(true).notNull(),
-    canUseForScenario: boolean("can_use_for_scenario").default(true).notNull(),
-    canUseForEvaluation: boolean("can_use_for_evaluation")
+    sources: json<SourceLocator[]>("sources").notNull(),
+    hasConflict: bool("has_conflict").default(false).notNull(),
+    canUseForQuiz: bool("can_use_for_quiz").default(true).notNull(),
+    canUseForScenario: bool("can_use_for_scenario").default(true).notNull(),
+    canUseForEvaluation: bool("can_use_for_evaluation")
       .default(true)
       .notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    createdAt: timestamp("created_at").notNull(),
   },
   (table) => [
     unique("knowledge_units_version_key_unique").on(
@@ -186,23 +130,22 @@ export const knowledgeUnits = pgTable(
   ],
 );
 
-export const quizSets = pgTable(
+export const quizSets = sqliteTable(
   "quiz_sets",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
-    knowledgeVersionId: uuid("knowledge_version_id")
+    id: text("id").primaryKey(),
+    knowledgeVersionId: text("knowledge_version_id")
       .notNull()
       .references(() => knowledgeVersions.id, { onDelete: "restrict" }),
     quizHash: text("quiz_hash").notNull(),
+    contentHash: text("content_hash").notNull(),
     sourceQuizHash: text("source_quiz_hash"),
     title: text("title").notNull(),
     description: text("description"),
-    status: lifecycleStatusEnum("status").default("draft").notNull(),
+    publicationSource: text("publication_source").default("cli").notNull(),
+    status: text("status", { enum: lifecycleStatus }).default("draft").notNull(),
     passingScore: integer("passing_score").default(80).notNull(),
-    publishedAt: timestamp("published_at", { withTimezone: true }),
-    createdById: uuid("created_by_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
+    publishedAt: integer("published_at", { mode: "timestamp_ms" }),
     ...auditTimestamps(),
   },
   (table) => [
@@ -211,31 +154,32 @@ export const quizSets = pgTable(
       "quiz_sets_passing_score_check",
       sql`${table.passingScore} between 0 and 100`,
     ),
+    check(
+      "quiz_sets_publication_source_check",
+      sql`${table.publicationSource} = 'cli'`,
+    ),
   ],
 );
 
-export const questions = pgTable(
+export const questions = sqliteTable(
   "questions",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
-    knowledgeVersionId: uuid("knowledge_version_id")
+    id: text("id").primaryKey(),
+    knowledgeVersionId: text("knowledge_version_id")
       .notNull()
       .references(() => knowledgeVersions.id, { onDelete: "restrict" }),
-    knowledgeUnitId: uuid("knowledge_unit_id")
+    knowledgeUnitId: text("knowledge_unit_id")
       .notNull()
       .references(() => knowledgeUnits.id, { onDelete: "restrict" }),
     questionKey: text("question_key").notNull(),
-    type: questionTypeEnum("type").notNull(),
+    type: text("type", { enum: questionTypes }).notNull(),
     prompt: text("prompt").notNull(),
-    options: jsonb("options").$type<string[]>().notNull(),
-    correctAnswers: jsonb("correct_answers").$type<string[]>().notNull(),
+    options: json<string[]>("options").notNull(),
+    correctAnswers: json<string[]>("correct_answers").notNull(),
     explanation: text("explanation").notNull(),
     category: text("category").notNull(),
-    difficulty: difficultyEnum("difficulty").default("easy").notNull(),
-    status: lifecycleStatusEnum("status").default("draft").notNull(),
-    createdById: uuid("created_by_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
+    difficulty: text("difficulty", { enum: difficulties }).default("easy").notNull(),
+    status: text("status", { enum: lifecycleStatus }).default("draft").notNull(),
     ...auditTimestamps(),
   },
   (table) => [
@@ -248,41 +192,13 @@ export const questions = pgTable(
   ],
 );
 
-export const questionReviews = pgTable(
-  "question_reviews",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    questionId: uuid("question_id")
-      .notNull()
-      .references(() => questions.id, { onDelete: "restrict" }),
-    reviewerId: uuid("reviewer_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
-    contentHash: text("content_hash").notNull(),
-    snapshot: jsonb("snapshot").$type<QuizQuestionDraft>().notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [
-    unique("question_reviews_question_hash_unique").on(
-      table.questionId,
-      table.contentHash,
-    ),
-    index("question_reviews_reviewer_created_idx").on(
-      table.reviewerId,
-      table.createdAt,
-    ),
-  ],
-);
-
-export const quizSetQuestions = pgTable(
+export const quizSetQuestions = sqliteTable(
   "quiz_set_questions",
   {
-    quizSetId: uuid("quiz_set_id")
+    quizSetId: text("quiz_set_id")
       .notNull()
       .references(() => quizSets.id, { onDelete: "cascade" }),
-    questionId: uuid("question_id")
+    questionId: text("question_id")
       .notNull()
       .references(() => questions.id, { onDelete: "restrict" }),
     position: integer("position").notNull(),
@@ -300,31 +216,27 @@ export const quizSetQuestions = pgTable(
   ],
 );
 
-export const quizAttempts = pgTable(
+export const quizAttempts = sqliteTable(
   "quiz_attempts",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
-    assignmentId: uuid("assignment_id").references(
-      (): AnyPgColumn => assignments.id,
-      { onDelete: "set null" },
-    ),
-    quizSetId: uuid("quiz_set_id")
+    id: text("id").primaryKey(),
+    quizSetId: text("quiz_set_id")
       .notNull()
       .references(() => quizSets.id, { onDelete: "restrict" }),
-    learnerId: uuid("learner_id")
+    learnerId: text("learner_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
-    knowledgeVersionId: uuid("knowledge_version_id")
+    knowledgeVersionId: text("knowledge_version_id")
       .notNull()
       .references(() => knowledgeVersions.id, { onDelete: "restrict" }),
-    status: quizAttemptStatusEnum("status").default("in_progress").notNull(),
+    status: text("status", { enum: quizAttemptStatuses })
+      .default("in_progress")
+      .notNull(),
     correctCount: integer("correct_count").default(0).notNull(),
     totalQuestions: integer("total_questions").notNull(),
     score: integer("score"),
-    startedAt: timestamp("started_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-    completedAt: timestamp("completed_at", { withTimezone: true }),
+    startedAt: timestamp("started_at").notNull(),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
   },
   (table) => [
     index("quiz_attempts_learner_started_idx").on(
@@ -338,21 +250,19 @@ export const quizAttempts = pgTable(
   ],
 );
 
-export const quizAnswers = pgTable(
+export const quizAnswers = sqliteTable(
   "quiz_answers",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
-    quizAttemptId: uuid("quiz_attempt_id")
+    id: text("id").primaryKey(),
+    quizAttemptId: text("quiz_attempt_id")
       .notNull()
       .references(() => quizAttempts.id, { onDelete: "cascade" }),
-    questionId: uuid("question_id")
+    questionId: text("question_id")
       .notNull()
       .references(() => questions.id, { onDelete: "restrict" }),
-    selectedAnswers: jsonb("selected_answers").$type<string[]>().notNull(),
-    isCorrect: boolean("is_correct").notNull(),
-    answeredAt: timestamp("answered_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    selectedAnswers: json<string[]>("selected_answers").notNull(),
+    isCorrect: bool("is_correct").notNull(),
+    answeredAt: timestamp("answered_at").notNull(),
   },
   (table) => [
     unique("quiz_answers_attempt_question_unique").on(
@@ -362,24 +272,21 @@ export const quizAnswers = pgTable(
   ],
 );
 
-export const topicQuizAttempts = pgTable(
+export const topicQuizAttempts = sqliteTable(
   "topic_quiz_attempts",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
-    learnerId: uuid("learner_id")
+    id: text("id").primaryKey(),
+    learnerId: text("learner_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
     topicId: text("topic_id").notNull(),
     quizHash: text("quiz_hash").notNull(),
-    status: quizAttemptStatusEnum("status").notNull(),
+    status: text("status", { enum: quizAttemptStatuses }).notNull(),
     correctCount: integer("correct_count").notNull(),
     totalQuestions: integer("total_questions").notNull(),
     score: integer("score").notNull(),
-    completedAt: timestamp("completed_at", { withTimezone: true })
-      .notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: timestamp("created_at").notNull(),
   },
   (table) => [
     index("topic_quiz_attempts_learner_completed_idx").on(
@@ -393,19 +300,17 @@ export const topicQuizAttempts = pgTable(
   ],
 );
 
-export const topicQuizAnswers = pgTable(
+export const topicQuizAnswers = sqliteTable(
   "topic_quiz_answers",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
-    topicQuizAttemptId: uuid("topic_quiz_attempt_id")
+    id: text("id").primaryKey(),
+    topicQuizAttemptId: text("topic_quiz_attempt_id")
       .notNull()
       .references(() => topicQuizAttempts.id, { onDelete: "cascade" }),
     questionKey: text("question_key").notNull(),
-    selectedAnswers: jsonb("selected_answers").$type<string[]>().notNull(),
-    isCorrect: boolean("is_correct").notNull(),
-    answeredAt: timestamp("answered_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    selectedAnswers: json<string[]>("selected_answers").notNull(),
+    isCorrect: bool("is_correct").notNull(),
+    answeredAt: timestamp("answered_at").notNull(),
   },
   (table) => [
     unique("topic_quiz_answers_attempt_question_unique").on(
@@ -415,183 +320,113 @@ export const topicQuizAnswers = pgTable(
   ],
 );
 
-export const scenarios = pgTable(
+export const scenarios = sqliteTable(
   "scenarios",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: text("id").primaryKey(),
     scenarioKey: text("scenario_key").notNull(),
     title: text("title").notNull(),
     category: text("category").notNull(),
-    status: lifecycleStatusEnum("status").default("draft").notNull(),
-    createdById: uuid("created_by_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
+    status: text("status", { enum: lifecycleStatus }).default("draft").notNull(),
     ...auditTimestamps(),
   },
-  (table) => [
-    unique("scenarios_key_unique").on(table.scenarioKey),
-  ],
+  (table) => [unique("scenarios_key_unique").on(table.scenarioKey)],
 );
 
-export const scenarioVersions = pgTable(
+export const scenarioVersions = sqliteTable(
   "scenario_versions",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
-    scenarioId: uuid("scenario_id")
+    id: text("id").primaryKey(),
+    scenarioId: text("scenario_id")
       .notNull()
       .references(() => scenarios.id, { onDelete: "restrict" }),
     versionKey: text("version_key").notNull(),
     version: integer("version").notNull(),
-    knowledgeVersionId: uuid("knowledge_version_id")
+    knowledgeVersionId: text("knowledge_version_id")
       .notNull()
       .references(() => knowledgeVersions.id, { onDelete: "restrict" }),
+    contentHash: text("content_hash").notNull(),
+    publicationSource: text("publication_source").default("cli").notNull(),
     background: text("background").notNull(),
     summary: text("summary").notNull(),
     firstCustomerMessage: text("first_customer_message").notNull(),
-    controlledVariables: jsonb("controlled_variables")
-      .$type<Record<string, unknown>>()
-      .notNull(),
-    hiddenFacts: jsonb("hidden_facts").$type<string[]>().notNull(),
-    customerTurns: jsonb("customer_turns").$type<string[]>().notNull(),
-    checkpoints: jsonb("checkpoints").$type<string[]>().notNull(),
-    prohibitions: jsonb("prohibitions").$type<string[]>().notNull(),
-    scoringWeights: jsonb("scoring_weights")
-      .$type<Record<string, number>>()
-      .notNull(),
-    scoringDimensions: jsonb("scoring_dimensions")
-      .$type<ScenarioTemplate["scoringDimensions"]>()
-      .notNull(),
-    criticalRisks: jsonb("critical_risks")
-      .$type<ScenarioTemplate["criticalRisks"]>()
-      .notNull(),
-    referenceFlow: jsonb("reference_flow").$type<string[]>().notNull(),
+    controlledVariables: json<Record<string, unknown>>("controlled_variables").notNull(),
+    hiddenFacts: json<string[]>("hidden_facts").notNull(),
+    customerTurns: json<string[]>("customer_turns").notNull(),
+    checkpoints: json<string[]>("checkpoints").notNull(),
+    prohibitions: json<string[]>("prohibitions").notNull(),
+    scoringWeights: json<Record<string, number>>("scoring_weights").notNull(),
+    scoringDimensions: json<ScenarioTemplate["scoringDimensions"]>("scoring_dimensions").notNull(),
+    criticalRisks: json<ScenarioTemplate["criticalRisks"]>("critical_risks").notNull(),
+    referenceFlow: json<string[]>("reference_flow").notNull(),
     referenceReply: text("reference_reply").notNull(),
-    sources: jsonb("sources").$type<SourceLocator[]>().notNull(),
+    sources: json<SourceLocator[]>("sources").notNull(),
     maxTurns: integer("max_turns").default(12).notNull(),
-    mockMode: boolean("mock_mode").default(true).notNull(),
-    customerPersona: jsonb("customer_persona")
-      .$type<ScenarioTemplate["customerPersona"]>(),
+    mockMode: bool("mock_mode").default(true).notNull(),
+    customerPersona: json<ScenarioTemplate["customerPersona"]>("customer_persona"),
     difficulty: text("difficulty").default("medium"),
-    status: lifecycleStatusEnum("status").default("draft").notNull(),
-    publishedAt: timestamp("published_at", { withTimezone: true }),
-    createdById: uuid("created_by_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    status: text("status", { enum: lifecycleStatus }).default("draft").notNull(),
+    publishedAt: integer("published_at", { mode: "timestamp_ms" }),
+    createdAt: timestamp("created_at").notNull(),
   },
   (table) => [
     unique("scenario_versions_key_unique").on(table.versionKey),
-    unique("scenario_versions_number_unique").on(
-      table.scenarioId,
-      table.version,
-    ),
+    unique("scenario_versions_number_unique").on(table.scenarioId, table.version),
     check(
       "scenario_versions_max_turns_check",
       sql`${table.maxTurns} between 8 and 16`,
     ),
-  ],
-);
-
-export const assignments = pgTable(
-  "assignments",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    learnerId: uuid("learner_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
-    assignedById: uuid("assigned_by_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
-    assignmentType: assignmentTypeEnum("assignment_type").notNull(),
-    quizSetId: uuid("quiz_set_id").references(() => quizSets.id, {
-      onDelete: "restrict",
-    }),
-    scenarioVersionId: uuid("scenario_version_id").references(
-      () => scenarioVersions.id,
-      { onDelete: "restrict" },
-    ),
-    status: assignmentStatusEnum("status").default("assigned").notNull(),
-    dueAt: timestamp("due_at", { withTimezone: true }),
-    startedAt: timestamp("started_at", { withTimezone: true }),
-    completedAt: timestamp("completed_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [
-    index("assignments_learner_status_idx").on(
-      table.learnerId,
-      table.status,
-    ),
     check(
-      "assignments_target_check",
-      sql`(
-        (${table.assignmentType} = 'quiz' and ${table.quizSetId} is not null and ${table.scenarioVersionId} is null)
-        or
-        (${table.assignmentType} = 'scenario' and ${table.quizSetId} is null and ${table.scenarioVersionId} is not null)
-      )`,
+      "scenario_versions_publication_source_check",
+      sql`${table.publicationSource} = 'cli'`,
     ),
   ],
 );
 
-export const trainingSessions = pgTable(
+export const trainingSessions = sqliteTable(
   "training_sessions",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
-    assignmentId: uuid("assignment_id").references(() => assignments.id, {
-      onDelete: "set null",
-    }),
-    learnerId: uuid("learner_id")
+    id: text("id").primaryKey(),
+    learnerId: text("learner_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
-    knowledgeVersionId: uuid("knowledge_version_id")
+    knowledgeVersionId: text("knowledge_version_id")
       .notNull()
       .references(() => knowledgeVersions.id, { onDelete: "restrict" }),
-    scenarioVersionId: uuid("scenario_version_id")
+    scenarioVersionId: text("scenario_version_id")
       .notNull()
       .references(() => scenarioVersions.id, { onDelete: "restrict" }),
-    status: trainingSessionStatusEnum("status")
+    status: text("status", { enum: trainingSessionStatuses })
       .default("in_progress")
       .notNull(),
     mode: text("mode").default("mock").notNull(),
     turnCount: integer("turn_count").default(0).notNull(),
     lastError: text("last_error"),
-    startedAt: timestamp("started_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-    completedAt: timestamp("completed_at", { withTimezone: true }),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    startedAt: timestamp("started_at").notNull(),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+    updatedAt: timestamp("updated_at").notNull(),
   },
   (table) => [
     index("training_sessions_learner_started_idx").on(
       table.learnerId,
       table.startedAt,
     ),
-    check(
-      "training_sessions_mode_check",
-      sql`${table.mode} in ('mock', 'real')`,
-    ),
+    check("training_sessions_mode_check", sql`${table.mode} in ('mock', 'real')`),
   ],
 );
 
-export const trainingMessages = pgTable(
+export const trainingMessages = sqliteTable(
   "training_messages",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
-    trainingSessionId: uuid("training_session_id")
+    id: text("id").primaryKey(),
+    trainingSessionId: text("training_session_id")
       .notNull()
       .references(() => trainingSessions.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
-    sender: messageSenderEnum("sender").notNull(),
+    sender: text("sender", { enum: messageSenders }).notNull(),
     content: text("content").notNull(),
-    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    metadata: json<Record<string, unknown>>("metadata"),
+    createdAt: timestamp("created_at").notNull(),
   },
   (table) => [
     unique("training_messages_session_position_unique").on(
@@ -601,42 +436,30 @@ export const trainingMessages = pgTable(
   ],
 );
 
-export const evaluationReports = pgTable(
+export const evaluationReports = sqliteTable(
   "evaluation_reports",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
-    trainingSessionId: uuid("training_session_id")
+    id: text("id").primaryKey(),
+    trainingSessionId: text("training_session_id")
       .notNull()
       .references(() => trainingSessions.id, { onDelete: "restrict" }),
-    knowledgeVersionId: uuid("knowledge_version_id")
+    knowledgeVersionId: text("knowledge_version_id")
       .notNull()
       .references(() => knowledgeVersions.id, { onDelete: "restrict" }),
     totalScore: integer("total_score").notNull(),
-    verdict: evaluationVerdictEnum("verdict").notNull(),
-    dimensions: jsonb("dimensions")
-      .$type<ScenarioEvaluationReport["dimensions"]>()
-      .notNull(),
-    strengths: jsonb("strengths").$type<string[]>().notNull(),
-    omissions: jsonb("omissions").$type<string[]>().notNull(),
-    risks: jsonb("risks").$type<string[]>().notNull(),
-    recommendations: jsonb("recommendations")
-      .$type<ScenarioRecommendation[]>()
-      .notNull(),
-    turnFeedback: jsonb("turn_feedback")
-      .$type<Array<Record<string, unknown>>>()
-      .notNull(),
-    recommendedFlow: jsonb("recommended_flow").$type<string[]>().notNull(),
+    verdict: text("verdict", { enum: evaluationVerdicts }).notNull(),
+    dimensions: json<ScenarioEvaluationReport["dimensions"]>("dimensions").notNull(),
+    strengths: json<string[]>("strengths").notNull(),
+    omissions: json<string[]>("omissions").notNull(),
+    risks: json<string[]>("risks").notNull(),
+    recommendations: json<ScenarioRecommendation[]>("recommendations").notNull(),
+    turnFeedback: json<Array<Record<string, unknown>>>("turn_feedback").notNull(),
+    recommendedFlow: json<string[]>("recommended_flow").notNull(),
     sampleReply: text("sample_reply").notNull(),
-    evidence: jsonb("evidence")
-      .$type<Array<Record<string, unknown>>>()
-      .notNull(),
-    confidence: numeric("confidence", { precision: 4, scale: 3 }).notNull(),
-    lowConfidence: boolean("low_confidence").default(false).notNull(),
-    needsReview: boolean("needs_review").default(false).notNull(),
-    reviewTrigger: reviewTriggerEnum("review_trigger"),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    evidence: json<Array<Record<string, unknown>>>("evidence").notNull(),
+    confidence: real("confidence").notNull(),
+    lowConfidence: bool("low_confidence").default(false).notNull(),
+    createdAt: timestamp("created_at").notNull(),
   },
   (table) => [
     unique("evaluation_reports_session_unique").on(table.trainingSessionId),
@@ -651,39 +474,6 @@ export const evaluationReports = pgTable(
   ],
 );
 
-export const reviewDecisions = pgTable(
-  "review_decisions",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    evaluationReportId: uuid("evaluation_report_id")
-      .notNull()
-      .references(() => evaluationReports.id, { onDelete: "restrict" }),
-    reviewerId: uuid("reviewer_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
-    status: reviewDecisionStatusEnum("status").notNull(),
-    correctedVerdict: evaluationVerdictEnum("corrected_verdict"),
-    correctedScore: integer("corrected_score"),
-    comment: text("comment").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [
-    unique("review_decisions_report_unique").on(
-      table.evaluationReportId,
-    ),
-    index("review_decisions_report_created_idx").on(
-      table.evaluationReportId,
-      table.createdAt,
-    ),
-    check(
-      "review_decisions_corrected_score_check",
-      sql`${table.correctedScore} is null or ${table.correctedScore} between 0 and 100`,
-    ),
-  ],
-);
-
 export const mvpTables = {
   users,
   knowledgeVersions,
@@ -691,26 +481,21 @@ export const mvpTables = {
   knowledgeUnits,
   quizSets,
   questions,
-  questionReviews,
   quizSetQuestions,
   quizAttempts,
   quizAnswers,
+  topicQuizAttempts,
+  topicQuizAnswers,
   scenarios,
   scenarioVersions,
-  assignments,
   trainingSessions,
   trainingMessages,
   evaluationReports,
-  reviewDecisions,
 };
 
 function auditTimestamps() {
   return {
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at").notNull(),
   };
 }

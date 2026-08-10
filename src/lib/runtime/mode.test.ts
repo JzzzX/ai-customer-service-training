@@ -6,35 +6,14 @@ import { describe, expect, it } from "vitest";
 import { resolveRuntimeMode } from "./mode";
 
 describe("runtime mode", () => {
-  it("never selects local demo in production", () => {
+  it("always uses SQLite regardless of legacy environment flags", () => {
     expect(
       resolveRuntimeMode({
         NODE_ENV: "production",
         LOCAL_TEST_AUTH_ENABLED: "true",
       }),
-    ).toBe("production");
-  });
-
-  it("requires an explicit flag and no database for local demo", () => {
-    expect(
-      resolveRuntimeMode({
-        NODE_ENV: "development",
-        LOCAL_TEST_AUTH_ENABLED: "true",
-      }),
-    ).toBe("local_demo");
-    expect(
-      resolveRuntimeMode({
-        NODE_ENV: "development",
-        LOCAL_TEST_AUTH_ENABLED: "false",
-      }),
-    ).toBe("production");
-    expect(
-      resolveRuntimeMode({
-        NODE_ENV: "development",
-        LOCAL_TEST_AUTH_ENABLED: "true",
-        DATABASE_URL: "postgresql://configured",
-      }),
-    ).toBe("production");
+    ).toBe("sqlite");
+    expect(resolveRuntimeMode({ NODE_ENV: "development" })).toBe("sqlite");
   });
 
   it("keeps application routes free of concrete persistence imports", async () => {
