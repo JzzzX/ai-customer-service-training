@@ -43,7 +43,7 @@ export class DbKnowledgeQueryStore implements KnowledgeQueryStore {
       })
       .from(knowledgeVersions)
       .where(eq(knowledgeVersions.isActive, true))
-      .limit(1);
+      .limit(1).all();
     if (!version) {
       return null;
     }
@@ -128,7 +128,7 @@ export class DbKnowledgeQueryStore implements KnowledgeQueryStore {
       .select({ id: knowledgeVersions.id })
       .from(knowledgeVersions)
       .where(eq(knowledgeVersions.isActive, true))
-      .limit(1);
+      .limit(1).all();
     if (!version) {
       return [];
     }
@@ -150,7 +150,7 @@ export class DbKnowledgeQueryStore implements KnowledgeQueryStore {
         ),
       )
       .orderBy(asc(knowledgeUnits.title))
-      .limit(50);
+      .limit(50).all();
     const units = rows.map((row) =>
       knowledgeUnitSchema.parse({
         id: toUnitId(row.unitKey),

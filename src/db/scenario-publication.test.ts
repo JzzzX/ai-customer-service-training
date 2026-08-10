@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createScenarioPublicationStore,
   jsonValuesEqual,
   publishScenarioTemplatesToStore,
   type PreparedScenarioPublication,
   type ResolvedScenarioKnowledge,
   type ScenarioPublicationStore,
 } from "./scenario-publication";
+import { knowledgeUnits, knowledgeVersions } from "./schema";
+import { createTestDatabase } from "./test-support/create-test-database";
 import { scenarioTemplates } from "@/lib/scenario/templates";
 
 const knowledgeVersionHash = "a".repeat(64);
@@ -78,6 +81,26 @@ describe("scenario database publication", () => {
           ) === 100,
       ),
     ).toBe(true);
+  });
+
+  it("rejects changed persona and difficulty for an existing SQLite version", async () => {
+    const { client, database } = await createTestDatabase();
+    const versionId = "00000000-0000-4000-8000-000000000020";
+    const template = scenarioTemplates[0]!;
+    await database.insert(knowledgeVersions).values({
+      id: versionId, versionHash: knowledgeVersionHash, contentHash: "a".repeat(64), schemaVersion: 1,
+      sourceRoot: "test", status: "published", isActive: true, coverage: {},
+    });
+    await database.insert(knowledgeUnits).values({
+      id: "00000000-0000-4000-8000-000000000021", knowledgeVersionId: versionId, unitKey: "ku_test",
+      title: "test", content: "test", categoryPath: ["test"], contentHash: "b".repeat(64),
+      sources: template.sources, hasConflict: false,
+    });
+    const store = createScenarioPublicationStore(database);
+    await publishScenarioTemplatesToStore({ templates: [template], knowledgeVersionHash, store });
+    const changed = { ...template, customerPersona: { ...template.customerPersona!, temperament: "anxious" as const }, difficulty: "hard" as const };
+    await expect(publishScenarioTemplatesToStore({ templates: [changed], knowledgeVersionHash, store })).rejects.toThrow("同一场景版本键存在不同内容");
+    client.close();
   });
 
   it("rejects a source locator missing from the active knowledge version", async () => {

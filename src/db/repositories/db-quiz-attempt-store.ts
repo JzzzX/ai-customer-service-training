@@ -198,7 +198,7 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
           isNotNull(quizAttempts.completedAt),
         ),
       )
-      .orderBy(desc(quizAttempts.completedAt), desc(quizAttempts.id));
+      .orderBy(desc(quizAttempts.completedAt), desc(quizAttempts.id)).all();
     const topicRows = await this.database
       .select({
         id: topicQuizAttempts.id,

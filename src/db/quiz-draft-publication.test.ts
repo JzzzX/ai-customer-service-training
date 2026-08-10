@@ -20,6 +20,7 @@ class MemoryQuizDraftPublicationStore
     { id: string; quizHash: string }
   >();
   publishCount = 0;
+  lastPublication: PreparedQuizDraftPublication | undefined;
 
   constructor(
     private readonly knowledge: ResolvedQuizKnowledge =
@@ -37,6 +38,7 @@ class MemoryQuizDraftPublicationStore
   async publishDraftAtomically(
     input: PreparedQuizDraftPublication,
   ) {
+    this.lastPublication = input;
     const existing = this.publications.get(input.quizSet.quizHash);
     if (existing) {
       return existing;
@@ -73,6 +75,7 @@ describe("quiz draft database publication", () => {
     });
     expect(second).toEqual({ ...first, created: false });
     expect(store.publishCount).toBe(1);
+    expect(store.lastPublication?.quizSet.sourceQuizHash).toBe(quizHash);
   });
 
   it("rejects conflicting knowledge before creating a quiz set", async () => {

@@ -311,7 +311,9 @@ function matchesScenarioVersion(
     stored.referenceReply === prepared.referenceReply &&
     jsonValuesEqual(stored.sources, prepared.sources) &&
     stored.maxTurns === prepared.maxTurns &&
-    stored.mockMode === prepared.mockMode
+    stored.mockMode === prepared.mockMode &&
+    jsonValuesEqual(stored.customerPersona, prepared.customerPersona) &&
+    stored.difficulty === prepared.difficulty
   );
 }
 

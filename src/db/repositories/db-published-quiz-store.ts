@@ -49,7 +49,7 @@ export class DbPublishedQuizStore implements PublishedQuizStore {
       )
       .where(eq(quizSets.status, "published"))
       .orderBy(desc(quizSets.publishedAt), desc(quizSets.id))
-      .limit(1);
+      .limit(1).all();
     if (!set?.sourceQuizHash) {
       return null;
     }
@@ -75,7 +75,7 @@ export class DbPublishedQuizStore implements PublishedQuizStore {
         eq(questions.knowledgeUnitId, knowledgeUnits.id),
       )
       .where(eq(quizSetQuestions.quizSetId, set.id))
-      .orderBy(quizSetQuestions.position);
+      .orderBy(quizSetQuestions.position).all();
 
     return quizPublishedPackSchema.parse({
       schemaVersion: 1,

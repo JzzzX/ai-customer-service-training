@@ -59,7 +59,8 @@ export class DbScenarioTemplateStore implements ScenarioTemplateStore {
         eq(scenarioVersions.scenarioId, scenarios.id),
       )
       .where(published)
-      .orderBy(asc(scenarios.scenarioKey));
+      .orderBy(asc(scenarios.scenarioKey))
+      .all();
   }
 }
 

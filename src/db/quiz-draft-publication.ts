@@ -33,6 +33,7 @@ export type PreparedQuizDraftPublication = {
   quizSet: {
     knowledgeVersionId: string;
     quizHash: string;
+    sourceQuizHash: string;
     title: string;
     passingScore: number;
   };
@@ -139,6 +140,7 @@ export async function publishQuizDraftToStore(
     quizSet: {
       knowledgeVersionId: knowledge.id,
       quizHash: draft.quizHash,
+      sourceQuizHash: draft.quizHash,
       title: draft.title,
       passingScore: draft.passingScore,
     },
