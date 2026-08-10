@@ -10,7 +10,6 @@ import {
 import { scenarioTemplates } from "@/lib/scenario/templates";
 
 const knowledgeVersionHash = "a".repeat(64);
-const createdById = "00000000-0000-4000-8000-000000000001";
 
 class MemoryScenarioPublicationStore
   implements ScenarioPublicationStore
@@ -59,13 +58,11 @@ describe("scenario database publication", () => {
     const first = await publishScenarioTemplatesToStore({
       templates: scenarioTemplates,
       knowledgeVersionHash,
-      createdById,
       store,
     });
     const second = await publishScenarioTemplatesToStore({
       templates: scenarioTemplates,
       knowledgeVersionHash,
-      createdById,
       store,
     });
 
@@ -92,7 +89,6 @@ describe("scenario database publication", () => {
       publishScenarioTemplatesToStore({
         templates: scenarioTemplates,
         knowledgeVersionHash,
-        createdById,
         store,
       }),
     ).rejects.toThrow("场景来源未命中知识版本");
@@ -111,7 +107,6 @@ describe("scenario database publication", () => {
       publishScenarioTemplatesToStore({
         templates: scenarioTemplates,
         knowledgeVersionHash,
-        createdById,
         store,
       }),
     ).rejects.toThrow("冲突知识不能用于场景");

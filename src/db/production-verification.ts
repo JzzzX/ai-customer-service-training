@@ -119,7 +119,7 @@ export async function verifyProductionData(
     .select({ value: count() })
     .from(users)
     .where(
-      and(eq(users.role, "learner"), eq(users.isActive, true)),
+      eq(users.isActive, true),
     );
   return evaluateProductionSnapshot({
     activeKnowledgeCount: activeVersions.length,

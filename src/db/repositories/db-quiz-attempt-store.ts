@@ -5,6 +5,7 @@ import {
   inArray,
   isNotNull,
 } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 
 import type { DatabaseClient } from "../client";
 import {
@@ -67,7 +68,7 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
       })
       .from(quizAttempts)
       .where(eq(quizAttempts.id, input.attemptId))
-      .limit(1);
+      .limit(1).all();
     if (existing && existing.learnerId !== input.learnerId) {
       throw new Error("无权访问该小测记录。");
     }
@@ -75,8 +76,8 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
       return this.loadAttempt(input.learnerId, input.attemptId);
     }
 
-    await this.database.transaction(async (transaction) => {
-      const [quizSet] = await transaction
+    this.database.transaction((transaction) => {
+      const [quizSet] = transaction
         .select({
           id: quizSets.id,
           knowledgeVersionId: quizSets.knowledgeVersionId,
@@ -89,12 +90,13 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
             eq(quizSets.status, "published"),
           ),
         )
-        .limit(1);
+        .limit(1)
+        .all();
       if (!quizSet) {
         throw new Error("当前正式题组已更新，请重新开始练习。");
       }
 
-      const officialQuestions = await transaction
+      const officialQuestions = transaction
         .select({
           id: questions.id,
           questionKey: questions.questionKey,
@@ -105,7 +107,8 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
           questions,
           eq(quizSetQuestions.questionId, questions.id),
         )
-        .where(eq(quizSetQuestions.quizSetId, quizSet.id));
+        .where(eq(quizSetQuestions.quizSetId, quizSet.id))
+        .all();
       const questionByKey = new Map(
         officialQuestions.map((question) => [
           question.questionKey,
@@ -139,7 +142,7 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
         ? new Date(input.completedAt)
         : new Date();
 
-      const [inserted] = await transaction
+      const [inserted] = transaction
         .insert(quizAttempts)
         .values({
           id: input.attemptId,
@@ -150,23 +153,26 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
           correctCount,
           totalQuestions: checkedAnswers.length,
           score: outcome.score,
+          startedAt: completedAt,
           completedAt,
         })
         .onConflictDoNothing({ target: quizAttempts.id })
-        .returning({ id: quizAttempts.id });
+        .returning({ id: quizAttempts.id })
+        .all();
       if (!inserted) {
         return;
       }
 
-      await transaction.insert(quizAnswers).values(
+      transaction.insert(quizAnswers).values(
         checkedAnswers.map((answer) => ({
+          id: randomUUID(),
           quizAttemptId: inserted.id,
           questionId: answer.questionId,
           selectedAnswers: answer.selectedAnswers,
           isCorrect: answer.isCorrect,
           answeredAt: completedAt,
         })),
-      );
+      ).run();
     });
 
     return this.loadAttempt(input.learnerId, input.attemptId);
@@ -233,7 +239,7 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
       })
       .from(topicQuizAttempts)
       .where(eq(topicQuizAttempts.id, input.attemptId))
-      .limit(1);
+      .limit(1).all();
     if (existing && existing.learnerId !== input.learnerId) {
       throw new Error("无权访问该小测记录。");
     }
@@ -272,8 +278,8 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
       ? new Date(input.completedAt)
       : new Date();
 
-    await this.database.transaction(async (transaction) => {
-      const [inserted] = await transaction
+    this.database.transaction((transaction) => {
+      const [inserted] = transaction
         .insert(topicQuizAttempts)
         .values({
           id: input.attemptId,
@@ -285,19 +291,22 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
           totalQuestions: checkedAnswers.length,
           score: outcome.score,
           completedAt,
+          createdAt: completedAt,
         })
         .onConflictDoNothing({ target: topicQuizAttempts.id })
-        .returning({ id: topicQuizAttempts.id });
+        .returning({ id: topicQuizAttempts.id })
+        .all();
       if (!inserted) {
         return;
       }
-      await transaction.insert(topicQuizAnswers).values(
+      transaction.insert(topicQuizAnswers).values(
         checkedAnswers.map((answer) => ({
+          id: randomUUID(),
           topicQuizAttemptId: inserted.id,
           ...answer,
           answeredAt: completedAt,
         })),
-      );
+      ).run();
     });
     return this.loadTopicAttempt(input.learnerId, input.attemptId);
   }
@@ -325,7 +334,7 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
           eq(topicQuizAttempts.learnerId, learnerId),
         ),
       )
-      .limit(1);
+      .limit(1).all();
     if (!row) {
       throw new Error("小测记录不存在或无权访问。");
     }
@@ -360,7 +369,7 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
           isNotNull(quizAttempts.completedAt),
         ),
       )
-      .limit(1);
+      .limit(1).all();
     if (!row) {
       throw new Error("小测记录不存在或无权访问。");
     }

@@ -252,33 +252,30 @@ describe("DbScenarioSessionStore", () => {
         email: "admin@example.com",
         name: "管理员",
         passwordHash: "not-used",
-        role: "admin",
       },
       {
         id: learnerId,
         email: "learner@example.com",
         name: "学员",
         passwordHash: "not-used",
-        role: "learner",
       },
       {
         id: otherLearnerId,
         email: "other@example.com",
         name: "其他学员",
         passwordHash: "not-used",
-        role: "learner",
       },
     ]);
     await database.insert(knowledgeVersions).values({
       id: knowledgeVersionId,
       versionHash: "a".repeat(64),
+      contentHash: "0".repeat(64),
       schemaVersion: 1,
       sourceRoot: "TOC售前客服知识库",
       status: "published",
       isActive: true,
       coverage: { sourceFiles: 8 },
       publishedAt: new Date(),
-      createdById: adminId,
     });
     await database.insert(scenarios).values({
       id: scenarioId,
@@ -286,12 +283,12 @@ describe("DbScenarioSessionStore", () => {
       title: template.title,
       category: template.category,
       status: "published",
-      createdById: adminId,
     });
     await database.insert(scenarioVersions).values({
       id: scenarioVersionId,
       scenarioId,
       versionKey: template.versionId,
+        contentHash: "2".repeat(64),
       version: 1,
       knowledgeVersionId,
       background: template.summary,
@@ -319,7 +316,6 @@ describe("DbScenarioSessionStore", () => {
       difficulty: template.difficulty,
       status: "published",
       publishedAt: new Date(),
-      createdById: adminId,
     });
   }
 });

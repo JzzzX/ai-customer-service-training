@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { z } from "zod";
+import { createHash, randomUUID } from "node:crypto";
 
 import { getDatabase } from "./client";
 import type { DatabaseClient } from "./client";
@@ -33,7 +33,6 @@ export type PreparedScenarioPublication = {
     scenarioKey: string;
     title: string;
     category: string;
-    createdById: string;
   };
   version: {
     versionKey: string;
@@ -57,7 +56,6 @@ export type PreparedScenarioPublication = {
     mockMode: boolean;
     customerPersona: ScenarioTemplate["customerPersona"] | null;
     difficulty: ScenarioTemplate["difficulty"];
-    createdById: string;
   };
 };
 
@@ -73,11 +71,10 @@ export interface ScenarioPublicationStore {
 export async function publishScenarioTemplatesToStore(input: {
   templates: ScenarioTemplate[];
   knowledgeVersionHash: string;
-  createdById: string;
+  publicationSource?: string;
   store: ScenarioPublicationStore;
 }): Promise<{ created: number; existing: number }> {
   const templates = scenarioTemplatesSchema.parse(input.templates);
-  const createdById = z.string().uuid().parse(input.createdById);
   const knowledge = await input.store.resolveKnowledgeContext(
     input.knowledgeVersionHash,
   );
@@ -125,7 +122,6 @@ export async function publishScenarioTemplatesToStore(input: {
     return prepareScenarioPublication(
       template,
       knowledge.id,
-      createdById,
     );
   });
   return input.store.publishAtomically(publications);
@@ -144,7 +140,7 @@ export function createScenarioPublicationStore(
         })
         .from(knowledgeVersions)
         .where(eq(knowledgeVersions.versionHash, versionHash))
-        .limit(1);
+        .limit(1).all();
       if (!version) {
         return null;
       }
@@ -162,24 +158,24 @@ export function createScenarioPublicationStore(
     },
 
     async publishAtomically(publications) {
-      return database.transaction(async (transaction) => {
+      return database.transaction((transaction) => {
         let created = 0;
         let existing = 0;
 
         for (const publication of publications) {
-          const [insertedScenario] = await transaction
+          const [insertedScenario] = transaction
             .insert(scenarios)
-            .values({ ...publication.scenario, status: "published" })
+            .values({ id: randomUUID(), ...publication.scenario, status: "published" })
             .onConflictDoNothing({ target: scenarios.scenarioKey })
             .returning({
               id: scenarios.id,
               title: scenarios.title,
               category: scenarios.category,
-            });
+            }).all();
           const scenario =
             insertedScenario ??
             (
-              await transaction
+              transaction
                 .select({
                   id: scenarios.id,
                   title: scenarios.title,
@@ -192,7 +188,7 @@ export function createScenarioPublicationStore(
                     publication.scenario.scenarioKey,
                   ),
                 )
-                .limit(1)
+                .limit(1).all()
             )[0];
           if (!scenario) {
             throw new Error("场景并发发布后无法读取。");
@@ -206,7 +202,7 @@ export function createScenarioPublicationStore(
             );
           }
 
-          const [storedVersion] = await transaction
+          const [storedVersion] = transaction
             .select()
             .from(scenarioVersions)
             .where(
@@ -215,7 +211,7 @@ export function createScenarioPublicationStore(
                 publication.version.versionKey,
               ),
             )
-            .limit(1);
+            .limit(1).all();
           if (storedVersion) {
             if (
               storedVersion.scenarioId !== scenario.id ||
@@ -229,12 +225,15 @@ export function createScenarioPublicationStore(
             continue;
           }
 
-          await transaction.insert(scenarioVersions).values({
+          transaction.insert(scenarioVersions).values({
+            id: randomUUID(),
             scenarioId: scenario.id,
             ...publication.version,
+            contentHash: hashContent(publication.version),
+            publicationSource: "cli",
             status: "published",
             publishedAt: new Date(),
-          });
+          }).run();
           created += 1;
         }
         return { created, existing };
@@ -246,14 +245,12 @@ export function createScenarioPublicationStore(
 function prepareScenarioPublication(
   template: ScenarioTemplate,
   knowledgeVersionId: string,
-  createdById: string,
 ): PreparedScenarioPublication {
   return {
     scenario: {
       scenarioKey: template.id,
       title: template.title,
       category: template.category,
-      createdById,
     },
     version: {
       versionKey: template.versionId,
@@ -282,7 +279,6 @@ function prepareScenarioPublication(
       mockMode: template.mockMode,
       customerPersona: template.customerPersona ?? null,
       difficulty: template.difficulty,
-      createdById,
     },
   };
 }
@@ -345,4 +341,10 @@ function canonicalJson(value: unknown): unknown {
     );
   }
   return value;
+}
+
+function hashContent(value: unknown): string {
+  return createHash("sha256")
+    .update(JSON.stringify(canonicalJson(value)))
+    .digest("hex");
 }

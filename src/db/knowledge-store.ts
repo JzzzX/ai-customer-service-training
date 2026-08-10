@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { createHash, randomUUID } from "node:crypto";
 
 import { getDatabase } from "./client";
 import {
@@ -29,14 +30,14 @@ export function createKnowledgePackStore(
         })
         .from(knowledgeVersions)
         .where(eq(knowledgeVersions.versionHash, versionHash))
-        .limit(1);
+        .limit(1).all();
 
       return version ?? null;
     },
 
     async publishAtomically(publication) {
-      return database.transaction(async (transaction) => {
-        const [existing] = await transaction
+      return database.transaction((transaction) => {
+        const [existing] = transaction
           .select({
             id: knowledgeVersions.id,
             versionHash: knowledgeVersions.versionHash,
@@ -48,20 +49,22 @@ export function createKnowledgePackStore(
               publication.version.versionHash,
             ),
           )
-          .limit(1);
+          .limit(1).all();
         if (existing) {
           return existing;
         }
 
-        await transaction
+        transaction
           .update(knowledgeVersions)
           .set({ isActive: false })
           .where(eq(knowledgeVersions.isActive, true));
 
-        const [version] = await transaction
+        const [version] = transaction
           .insert(knowledgeVersions)
           .values({
+            id: randomUUID(),
             ...publication.version,
+            contentHash: hashContent(publication.version),
             status: "published",
             isActive: true,
             publishedAt: new Date(),
@@ -69,27 +72,29 @@ export function createKnowledgePackStore(
           .returning({
             id: knowledgeVersions.id,
             versionHash: knowledgeVersions.versionHash,
-          });
+          }).all();
         if (!version) {
           throw new Error("Knowledge version insert returned no row.");
         }
 
         if (publication.sources.length > 0) {
-          await transaction.insert(knowledgeSources).values(
+          transaction.insert(knowledgeSources).values(
             publication.sources.map((source) => ({
+              id: randomUUID(),
               knowledgeVersionId: version.id,
               ...source,
             })),
-          );
+          ).run();
         }
 
         for (const units of chunks(publication.units, 200)) {
-          await transaction.insert(knowledgeUnits).values(
+          transaction.insert(knowledgeUnits).values(
             units.map((unit) => ({
+              id: randomUUID(),
               knowledgeVersionId: version.id,
               ...unit,
             })),
-          );
+          ).run();
         }
 
         return version;
@@ -108,6 +113,10 @@ function chunks<T>(items: T[], size: number): T[][] {
     result.push(items.slice(index, index + size));
   }
   return result;
+}
+
+function hashContent(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
 export type { PreparedKnowledgePublication };

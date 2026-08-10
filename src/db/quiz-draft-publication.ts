@@ -1,5 +1,5 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { z } from "zod";
+import { createHash, randomUUID } from "node:crypto";
 
 import { getDatabase } from "./client";
 import {
@@ -35,7 +35,6 @@ export type PreparedQuizDraftPublication = {
     quizHash: string;
     title: string;
     passingScore: number;
-    createdById: string;
   };
   questions: Array<{
     knowledgeVersionId: string;
@@ -48,7 +47,6 @@ export type PreparedQuizDraftPublication = {
     explanation: string;
     category: string;
     difficulty: QuizQuestionDraft["difficulty"];
-    createdById: string;
     position: number;
   }>;
 };
@@ -68,11 +66,10 @@ export interface QuizDraftPublicationStore {
 
 export async function publishQuizDraftToStore(
   input: QuizDraftPack,
-  createdByIdInput: string,
+  _publicationSource: string,
   store: QuizDraftPublicationStore,
 ): Promise<{ id: string; quizHash: string; created: boolean }> {
   const draft = quizDraftPackSchema.parse(input);
-  const createdById = z.string().uuid().parse(createdByIdInput);
   if (draft.questions.length !== 40) {
     throw new Error(
       `生产题库草稿必须恰好包含 40 道题，当前为 ${draft.questions.length} 道。`,
@@ -134,7 +131,6 @@ export async function publishQuizDraftToStore(
       explanation: question.explanation,
       category: question.category,
       difficulty: question.difficulty,
-      createdById,
       position,
     };
   });
@@ -145,7 +141,6 @@ export async function publishQuizDraftToStore(
       quizHash: draft.quizHash,
       title: draft.title,
       passingScore: draft.passingScore,
-      createdById,
     },
     questions: preparedQuestions,
   });
@@ -161,7 +156,7 @@ export function createQuizDraftPublicationStore(
         .select({ id: quizSets.id, quizHash: quizSets.quizHash })
         .from(quizSets)
         .where(eq(quizSets.quizHash, quizHash))
-        .limit(1);
+        .limit(1).all();
       return quizSet ?? null;
     },
 
@@ -174,7 +169,7 @@ export function createQuizDraftPublicationStore(
         })
         .from(knowledgeVersions)
         .where(eq(knowledgeVersions.versionHash, versionHash))
-        .limit(1);
+        .limit(1).all();
       if (!version) {
         return null;
       }
@@ -200,33 +195,38 @@ export function createQuizDraftPublicationStore(
     },
 
     async publishDraftAtomically(publication) {
-      return database.transaction(async (transaction) => {
-        const [insertedQuizSet] = await transaction
+      return database.transaction((transaction) => {
+        const [insertedQuizSet] = transaction
           .insert(quizSets)
           .values({
+            id: randomUUID(),
             ...publication.quizSet,
-            status: "draft",
-            description: "自动生成草稿，须经知识负责人逐题审核后发布。",
+            contentHash: hashContent(publication),
+            publicationSource: "cli",
+            status: "published",
+            description: "通过 CLI 发布的正式题库。",
+            publishedAt: new Date(),
           })
           .onConflictDoNothing({ target: quizSets.quizHash })
-          .returning({ id: quizSets.id, quizHash: quizSets.quizHash });
+          .returning({ id: quizSets.id, quizHash: quizSets.quizHash }).all();
 
         if (!insertedQuizSet) {
-          const [existingQuizSet] = await transaction
+          const [existingQuizSet] = transaction
             .select({ id: quizSets.id, quizHash: quizSets.quizHash })
             .from(quizSets)
             .where(eq(quizSets.quizHash, publication.quizSet.quizHash))
-            .limit(1);
+            .limit(1).all();
           if (!existingQuizSet) {
             throw new Error("题库草稿并发发布后无法读取。");
           }
           return existingQuizSet;
         }
 
-        await transaction
+        transaction
           .insert(questions)
           .values(
             publication.questions.map((question) => ({
+              id: randomUUID(),
               knowledgeVersionId: question.knowledgeVersionId,
               knowledgeUnitId: question.knowledgeUnitId,
               questionKey: question.questionKey,
@@ -237,8 +237,7 @@ export function createQuizDraftPublicationStore(
               explanation: question.explanation,
               category: question.category,
               difficulty: question.difficulty,
-              createdById: question.createdById,
-              status: "draft" as const,
+              status: "published" as const,
             })),
           )
           .onConflictDoNothing({
@@ -246,9 +245,9 @@ export function createQuizDraftPublicationStore(
               questions.knowledgeVersionId,
               questions.questionKey,
             ],
-          });
+          }).run();
 
-        const storedQuestions = await transaction
+        const storedQuestions = transaction
           .select({
             id: questions.id,
             questionKey: questions.questionKey,
@@ -275,7 +274,7 @@ export function createQuizDraftPublicationStore(
                 ),
               ),
             ),
-          );
+          ).all();
         const storedByKey = new Map(
           storedQuestions.map((question) => [
             question.questionKey,
@@ -297,7 +296,7 @@ export function createQuizDraftPublicationStore(
             points: 1,
           };
         });
-        await transaction.insert(quizSetQuestions).values(links);
+        transaction.insert(quizSetQuestions).values(links).run();
 
         return insertedQuizSet;
       });
@@ -329,4 +328,8 @@ function matchesPreparedQuestion(
     stored.category === prepared.category &&
     stored.difficulty === prepared.difficulty
   );
+}
+
+function hashContent(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }

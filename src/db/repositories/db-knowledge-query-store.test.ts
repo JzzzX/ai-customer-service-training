@@ -23,21 +23,21 @@ describe("DbKnowledgeQueryStore", () => {
       email: "admin@example.com",
       name: "管理员",
       passwordHash: "not-used",
-      role: "admin",
     });
     await database.insert(knowledgeVersions).values({
       id: versionId,
       versionHash: "a".repeat(64),
+      contentHash: "0".repeat(64),
       schemaVersion: 1,
       sourceRoot: "TOC售前客服知识库",
       status: "published",
       isActive: true,
       coverage: {},
-      createdById: adminId,
     });
     await database.insert(knowledgeSources).values({
       knowledgeVersionId: versionId,
-      sourcePath: "产品卖点.md",
+            id: crypto.randomUUID(),
+sourcePath: "产品卖点.md",
       kind: "markdown",
       sourceHash: "b".repeat(64),
       bytes: 128,
@@ -55,6 +55,7 @@ describe("DbKnowledgeQueryStore", () => {
       hasConflict: true,
     });
     await database.insert(questions).values({
+      id: "00000000-0000-4000-8000-000000000040",
       knowledgeVersionId: versionId,
       knowledgeUnitId: unitId,
       questionKey: "q_test",
@@ -64,14 +65,14 @@ describe("DbKnowledgeQueryStore", () => {
       correctAnswers: ["正确"],
       explanation: "测试",
       category: "产品",
-      createdById: adminId,
     });
     await database.insert(quizSets).values({
+      id: "00000000-0000-4000-8000-000000000050",
       knowledgeVersionId: versionId,
       quizHash: "d".repeat(64),
+      contentHash: "1".repeat(64),
       title: "正式题组",
       status: "published",
-      createdById: adminId,
     });
 
     const store = new DbKnowledgeQueryStore(

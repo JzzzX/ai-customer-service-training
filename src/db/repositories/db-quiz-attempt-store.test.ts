@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DbQuizAttemptStore } from "./db-quiz-attempt-store";
 import type { DatabaseClient } from "../client";
 import {
-  assignments,
   knowledgeUnits,
   knowledgeVersions,
   questions,
@@ -17,7 +16,6 @@ import {
 import { createTestDatabase } from "../test-support/create-test-database";
 import { topicQuizQuestions } from "@/lib/quiz/question-bank";
 import { createTopicQuizHash } from "@/lib/quiz/topic-hash";
-import type { SaveQuizAttemptInput } from "@/lib/quiz/attempt-store";
 
 const adminId = "00000000-0000-4000-8000-000000000001";
 const learnerId = "00000000-0000-4000-8000-000000000002";
@@ -26,7 +24,6 @@ const otherLearnerId =
 const knowledgeVersionId =
   "00000000-0000-4000-8000-000000000020";
 const quizSetId = "00000000-0000-4000-8000-000000000030";
-const assignmentId = "00000000-0000-4000-8000-000000000040";
 const attemptId = "00000000-0000-4000-8000-000000000050";
 const quizHash = "a".repeat(64);
 const firstQuestionKey = `qq_${"1".repeat(24)}`;
@@ -199,44 +196,6 @@ describe("DbQuizAttemptStore", () => {
     );
   });
 
-  it("does not update retired learner assignments", async () => {
-    await database.insert(assignments).values({
-      id: assignmentId,
-      learnerId,
-      assignedById: adminId,
-      assignmentType: "quiz",
-      quizSetId,
-      status: "assigned",
-    });
-
-    await store.saveAttempt(
-      {
-        attemptId,
-        learnerId,
-        quizHash,
-        assignmentId,
-        passingScore: 80,
-        answers: [
-          {
-            questionId: firstQuestionKey,
-            selectedAnswers: ["答案一"],
-            isCorrect: true,
-          },
-        ],
-      } as unknown as SaveQuizAttemptInput,
-    );
-
-    const [assignment] = await database
-      .select()
-      .from(assignments)
-      .where(eq(assignments.id, assignmentId));
-    expect(assignment).toMatchObject({
-      status: "assigned",
-      learnerId,
-      quizSetId,
-    });
-    expect(assignment?.completedAt).toBeNull();
-  });
 
   async function seedPublishedQuiz(): Promise<void> {
     await database.insert(users).values([
@@ -245,33 +204,30 @@ describe("DbQuizAttemptStore", () => {
         email: "admin@example.com",
         name: "管理员",
         passwordHash: "not-used",
-        role: "admin",
       },
       {
         id: learnerId,
         email: "learner@example.com",
         name: "学员",
         passwordHash: "not-used",
-        role: "learner",
       },
       {
         id: otherLearnerId,
         email: "other@example.com",
         name: "其他学员",
         passwordHash: "not-used",
-        role: "learner",
       },
     ]);
     await database.insert(knowledgeVersions).values({
       id: knowledgeVersionId,
       versionHash: "b".repeat(64),
+      contentHash: "0".repeat(64),
       schemaVersion: 1,
       sourceRoot: "TOC售前客服知识库",
       status: "published",
       isActive: true,
       coverage: { sourceFiles: 8 },
       publishedAt: new Date(),
-      createdById: adminId,
     });
     const unitRows = [
       {
@@ -293,7 +249,8 @@ describe("DbQuizAttemptStore", () => {
       contentHash: String(index + 1).repeat(64),
       sources: [
         {
-          sourcePath: "企划问答.xlsx",
+                id: crypto.randomUUID(),
+sourcePath: "企划问答.xlsx",
           kind: "excel" as const,
           anchor: `sheet:产品/row:${index + 2}`,
           sheet: "产品",
@@ -307,12 +264,12 @@ describe("DbQuizAttemptStore", () => {
       id: quizSetId,
       knowledgeVersionId,
       quizHash,
+      contentHash: "1".repeat(64),
       sourceQuizHash: "c".repeat(64),
       title: "正式知识小测",
       status: "published",
       passingScore: 80,
       publishedAt: new Date(),
-      createdById: adminId,
     });
     const questionRows = [
       {
@@ -340,7 +297,6 @@ describe("DbQuizAttemptStore", () => {
       category: "日常问答",
       difficulty: "easy" as const,
       status: "published" as const,
-      createdById: adminId,
     }));
     await database.insert(questions).values(questionRows);
     await database.insert(quizSetQuestions).values(

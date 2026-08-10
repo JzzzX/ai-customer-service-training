@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 
 import type { DatabaseClient } from "../client";
@@ -62,7 +63,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
           eq(scenarioVersions.status, "published"),
         ),
       )
-      .limit(1);
+      .limit(1).all();
     if (!version) {
       throw new Error("场景版本不存在或未发布。");
     }
@@ -70,34 +71,28 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
       throw new Error("场景版本与训练模板不匹配。");
     }
 
-    const sessionId = await this.database.transaction(
-      async (transaction) => {
-        const [session] = await transaction
-          .insert(trainingSessions)
-          .values({
-            learnerId,
-            knowledgeVersionId: version.knowledgeVersionId,
-            scenarioVersionId: version.id,
-            status: "in_progress",
-            mode: inputValue.mode,
-            turnCount: 0,
-            startedAt,
-            updatedAt: startedAt,
-          })
-          .returning({ id: trainingSessions.id });
-        if (!session) {
-          throw new Error("训练会话创建失败。");
-        }
-        await transaction.insert(trainingMessages).values({
-          trainingSessionId: session.id,
+    const sessionId = randomUUID();
+    this.database.transaction((transaction) => {
+      transaction.insert(trainingSessions).values({
+        id: sessionId,
+        learnerId,
+        knowledgeVersionId: version.knowledgeVersionId,
+        scenarioVersionId: version.id,
+        status: "in_progress",
+        mode: inputValue.mode,
+        turnCount: 0,
+        startedAt,
+        updatedAt: startedAt,
+      }).run();
+      transaction.insert(trainingMessages).values({
+          id: randomUUID(),
+          trainingSessionId: sessionId,
           position: 0,
           sender: "customer",
           content: inputValue.scenario.openingMessage,
           createdAt: startedAt,
-        });
-        return session.id;
-      },
-    );
+      }).run();
+    });
     return this.loadSession({ learnerId, sessionId });
   }
 
@@ -161,7 +156,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
           mode: session.mode as "mock" | "real",
           totalScore: storedReport.totalScore,
           status: storedReport.verdict,
-          confidence: Number(storedReport.confidence),
+          confidence: storedReport.confidence,
           dimensions: storedReport.dimensions,
           strengths: storedReport.strengths,
           missedSteps: storedReport.omissions,
@@ -243,7 +238,6 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
           inArray(trainingSessions.status, [
             "in_progress",
             "completed",
-            "needs_review",
           ]),
         ),
       )
@@ -299,8 +293,8 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
       : new Date();
     const riskAlert = inputValue.riskAlert ?? null;
 
-    await this.database.transaction(async (transaction) => {
-      const [current] = await transaction
+    this.database.transaction((transaction) => {
+      const [current] = transaction
         .select({
           status: trainingSessions.status,
           maxTurns: scenarioVersions.maxTurns,
@@ -316,7 +310,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
             eq(trainingSessions.learnerId, identity.learnerId),
           ),
         )
-        .limit(1);
+        .limit(1).all();
       if (!current) {
         throw new Error("无权访问该训练会话。");
       }
@@ -327,7 +321,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
         throw new Error("训练已达到最大轮次。");
       }
 
-      const [updated] = await transaction
+      const [updated] = transaction
         .update(trainingSessions)
         .set({
           turnCount: expectedTurnCount + 1,
@@ -341,13 +335,14 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
             eq(trainingSessions.turnCount, expectedTurnCount),
           ),
         )
-        .returning({ id: trainingSessions.id });
+        .returning({ id: trainingSessions.id }).all();
       if (!updated) {
         throw new Error("会话已更新，请刷新后重试。");
       }
 
-      await transaction.insert(trainingMessages).values([
+      transaction.insert(trainingMessages).values([
         {
+          id: randomUUID(),
           trainingSessionId: identity.sessionId,
           position: expectedTurnCount * 2 + 1,
           sender: "learner",
@@ -356,13 +351,14 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
           metadata: riskAlert ? { riskAlert } : null,
         },
         {
+          id: randomUUID(),
           trainingSessionId: identity.sessionId,
           position: expectedTurnCount * 2 + 2,
           sender: "customer",
           content: customerReply,
           createdAt: updatedAt,
         },
-      ]);
+      ]).run();
     });
 
     return this.loadSession(identity);
@@ -385,7 +381,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
           eq(trainingSessions.learnerId, identity.learnerId),
         ),
       )
-      .limit(1);
+      .limit(1).all();
     if (!existing) {
       throw new Error("无权访问该训练会话。");
     }
@@ -393,8 +389,8 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
       return this.loadSession(identity);
     }
 
-    await this.database.transaction(async (transaction) => {
-      const [current] = await transaction
+    this.database.transaction((transaction) => {
+      const [current] = transaction
         .select({
           id: trainingSessions.id,
           knowledgeVersionId: trainingSessions.knowledgeVersionId,
@@ -407,14 +403,15 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
             eq(trainingSessions.status, "in_progress"),
           ),
         )
-        .limit(1);
+        .limit(1).all();
       if (!current) {
         return;
       }
 
-      await transaction
+      transaction
         .insert(evaluationReports)
         .values({
+          id: randomUUID(),
           trainingSessionId: current.id,
           knowledgeVersionId: current.knowledgeVersionId,
           totalScore: report.totalScore,
@@ -433,15 +430,13 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
             dimension: dimension.name,
             evidence: dimension.evidence,
           })),
-          confidence: report.confidence.toFixed(3),
+          confidence: report.confidence,
           lowConfidence: report.lowConfidence,
-          needsReview: false,
-          reviewTrigger: null,
         })
         .onConflictDoNothing({
           target: evaluationReports.trainingSessionId,
-        });
-      await transaction
+        }).run();
+      transaction
         .update(trainingSessions)
         .set({
           status: "completed",
@@ -453,7 +448,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
             eq(trainingSessions.id, current.id),
             eq(trainingSessions.status, "in_progress"),
           ),
-        );
+        ).run();
     });
 
     return this.loadSession(identity);
