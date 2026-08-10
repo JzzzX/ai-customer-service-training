@@ -19,6 +19,8 @@
     "learners:reset-password": "tsx scripts/reset-learner-password.ts",
     "db:verify": "tsx scripts/verify-sqlite.ts",
     "db:backup": "tsx scripts/backup-sqlite.ts",
+    "db:export:neon": "tsx scripts/export-neon-base-data.ts",
+    "db:import:base": "tsx scripts/import-base-data.ts",
     "knowledge:check": "tsx scripts/knowledge.ts check",
     "knowledge:publish": "tsx scripts/knowledge.ts publish",
     "knowledge:publish:db": "tsx scripts/publish-knowledge-to-db.ts",
@@ -38,7 +40,6 @@
     "test:e2e:company-stack": "env -u NO_COLOR playwright test -c playwright.company-stack.config.ts"
   },
   "dependencies": {
-    "@neondatabase/serverless": "1.1.0",
     "bcryptjs": "3.0.3",
     "better-sqlite3": "13.0.3",
     "drizzle-orm": "0.45.2",
@@ -58,6 +59,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.4",
+    "@neondatabase/serverless": "1.1.0",
     "@playwright/test": "1.62.0",
     "@tailwindcss/postcss": "4.3.3",
     "@testing-library/jest-dom": "7.0.0",
