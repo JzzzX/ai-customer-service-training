@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from sqlalchemy import Select, and_, func, select
 from sqlalchemy.orm import Session
 
-from app.models import KnowledgeVersion, Question, QuizSet, quiz_set_questions
+from app.models import KnowledgeVersion, Question, QuizSet
 
 
 @dataclass(frozen=True)
@@ -30,13 +30,9 @@ class PublishedCatalogRepository:
             )
             .join(KnowledgeVersion, QuizSet.knowledge_version_id == KnowledgeVersion.id)
             .outerjoin(
-                quiz_set_questions,
-                quiz_set_questions.c.quiz_set_id == QuizSet.id,
-            )
-            .outerjoin(
                 Question,
                 and_(
-                    Question.id == quiz_set_questions.c.question_id,
+                    Question.quiz_set_id == QuizSet.id,
                     Question.status == "published",
                 ),
             )

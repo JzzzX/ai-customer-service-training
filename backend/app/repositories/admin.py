@@ -18,7 +18,6 @@ from app.models import (
     ScenarioVersion,
     TrainingSession,
     User,
-    quiz_set_questions,
 )
 
 
@@ -101,11 +100,7 @@ class AdminRepository:
     def _questions(self, status: str | None, offset: int, limit: int) -> AdminPage:
         statement = (
             select(Question, QuizSet.label, KnowledgeUnit.title)
-            .join(
-                quiz_set_questions,
-                quiz_set_questions.c.question_id == Question.id,
-            )
-            .join(QuizSet, QuizSet.id == quiz_set_questions.c.quiz_set_id)
+            .join(QuizSet, QuizSet.id == Question.quiz_set_id)
             .outerjoin(KnowledgeUnit, KnowledgeUnit.id == Question.knowledge_unit_id)
             .order_by(Question.updated_at.desc(), Question.id.desc())
         )
@@ -115,7 +110,6 @@ class AdminRepository:
         items = [
             {
                 "id": question.id,
-                "quiz_set_id": question.quiz_set_id,
                 "question_key": question.question_key,
                 "prompt": question.prompt,
                 "question_type": question.question_type,

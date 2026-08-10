@@ -1,13 +1,7 @@
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import (
-    KnowledgeVersion,
-    Question,
-    QuizAttempt,
-    QuizSet,
-    quiz_set_questions,
-)
+from app.models import KnowledgeVersion, Question, QuizAttempt, QuizSet
 
 
 class QuizAttemptRepository:
@@ -34,19 +28,11 @@ class QuizAttemptRepository:
         return list(
             self.session.scalars(
                 select(Question)
-                .join(
-                    quiz_set_questions,
-                    quiz_set_questions.c.question_id == Question.id,
-                )
                 .where(
-                    quiz_set_questions.c.quiz_set_id == quiz_set_id,
+                    Question.quiz_set_id == quiz_set_id,
                     Question.status == "published",
                 )
-                .order_by(
-                    quiz_set_questions.c.position,
-                    Question.position,
-                    Question.id,
-                )
+                .order_by(Question.position, Question.id)
             )
         )
 
