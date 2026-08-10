@@ -4,15 +4,53 @@
 
 这是一个以知识库为基础、以题库和 AI 情景训练为核心的客服培训 MVP。项目同时提供学员端和管理端，覆盖内容发布、学习训练、过程记录、AI 评测与人工复核。
 
-## 公司技术栈迁移入口
+## 当前生产基线
 
-Phase 1–5 的新系统位于 `backend/`（FastAPI + SQLAlchemy + Alembic）和
-`frontend/`（Vue 3 + Vite + Pinia）。管理员入口为 `/admin`，包含知识、题目、场景、
-任务、报告复核和管理历史；Linux 生产配置位于 `deploy/`，迁移对账和维护窗口门禁位于
-`backend/scripts/migrate_phase5.py`、`backend/scripts/rehearse_phase5.py` 和 `scripts/phase5_*.sh`。
+当前 `main` 已回退到提交 [`9f025d8`](https://github.com/JzzzX/ai-customer-service-training/commit/9f025d8)，
+恢复为旧版 Next.js Web 应用。它对应的完整旧版基线标签是
+[`legacy-next-final-bb8d164`](https://github.com/JzzzX/ai-customer-service-training/tree/legacy-next-final-bb8d164)。
 
-迁移阶段、验收证据和真实生产窗口前置条件以 [Roadmap](docs/ROADMAP.md) 和
-[Phase 5 验收报告](docs/superpowers/reports/2026-08-06-phase5-acceptance.md) 为准。
+| 范围 | 当前基线 |
+| --- | --- |
+| Web 应用 | Next.js App Router、React、TypeScript |
+| 认证与持久化 | Auth.js Credentials、Drizzle、Neon PostgreSQL |
+| 部署 | Vercel，配置入口为 `vercel.json` |
+| 本地启动 | `pnpm dev`，默认地址 `http://localhost:3000` |
+| 非当前生产代码 | `backend/`、`frontend/`、`deploy/` 以及迁移专用脚本和报告 |
+
+`backend/` 和 `frontend/` 保留在仓库中，是重构过程的历史代码和验收参考，不代表当前线上运行时。
+当前页面、路由、数据访问和部署说明均以根目录 Next.js 应用为准。
+
+## 重构尝试与回退记录
+
+2026 年 8 月曾尝试将项目从 Next.js/Neon 迁移到公司技术栈：后端使用 FastAPI、SQLAlchemy、Alembic，
+前端使用 Vue 3、Vite、Pinia，并配套 MySQL、Linux 部署和迁移脚本。相关提交和文档仍保留在 Git 历史中，
+方便追溯设计、代码和验收过程。
+
+这次尝试的结论是“代码级阶段性验证通过，但产品和生产验收失败”，不是一次可直接上线的完整重构：
+
+- [`3dfec34`](https://github.com/JzzzX/ai-customer-service-training/commit/3dfec34) 开始建立 FastAPI 与 Vue 重构基础。
+- [`37ffa4a`](https://github.com/JzzzX/ai-customer-service-training/commit/37ffa4a) 是迁移期间的过渡提交，虽然保留了旧版训练页面，但不是最安全的完整回退点。
+- [`legacy-next-final-bb8d164`](https://github.com/JzzzX/ai-customer-service-training/tree/legacy-next-final-bb8d164) 是经过整理的旧版 Next.js 生产基线。
+- 后续迁移移除了或绕开了原根目录 Next.js/Vercel 的部署约定，导致自动部署链路失效；同时新的前后端实现没有保持原页面的视觉、路由和功能验收标准。
+- 部分代码、测试和迁移门禁曾经通过，但真实 PostgreSQL 到 MySQL 的生产迁移、目标环境部署、用户数据切换和最终生产验收没有完成。
+- 提交 [`9f025d8`](https://github.com/JzzzX/ai-customer-service-training/commit/9f025d8) 已将 `main` 恢复到旧版 Next.js 代码树；后续修复应从这个回退点继续，而不是把迁移目录当作当前运行时。
+
+因此，本次重构应被记录为“保留历史成果、回退生产基线”的失败交付，而不是删除历史或改写提交记录。迁移相关资料请按历史参考阅读：
+
+- [迁移 Roadmap（历史记录）](docs/ROADMAP.md)
+- [Phase 5 验收报告（历史记录）](docs/superpowers/reports/2026-08-06-phase5-acceptance.md)
+- `backend/`、`frontend/`、`deploy/` 和 `scripts/phase5_*.sh`：非当前生产基线
+
+### 后续重构护栏
+
+以后若继续引入公司技术栈，必须先满足以下条件，再切换生产流量：
+
+1. 保持现有 UI、路由、核心功能和用户数据兼容，并完成页面级视觉回归。
+2. 采用接口和适配器驱动的渐进替换，禁止一次性移除仍在运行的稳定生产代码。
+3. 新旧架构并行验证，至少完成真实数据迁移演练、目标环境部署和回滚演练。
+4. Vercel 或新的目标环境部署、环境变量、数据库连接、认证和真实 AI 链路必须逐项验收。
+5. 切换前保留明确、可验证的 Git 回退点，并记录切换负责人、验收证据和恢复步骤。
 
 ## 系统架构
 
@@ -54,7 +92,7 @@ flowchart LR
 | `local_demo` | 本地演示、开发和自动化测试 | 本地 JSON 存储、固定场景模板、Mock AI |
 | `production` | 线上部署和真实业务数据 | Neon + Drizzle、数据库内容、OpenAI 兼容模型接口 |
 
-当前项目的内容生产、学员训练和管理审核边界，详见 [工程交接说明](docs/AGENT-HANDOFF.md)。
+当前 Next.js 基线的内容生产、学员训练和管理审核边界，详见 [工程交接说明](docs/AGENT-HANDOFF.md)。
 
 ## 用户与页面地图
 
@@ -285,8 +323,8 @@ flowchart LR
 | --- | --- |
 | [工程交接说明](docs/AGENT-HANDOFF.md) | 如何启动、代码从哪里替换、需要向公司技术团队确认什么 |
 | [MVP 验收矩阵](docs/MVP-ACCEPTANCE.md) | 哪些功能已通过自动化验证，哪些验收仍被外部条件阻塞 |
-| [部署与运维说明](docs/DEPLOYMENT.md) | Vercel、Neon、环境变量、初始化、线上验收和故障处理 |
-| [Roadmap](docs/ROADMAP.md) | 当前范围、下一步优先级和明确不纳入 MVP 的事项 |
+| [部署与运维说明](docs/DEPLOYMENT.md) | 当前 Vercel/Neon 回滚基线，以及历史 Linux/MySQL 迁移方案；迁移方案不代表当前生产部署 |
+| [Roadmap（历史记录）](docs/ROADMAP.md) | 公司技术栈迁移阶段、验收证据和未执行的生产切换前置条件 |
 
 ## 当前能力
 
