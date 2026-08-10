@@ -1,9 +1,6 @@
-import { hash } from "bcryptjs";
 import { config } from "dotenv";
 
-import { getDatabase } from "../src/db/client";
-import { readSeedAccounts } from "../src/db/seed-config";
-import { users } from "../src/db/schema";
+import { importLearners } from "./cli-support";
 
 config({
   path: process.env.DOTENV_CONFIG_PATH?.trim() || ".env.local",
@@ -11,33 +8,12 @@ config({
 });
 
 async function main(): Promise<void> {
-  const database = getDatabase();
-  const accounts = readSeedAccounts();
-
-  for (const account of accounts) {
-    const passwordHash = await hash(account.password, 12);
-    await database
-      .insert(users)
-      .values({
-        email: account.email,
-        name: account.name,
-        passwordHash,
-        role: account.role,
-        isActive: true,
-      })
-      .onConflictDoUpdate({
-        target: users.email,
-        set: {
-          name: account.name,
-          passwordHash,
-          role: account.role,
-          isActive: true,
-          updatedAt: new Date(),
-        },
-      });
-  }
-
-  console.log(`已写入 ${accounts.length} 个预置测试账号。`);
+  const email = process.env.SEED_LEARNER_EMAIL?.trim();
+  const name = process.env.SEED_LEARNER_NAME?.trim();
+  const password = process.env.SEED_LEARNER_PASSWORD;
+  if (!email || !name || !password) throw new Error("SEED_LEARNER_EMAIL、SEED_LEARNER_NAME、SEED_LEARNER_PASSWORD 均为必填。");
+  const result = await importLearners([{ email, name, password, isActive: true }]);
+  console.log(`预置学员完成：新增 ${result.created}，更新 ${result.updated}。`);
 }
 
 main().catch((error: unknown) => {

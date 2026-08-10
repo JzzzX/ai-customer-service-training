@@ -1,14 +1,11 @@
-import { and, eq } from "drizzle-orm";
 import { config } from "dotenv";
 import { resolve } from "node:path";
-import { z } from "zod";
 
 import { getDatabase } from "../src/db/client";
 import {
   createScenarioPublicationStore,
   publishScenarioTemplatesToStore,
 } from "../src/db/scenario-publication";
-import { users } from "../src/db/schema";
 import { compileKnowledgeDirectory } from "../src/lib/knowledge/directory-compiler";
 import {
   projectExpectedCoverage,
@@ -34,29 +31,9 @@ async function main(): Promise<void> {
   }
 
   const database = getDatabase();
-  const adminEmail = z
-    .string()
-    .email()
-    .parse(process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase());
-  const [admin] = await database
-    .select({ id: users.id })
-    .from(users)
-    .where(
-      and(
-        eq(users.email, adminEmail),
-        eq(users.role, "admin"),
-        eq(users.isActive, true),
-      ),
-    )
-    .limit(1);
-  if (!admin) {
-    throw new Error("找不到已启用的种子管理员账号。");
-  }
-
   const result = await publishScenarioTemplatesToStore({
     templates: scenarioTemplates,
     knowledgeVersionHash: knowledge.packHash,
-    createdById: admin.id,
     store: createScenarioPublicationStore(database),
   });
   console.log(
