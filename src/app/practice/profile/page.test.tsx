@@ -5,7 +5,6 @@ const mocks = vi.hoisted(() => ({
   requireUser: vi.fn(),
   getQuizProgressForLearner: vi.fn(),
   getScenarioProgress: vi.fn(),
-  listAssignments: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/guards", () => ({
@@ -21,9 +20,6 @@ vi.mock("@/lib/quiz/attempt-service", () => ({
 }));
 
 vi.mock("@/lib/runtime/services", () => ({
-  getAssignmentService: () => ({
-    listForLearner: mocks.listAssignments,
-  }),
   getScenarioTemplateStore: () => ({
     listPublished: vi.fn().mockResolvedValue([
       { id: "st_aaaaaaaaaaaaaaaaaaaaaaaa" },
@@ -46,33 +42,19 @@ describe("ProfilePage", () => {
       id: learnerId,
       name: "测试学员",
       email: "learner@example.test",
-      role: "learner",
     });
     mocks.getQuizProgressForLearner.mockResolvedValue(quizProgress());
     mocks.getScenarioProgress.mockResolvedValue(scenarioProgress());
-    mocks.listAssignments.mockResolvedValue([
-      {
-        id: "00000000-0000-4000-8000-000000000010",
-        learnerId,
-        learnerName: "测试学员",
-        assignedById: "00000000-0000-4000-8000-000000000001",
-        assignmentType: "quiz",
-        targetId: "00000000-0000-4000-8000-000000000011",
-        targetLabel: "物流专题测验",
-        launchHref: "/practice/quiz?assignment=00000000-0000-4000-8000-000000000011",
-        status: "assigned",
-        createdAt: "2026-08-01T08:00:00.000Z",
-      },
-    ]);
   });
 
-  it("defaults to tasks and exposes all three profile tabs", async () => {
+  it("defaults to knowledge records and exposes no task tab", async () => {
     render(await ProfilePage({ searchParams: Promise.resolve({}) }));
 
     expect(
       screen.getByRole("heading", { name: "个人中心" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("物流专题测验")).toBeInTheDocument();
+    expect(screen.queryByText("物流专题测验")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "我的任务" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "知识记录" })).toHaveAttribute(
       "href",
       "/practice/profile?tab=quiz",
@@ -81,7 +63,7 @@ describe("ProfilePage", () => {
       "href",
       "/practice/profile?tab=scenario",
     );
-    expect(screen.getByText("知识覆盖")).toBeInTheDocument();
+    expect(screen.getByText("专题进度")).toBeInTheDocument();
     expect(screen.getByText("测试学员")).toBeInTheDocument();
     expect(screen.getByText("learner@example.test")).toBeInTheDocument();
     expect(screen.getByText("1 / 10 题")).toBeInTheDocument();
@@ -100,7 +82,6 @@ describe("ProfilePage", () => {
     expect(screen.getAllByText("产品属性及卖点")).not.toHaveLength(0);
     expect(screen.getByText("最近练习")).toBeInTheDocument();
     expect(screen.getByText(/新覆盖 1 题/)).toBeInTheDocument();
-    expect(mocks.listAssignments).not.toHaveBeenCalled();
   });
 
   it("groups scenario history on a timeline and collapses earlier sessions", async () => {
@@ -131,7 +112,6 @@ describe("ProfilePage", () => {
       "href",
       "/practice/scenario/report/00000000-0000-4000-8000-000000000021",
     );
-    expect(mocks.listAssignments).not.toHaveBeenCalled();
   });
 
   it("filters the timeline without mixing completed sessions into active groups", async () => {
@@ -153,28 +133,16 @@ describe("ProfilePage", () => {
     expect(screen.queryByText(/展开更早/)).not.toBeInTheDocument();
   });
 
-  it("falls back to tasks for an unknown tab", async () => {
+  it("falls back to knowledge records for an unknown tab", async () => {
     render(
       await ProfilePage({
         searchParams: Promise.resolve({ tab: "unknown" }),
       }),
     );
 
-    expect(screen.getByText("物流专题测验")).toBeInTheDocument();
+    expect(screen.getByText("专题进度")).toBeInTheDocument();
   });
 
-  it("does not expose a learner profile entry to administrator accounts", async () => {
-    mocks.requireUser.mockResolvedValue({
-      id: learnerId,
-      name: "管理员",
-      email: "admin@example.test",
-      role: "admin",
-    });
-
-    render(await ProfilePage({ searchParams: Promise.resolve({}) }));
-
-    expect(screen.queryByRole("link", { name: "管理端" })).not.toBeInTheDocument();
-  });
 });
 
 function quizProgress() {

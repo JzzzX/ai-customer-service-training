@@ -11,7 +11,7 @@ import {
 } from "@/lib/quiz/attempt-service";
 import { demoQuizQuestions } from "@/lib/quiz/demo-questions";
 import { quizTopics, topicQuizQuestions } from "@/lib/quiz/question-bank";
-import { loadPublishedQuiz } from "@/lib/quiz/review-service";
+import { loadPublishedQuiz } from "@/lib/quiz/published-service";
 import type { QuizAttemptRecord } from "@/lib/quiz/attempt-store";
 import type { QuizTopicProgress } from "@/lib/quiz/progress";
 import type { QuizQuestion } from "@/lib/quiz/schema";
@@ -84,15 +84,11 @@ export async function checkTopicQuizAnswerAction(
 
 export async function saveQuizAttemptAction(
   quizHash: string,
-  assignmentIdInput: string | undefined,
   attemptIdInput: string,
   submittedAnswers: QuizAnswerSubmission[],
 ): Promise<QuizCompletionProgress> {
   const user = await requireUser();
   const attemptId = z.string().uuid().parse(attemptIdInput);
-  const assignmentId = assignmentIdInput
-    ? z.string().uuid().parse(assignmentIdInput)
-    : undefined;
   const answers = submittedAnswersSchema.parse(submittedAnswers);
   const publishedQuiz = await loadPublishedQuiz();
 
@@ -121,7 +117,6 @@ export async function saveQuizAttemptAction(
     attemptId,
     learnerId: user.id,
     quizHash,
-    assignmentId,
     passingScore: publishedQuiz.passingScore,
     answers: checkedAnswers,
   });

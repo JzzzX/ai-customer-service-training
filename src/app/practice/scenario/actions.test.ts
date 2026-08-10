@@ -56,7 +56,6 @@ describe("scenario server actions", () => {
       id: learnerId,
       name: "测试学员",
       email: "learner@example.test",
-      role: "learner",
     });
   });
 
@@ -74,8 +73,8 @@ describe("scenario server actions", () => {
     expect(mocks.start).toHaveBeenCalledWith({
       learnerId,
       scenarioId,
-      assignmentId: "00000000-0000-4000-8000-000000000090",
     });
+    expect(mocks.start.mock.calls[0]?.[0]).not.toHaveProperty("assignmentId");
     expect(mocks.redirect).toHaveBeenCalledWith(
       `/practice/scenario/session/${sessionId}`,
     );

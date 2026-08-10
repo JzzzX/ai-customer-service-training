@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DbScenarioSessionStore } from "./db-scenario-session-store";
 import type { DatabaseClient } from "../client";
 import {
-  assignments,
   evaluationReports,
   knowledgeVersions,
   scenarios,
@@ -26,7 +25,6 @@ const knowledgeVersionId =
 const scenarioId = "00000000-0000-4000-8003-000000000001";
 const scenarioVersionId =
   "00000000-0000-4000-8004-000000000001";
-const assignmentId = "00000000-0000-4000-8000-000000000040";
 const template = scenarioTemplates[0]!;
 
 describe("DbScenarioSessionStore", () => {
@@ -166,21 +164,11 @@ describe("DbScenarioSessionStore", () => {
     expect(reloadedLearner?.riskAlert).toEqual(riskAlert);
   });
 
-  it("completes once, persists the report and completes the assignment", async () => {
-    await database.insert(assignments).values({
-      id: assignmentId,
-      learnerId,
-      assignedById: adminId,
-      assignmentType: "scenario",
-      scenarioVersionId,
-      status: "in_progress",
-      startedAt: new Date(),
-    });
+  it("completes once and persists the learner report", async () => {
     const session = await store.startSession({
       learnerId,
       scenario: template,
       mode: "mock",
-      assignmentId,
     });
     const report = await new MockEvaluationProvider().evaluate({
       scenario: template,
@@ -206,16 +194,11 @@ describe("DbScenarioSessionStore", () => {
     await expect(
       database.select().from(evaluationReports),
     ).resolves.toHaveLength(1);
-    const [assignment] = await database
-      .select()
-      .from(assignments)
-      .where(eq(assignments.id, assignmentId));
-    expect(assignment?.status).toBe("completed");
     const [storedSession] = await database
       .select()
       .from(trainingSessions)
       .where(eq(trainingSessions.id, session.id));
-    expect(storedSession?.status).toBe("needs_review");
+    expect(storedSession?.status).toBe("completed");
   });
 
   it("lists learner summaries without joining training messages", async () => {

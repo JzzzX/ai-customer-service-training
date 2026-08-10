@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { getDatabase } from "@/db/client";
 import { users } from "@/db/schema";
@@ -23,10 +23,9 @@ export async function findUserByEmail(
       email: true,
       name: true,
       passwordHash: true,
-      role: true,
       isActive: true,
     },
-    where: eq(users.email, email),
+    where: and(eq(users.email, email), eq(users.role, "learner")),
   });
 
   return account ?? null;

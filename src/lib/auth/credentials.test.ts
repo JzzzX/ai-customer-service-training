@@ -12,7 +12,6 @@ async function account(
     email: "admin@example.test",
     name: "培训管理员",
     passwordHash: await hash("correct-password", 4),
-    role: "admin",
     isActive: true,
     ...overrides,
   };
@@ -36,9 +35,9 @@ describe("authenticateCredentials", () => {
       id: stored.id,
       email: stored.email,
       name: stored.name,
-      role: stored.role,
     });
     expect(result).not.toHaveProperty("passwordHash");
+    expect(result).not.toHaveProperty("role");
   });
 
   it("rejects invalid passwords and inactive accounts", async () => {

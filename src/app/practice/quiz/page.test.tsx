@@ -19,7 +19,7 @@ vi.mock("@/lib/auth/guards", () => ({
   }),
 }));
 
-vi.mock("@/lib/quiz/review-service", () => ({
+vi.mock("@/lib/quiz/published-service", () => ({
   loadPublishedQuiz: mocks.loadPublishedQuiz,
 }));
 

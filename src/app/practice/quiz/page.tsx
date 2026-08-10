@@ -5,7 +5,7 @@ import { QuizRunner } from "@/components/quiz/quiz-runner";
 import { requireUser } from "@/lib/auth/guards";
 import { demoQuizQuestions } from "@/lib/quiz/demo-questions";
 import { quizTopics, topicQuizQuestions } from "@/lib/quiz/question-bank";
-import { loadPublishedQuiz } from "@/lib/quiz/review-service";
+import { loadPublishedQuiz } from "@/lib/quiz/published-service";
 import {
   shuffleClientQuestionOptions,
   toClientQuizQuestion,
@@ -26,16 +26,10 @@ import {
 export default async function PracticeQuizPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ assignment?: string; topic?: string }>;
+  searchParams?: Promise<{ topic?: string }>;
 } = {}) {
   await requireUser();
   const params = await searchParams;
-  const assignmentInput = params?.assignment;
-  const assignmentId =
-    assignmentInput &&
-    /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(assignmentInput)
-      ? assignmentInput
-      : undefined;
   const topicInput = params?.topic;
   const topicMatch = topicInput
     ? quizTopics.find((topic) => topic.id === topicInput)
@@ -89,7 +83,7 @@ export default async function PracticeQuizPage({
     : demoQuizQuestions;
   const passingScore = publishedQuiz?.passingScore ?? 80;
   const saveAttempt = publishedQuiz
-    ? saveQuizAttemptAction.bind(null, publishedQuiz.quizHash, assignmentId)
+    ? saveQuizAttemptAction.bind(null, publishedQuiz.quizHash)
     : undefined;
   const checkAnswer = publishedQuiz
     ? checkPublishedQuizAnswerAction.bind(null, publishedQuiz.quizHash)

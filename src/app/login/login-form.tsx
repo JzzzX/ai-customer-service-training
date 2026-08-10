@@ -1,64 +1,28 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 
 import { SoftButton } from "@/components/ui/soft-button";
 
 import { loginAction } from "./actions";
 
-type LoginRole = "learner" | "admin";
-
 export function LoginForm() {
   const [state, action, pending] = useActionState(loginAction, {});
-  const [role, setRole] = useState<LoginRole>("learner");
-
-  const isLearner = role === "learner";
 
   return (
     <form action={action} className="mt-8 space-y-6">
-      <div className="grid grid-cols-2 gap-2 rounded-2xl bg-surface-muted p-1.5">
-        <button
-          aria-pressed={isLearner}
-          className={`rounded-xl py-2.5 text-sm font-bold transition-all ${
-            isLearner
-              ? "bg-surface text-brand-ink shadow-[var(--shadow-soft)]"
-              : "text-ink-soft hover:text-ink"
-          }`}
-          onClick={() => setRole("learner")}
-          type="button"
-        >
-          学员
-        </button>
-        <button
-          aria-pressed={!isLearner}
-          className={`rounded-xl py-2.5 text-sm font-bold transition-all ${
-            !isLearner
-              ? "bg-surface text-admin-strong shadow-[var(--shadow-soft)]"
-              : "text-ink-soft hover:text-ink"
-          }`}
-          onClick={() => setRole("admin")}
-          type="button"
-        >
-          管理员
-        </button>
-      </div>
-
       <div>
         <span
           aria-hidden="true"
-          className={`grid size-12 place-items-center rounded-[var(--radius-control)] text-xl font-black text-white shadow-[var(--shadow-soft)] ${
-            isLearner ? "bg-brand" : "bg-admin"
-          }`}
+          className="grid size-12 place-items-center rounded-[var(--radius-control)] bg-brand text-xl font-black text-white shadow-[var(--shadow-soft)]"
         >
           AI
         </span>
         <h1 className="mt-5 text-3xl font-black tracking-tight text-ink">
-          {isLearner ? "学员登录" : "管理员登录"}
+          学员登录
         </h1>
         <p className="mt-2 leading-7 text-ink-soft">
-          {isLearner
-            ? "登录后继续你的知识小测与情景训练。"
-            : "登录后进入培训管理控制台。"}
+          登录后继续你的知识小测与情景训练。
         </p>
       </div>
 
@@ -110,7 +74,7 @@ export function LoginForm() {
         className="w-full"
         disabled={pending}
         type="submit"
-        variant={isLearner ? "primary" : "scenario"}
+        variant="primary"
       >
         {pending ? "正在登录…" : "登录并继续"}
       </SoftButton>

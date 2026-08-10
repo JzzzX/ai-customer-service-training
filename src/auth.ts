@@ -34,20 +34,17 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         id: user.id,
         email: user.email ?? "",
         name: user.name ?? "",
-        role: user.role,
       });
     },
     session({ session, token }) {
       if (
-        typeof token.id !== "string" ||
-        (token.role !== "admin" && token.role !== "learner")
+        typeof token.id !== "string"
       ) {
         return session;
       }
 
       return applyTokenToSession(session, {
         id: token.id,
-        role: token.role,
       });
     },
     authorized({ auth: session, request }) {
@@ -63,12 +60,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         const loginUrl = new URL("/login", baseUrl);
         loginUrl.searchParams.set("callbackUrl", callbackUrl.toString());
         return Response.redirect(loginUrl);
-      }
-      if (decision === "forbidden") {
-        return Response.redirect(new URL("/forbidden", resolveBaseUrl(request)));
-      }
-      if (decision === "redirect_admin") {
-        return Response.redirect(new URL("/admin", resolveBaseUrl(request)));
       }
       return true;
     },

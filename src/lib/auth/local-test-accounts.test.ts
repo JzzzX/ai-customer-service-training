@@ -8,9 +8,6 @@ import {
 
 const environment = {
   LOCAL_TEST_AUTH_ENABLED: "true",
-  SEED_ADMIN_EMAIL: "admin@example.test",
-  SEED_ADMIN_NAME: "培训管理员",
-  SEED_ADMIN_PASSWORD: "admin-password",
   SEED_LEARNER_EMAIL: "learner@example.test",
   SEED_LEARNER_NAME: "客服学员",
   SEED_LEARNER_PASSWORD: "learner-password",
@@ -37,7 +34,7 @@ describe("local test accounts", () => {
     ).toBe(false);
   });
 
-  it("creates password-hashed admin and learner accounts from local env", async () => {
+  it("creates only the password-hashed learner account from local env", async () => {
     const learner = await findLocalTestUserByEmail(
       "LEARNER@EXAMPLE.TEST",
       environment,
@@ -47,7 +44,6 @@ describe("local test accounts", () => {
     expect(learner).toMatchObject({
       email: "learner@example.test",
       name: "客服学员",
-      role: "learner",
       isActive: true,
     });
     expect(learner?.passwordHash).not.toBe("learner-password");
@@ -60,7 +56,10 @@ describe("local test accounts", () => {
         (email) =>
           findLocalTestUserByEmail(email, environment, "development"),
       ),
-    ).resolves.toMatchObject({ role: "learner" });
+    ).resolves.toMatchObject({ email: "learner@example.test" });
+    await expect(
+      findLocalTestUserByEmail("admin@example.test", environment, "development"),
+    ).resolves.toBeNull();
   });
 
   it("never returns local accounts in production", async () => {

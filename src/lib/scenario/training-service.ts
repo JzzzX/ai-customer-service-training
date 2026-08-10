@@ -54,7 +54,6 @@ export class ScenarioTrainingService {
   async start(input: {
     learnerId: string;
     scenarioId: string;
-    assignmentId?: string;
   }): Promise<ScenarioSession> {
     const scenario = await this.templates.getPublishedById(
       input.scenarioId,
@@ -66,7 +65,6 @@ export class ScenarioTrainingService {
       learnerId: input.learnerId,
       scenario,
       mode: this.mode,
-      assignmentId: input.assignmentId,
     });
   }
 

@@ -16,7 +16,6 @@ export type StartScenarioSessionInput = {
   learnerId: string;
   scenario: ScenarioTemplate;
   mode: ScenarioMode;
-  assignmentId?: string;
   startedAt?: string;
 };
 

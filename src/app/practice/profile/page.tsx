@@ -3,19 +3,18 @@ import Link from "next/link";
 import { SignOutButton } from "@/components/sign-out-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { ProgressBar } from "@/components/ui/progress-bar";
-import { SoftBadge } from "@/components/ui/soft-badge";
 import { SoftButtonLink } from "@/components/ui/soft-button";
+import { SoftBadge } from "@/components/ui/soft-badge";
 import { SoftCard } from "@/components/ui/soft-card";
 import { requireUser } from "@/lib/auth/guards";
 import { getQuizProgressForLearner } from "@/lib/quiz/attempt-service";
 import { quizTopics } from "@/lib/quiz/question-bank";
 import {
-  getAssignmentService,
   getScenarioTemplateStore,
   getScenarioTrainingService,
 } from "@/lib/runtime/services";
 
-type ProfileTab = "tasks" | "quiz" | "scenario";
+type ProfileTab = "quiz" | "scenario";
 type ScenarioStatus = "all" | "active" | "completed";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
@@ -67,18 +66,13 @@ export default async function ProfilePage({
       includeDetails: tab === "scenario",
     }),
   ]);
-  const assignments =
-    tab === "tasks"
-      ? await getAssignmentService().listForLearner(user.id)
-      : [];
-
   return (
     <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-4xl">
         <PageHeader
           action={<SignOutButton />}
           backHref="/practice"
-          description="任务、知识小测和情景实战记录都在这里。"
+          description="知识小测和情景实战记录都在这里。"
           label="训练中心"
           title="个人中心"
         />
@@ -90,9 +84,7 @@ export default async function ProfilePage({
           </div>
           <div className="text-left text-sm text-ink-soft sm:text-right">
             <p>{user.email}</p>
-            <p className="mt-1 text-xs text-ink-faint">
-              {user.role === "admin" ? "管理员" : "学员"}
-            </p>
+            <p className="mt-1 text-xs text-ink-faint">学员</p>
           </div>
         </section>
 
@@ -121,9 +113,6 @@ export default async function ProfilePage({
           aria-label="个人中心栏目"
           className="mt-8 flex gap-1 overflow-x-auto rounded-[var(--radius-card)] bg-surface-muted p-1"
         >
-          <ProfileTabLink active={tab === "tasks"} href="/practice/profile?tab=tasks">
-            我的任务
-          </ProfileTabLink>
           <ProfileTabLink active={tab === "quiz"} href="/practice/profile?tab=quiz">
             知识记录
           </ProfileTabLink>
@@ -135,7 +124,6 @@ export default async function ProfilePage({
           </ProfileTabLink>
         </nav>
 
-        {tab === "tasks" ? <TaskPanel assignments={assignments} /> : null}
         {tab === "quiz" ? <QuizPanel progress={quizProgress} /> : null}
         {tab === "scenario" ? (
           <ScenarioPanel progress={scenarioProgress} status={scenarioStatus} />
@@ -146,7 +134,7 @@ export default async function ProfilePage({
 }
 
 function parseTab(input: string | undefined): ProfileTab {
-  return input === "quiz" || input === "scenario" ? input : "tasks";
+  return input === "scenario" ? "scenario" : "quiz";
 }
 
 function parseScenarioStatus(input: string | undefined): ScenarioStatus {
@@ -216,74 +204,6 @@ function ProfileTabLink({
     >
       {children}
     </Link>
-  );
-}
-
-function TaskPanel({
-  assignments,
-}: {
-  assignments: Awaited<
-    ReturnType<ReturnType<typeof getAssignmentService>["listForLearner"]>
-  >;
-}) {
-  return (
-    <section className="mt-8 animate-fade-in-up">
-      <SectionHeading
-        title="我的任务"
-        description="管理员下发的训练任务与当前状态。"
-      />
-      <div className="mt-4 space-y-4">
-        {assignments.map((assignment) => (
-          <SoftCard
-            className="flex flex-wrap items-center justify-between gap-5"
-            key={assignment.id}
-          >
-            <div>
-              <SoftBadge
-                variant={
-                  assignment.assignmentType === "quiz" ? "brand" : "scenario"
-                }
-              >
-                {assignment.assignmentType === "quiz" ? "知识小测" : "情景实战"}
-              </SoftBadge>
-              <h2 className="mt-2 text-lg font-black text-ink">
-                {assignment.targetLabel}
-              </h2>
-              <p className="mt-1 text-sm text-ink-soft">
-                {assignment.status === "completed"
-                  ? "已完成"
-                  : assignment.dueAt
-                    ? `截止 ${dateTimeFormatter.format(new Date(assignment.dueAt))}`
-                    : "无截止时间"}
-              </p>
-            </div>
-            {assignment.status !== "completed" ? (
-              <SoftButtonLink href={assignment.launchHref} variant="primary">
-                {assignment.status === "in_progress" ? "继续训练" : "开始训练"}
-              </SoftButtonLink>
-            ) : (
-              <SoftBadge variant="success">已完成</SoftBadge>
-            )}
-          </SoftCard>
-        ))}
-        {assignments.length === 0 ? (
-          <SoftCard className="text-center" gradient>
-            <p className="font-black text-ink">暂无管理员下发的训练任务</p>
-            <p className="mt-2 text-sm text-ink-soft">
-              你仍然可以自由练习知识小测和情景实战。
-            </p>
-            <div className="mt-5 flex flex-wrap justify-center gap-3">
-              <SoftButtonLink href="/practice/quiz/topics" variant="secondary">
-                知识小测
-              </SoftButtonLink>
-              <SoftButtonLink href="/practice/scenario" variant="scenario">
-                情景实战
-              </SoftButtonLink>
-            </div>
-          </SoftCard>
-        ) : null}
-      </div>
-    </section>
   );
 }
 

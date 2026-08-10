@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { UserRole } from "@/lib/auth/credentials";
+type SeedRole = "admin" | "learner";
 
 type SeedEnvironment = Record<string, string | undefined>;
 
@@ -8,7 +8,7 @@ export interface SeedAccount {
   email: string;
   name: string;
   password: string;
-  role: UserRole;
+  role: SeedRole;
 }
 
 const seedAccountSchema = z.object({

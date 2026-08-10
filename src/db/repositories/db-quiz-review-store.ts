@@ -17,10 +17,6 @@ import {
   quizReviewSchema,
 } from "@/lib/quiz/review";
 import type { QuizReview } from "@/lib/quiz/review";
-import type {
-  ApproveStoredQuestionInput,
-  QuizReviewStore,
-} from "@/lib/quiz/review-store";
 import {
   quizPublishedPackSchema,
   type QuizPublishedPack,
@@ -50,7 +46,23 @@ type ReviewQuestionRow = {
   position: number;
 };
 
-export class DbQuizReviewStore implements QuizReviewStore {
+type ApproveStoredQuestionInput = {
+  questionId: string;
+  reviewerId: string;
+  changes?: QuizQuestionChanges;
+};
+
+type QuizQuestionChanges = {
+  prompt?: string;
+  options?: string[];
+  correctAnswer?: string;
+  explanation?: string;
+  category?: string;
+  difficulty?: QuizQuestionDraft["difficulty"];
+};
+
+/** @deprecated 仅供旧 PostgreSQL 发布脚本在 SQLite 迁移前归档使用。 */
+export class DbQuizReviewStore {
   constructor(private readonly database: DatabaseClient) {}
 
   async loadReview(): Promise<QuizReview> {

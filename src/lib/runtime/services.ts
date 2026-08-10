@@ -2,17 +2,14 @@ import { join } from "node:path";
 
 import { getDatabase, type DatabaseClient } from "@/db/client";
 import { DbQuizAttemptStore } from "@/db/repositories/db-quiz-attempt-store";
-import { DbQuizReviewStore } from "@/db/repositories/db-quiz-review-store";
-import { DbAssignmentStore } from "@/db/repositories/db-assignment-store";
-import { DbReviewStore } from "@/db/repositories/db-review-store";
+import { DbPublishedQuizStore } from "@/db/repositories/db-published-quiz-store";
 import { DbScenarioSessionStore } from "@/db/repositories/db-scenario-session-store";
 import { DbScenarioTemplateStore } from "@/db/repositories/db-scenario-template-store";
-import { DbTrainingCatalogStore } from "@/db/repositories/db-training-catalog-store";
 import { DbKnowledgeQueryStore } from "@/db/repositories/db-knowledge-query-store";
 import { LocalQuizAttemptStore } from "@/lib/quiz/local-attempt-store";
-import { LocalQuizReviewStore } from "@/lib/quiz/local-review-store";
 import type { QuizAttemptStore } from "@/lib/quiz/attempt-store";
-import type { QuizReviewStore } from "@/lib/quiz/review-store";
+import { LocalPublishedQuizStore } from "@/lib/quiz/local-published-store";
+import type { PublishedQuizStore } from "@/lib/quiz/published-store";
 import { LocalScenarioSessionStore } from "@/lib/scenario/local-session-store";
 import {
   MockConversationProvider,
@@ -36,18 +33,6 @@ import {
   EmptyKnowledgeQueryStore,
   type KnowledgeQueryStore,
 } from "@/lib/knowledge/query-store";
-import { AssignmentService } from "@/lib/training/assignment-service";
-import type { AssignmentStore } from "@/lib/training/assignment-store";
-import {
-  EmptyTrainingCatalogStore,
-  type TrainingCatalogStore,
-} from "@/lib/training/catalog-store";
-import {
-  LocalReadonlyAssignmentStore,
-  LocalReadonlyReviewStore,
-} from "@/lib/training/local-readonly-stores";
-import { ReviewService } from "@/lib/training/review-service";
-import type { ReviewStore } from "@/lib/training/review-store";
 
 import { resolveRuntimeMode } from "./mode";
 
@@ -60,15 +45,15 @@ type StoreCompositionInput = {
   databaseFactory: () => DatabaseClient;
 };
 
-export function createQuizReviewStore(
+export function createPublishedQuizStore(
   input: StoreCompositionInput,
-): QuizReviewStore {
+): PublishedQuizStore {
   if (runtimeMode(input) === "local_demo") {
-    return new LocalQuizReviewStore(
+    return new LocalPublishedQuizStore(
       join(input.projectRoot, "artifacts", "quiz"),
     );
   }
-  return new DbQuizReviewStore(input.databaseFactory());
+  return new DbPublishedQuizStore(input.databaseFactory());
 }
 
 export function createQuizAttemptStore(
@@ -82,33 +67,6 @@ export function createQuizAttemptStore(
   return new DbQuizAttemptStore(input.databaseFactory());
 }
 
-export function createAssignmentStore(
-  input: StoreCompositionInput,
-): AssignmentStore {
-  if (runtimeMode(input) === "local_demo") {
-    return new LocalReadonlyAssignmentStore();
-  }
-  return new DbAssignmentStore(input.databaseFactory());
-}
-
-export function createReviewStore(
-  input: StoreCompositionInput,
-): ReviewStore {
-  if (runtimeMode(input) === "local_demo") {
-    return new LocalReadonlyReviewStore();
-  }
-  return new DbReviewStore(input.databaseFactory());
-}
-
-export function createTrainingCatalogStore(
-  input: StoreCompositionInput,
-): TrainingCatalogStore {
-  if (runtimeMode(input) === "local_demo") {
-    return new EmptyTrainingCatalogStore();
-  }
-  return new DbTrainingCatalogStore(input.databaseFactory());
-}
-
 export function createKnowledgeQueryStore(
   input: StoreCompositionInput,
 ): KnowledgeQueryStore {
@@ -118,20 +76,8 @@ export function createKnowledgeQueryStore(
   return new DbKnowledgeQueryStore(input.databaseFactory());
 }
 
-export function createAssignmentService(
-  input: StoreCompositionInput,
-): AssignmentService {
-  return new AssignmentService(createAssignmentStore(input));
-}
-
-export function createReviewService(
-  input: StoreCompositionInput,
-): ReviewService {
-  return new ReviewService(createReviewStore(input));
-}
-
-export function getQuizReviewStore(): QuizReviewStore {
-  return createQuizReviewStore({
+export function getPublishedQuizStore(): PublishedQuizStore {
+  return createPublishedQuizStore({
     environment: process.env,
     nodeEnvironment: process.env.NODE_ENV,
     projectRoot: process.cwd(),
@@ -146,18 +92,6 @@ export function getQuizAttemptStore(): QuizAttemptStore {
     projectRoot: process.cwd(),
     databaseFactory: getDatabase,
   });
-}
-
-export function getAssignmentService(): AssignmentService {
-  return createAssignmentService(defaultCompositionInput());
-}
-
-export function getReviewService(): ReviewService {
-  return createReviewService(defaultCompositionInput());
-}
-
-export function getTrainingCatalogStore(): TrainingCatalogStore {
-  return createTrainingCatalogStore(defaultCompositionInput());
 }
 
 export function getKnowledgeQueryStore(): KnowledgeQueryStore {

@@ -12,7 +12,7 @@ vi.mock("@/lib/auth/guards", () => ({
   requireUser: mocks.requireUser,
 }));
 
-vi.mock("@/lib/quiz/review-service", () => ({
+vi.mock("@/lib/quiz/published-service", () => ({
   loadPublishedQuiz: mocks.loadPublishedQuiz,
 }));
 
@@ -42,7 +42,6 @@ describe("saveQuizAttemptAction", () => {
       id: learnerId,
       name: "测试学员",
       email: "learner@example.test",
-      role: "learner",
     });
     mocks.loadPublishedQuiz.mockResolvedValue({
       schemaVersion: 1,
@@ -68,7 +67,7 @@ describe("saveQuizAttemptAction", () => {
   });
 
   it("rechecks answers on the server and stores them under the session user", async () => {
-    await saveQuizAttemptAction(quizHash, undefined, attemptId, [
+    await saveQuizAttemptAction(quizHash, attemptId, [
       {
         questionId: `qq_${"1".repeat(24)}`,
         selected: "答案一",
@@ -83,7 +82,6 @@ describe("saveQuizAttemptAction", () => {
       attemptId,
       learnerId,
       quizHash,
-      assignmentId: undefined,
       passingScore: 80,
       answers: [
         {
@@ -98,12 +96,15 @@ describe("saveQuizAttemptAction", () => {
         },
       ],
     });
+    expect(mocks.saveQuizAttemptForLearner.mock.calls[0]?.[0]).not.toHaveProperty(
+      "assignmentId",
+    );
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/practice/history");
   });
 
   it("rejects answers that do not belong to the active published quiz", async () => {
     await expect(
-      saveQuizAttemptAction(quizHash, undefined, attemptId, [
+      saveQuizAttemptAction(quizHash, attemptId, [
         {
           questionId: `qq_${"f".repeat(24)}`,
           selected: "答案一",
@@ -112,22 +113,6 @@ describe("saveQuizAttemptAction", () => {
     ).rejects.toThrow("题目不属于当前已发布题组");
 
     expect(mocks.saveQuizAttemptForLearner).not.toHaveBeenCalled();
-  });
-
-  it("attaches a valid learner assignment to the saved attempt", async () => {
-    const assignmentId =
-      "00000000-0000-4000-8000-000000000090";
-
-    await saveQuizAttemptAction(quizHash, assignmentId, attemptId, [
-      {
-        questionId: `qq_${"1".repeat(24)}`,
-        selected: "答案一",
-      },
-    ]);
-
-    expect(mocks.saveQuizAttemptForLearner).toHaveBeenCalledWith(
-      expect.objectContaining({ assignmentId }),
-    );
   });
 
   it("returns topic coverage delta after saving a topic attempt", async () => {

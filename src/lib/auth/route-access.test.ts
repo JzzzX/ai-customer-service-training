@@ -18,23 +18,20 @@ describe("decideRouteAccess", () => {
     ).toBe("allow");
   });
 
-  it("allows only administrators into admin routes", () => {
+  it("does not use roles to guard retired admin paths", () => {
     expect(decideRouteAccess("/admin", null)).toBe("login");
     expect(decideRouteAccess("/admin/questions", { role: "learner" })).toBe(
-      "forbidden",
-    );
-    expect(decideRouteAccess("/admin/questions", { role: "admin" })).toBe(
       "allow",
     );
   });
 
-  it("redirects administrators away from learner training routes", () => {
+  it("allows every authenticated learner into training routes", () => {
     expect(decideRouteAccess("/practice", { role: "admin" })).toBe(
-      "redirect_admin",
+      "allow",
     );
     expect(
       decideRouteAccess("/practice/profile?tab=quiz", { role: "admin" }),
-    ).toBe("redirect_admin");
+    ).toBe("allow");
     expect(decideRouteAccess("/practice", { role: "learner" })).toBe("allow");
   });
 });

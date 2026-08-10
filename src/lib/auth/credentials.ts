@@ -1,14 +1,11 @@
 import { compare } from "bcryptjs";
 import { z } from "zod";
 
-export type UserRole = "admin" | "learner";
-
 export interface StoredUserAccount {
   id: string;
   email: string;
   name: string;
   passwordHash: string;
-  role: UserRole;
   isActive: boolean;
 }
 
@@ -16,7 +13,6 @@ export interface SessionUser {
   id: string;
   email: string;
   name: string;
-  role: UserRole;
 }
 
 type FindUserByEmail = (
@@ -50,6 +46,5 @@ export async function authenticateCredentials(
     id: account.id,
     email: account.email,
     name: account.name,
-    role: account.role,
   };
 }

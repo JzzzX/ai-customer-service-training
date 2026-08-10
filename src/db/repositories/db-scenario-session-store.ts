@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import type { DatabaseClient } from "../client";
 import {
-  assignments,
   evaluationReports,
   scenarios,
   scenarioVersions,
@@ -15,7 +14,6 @@ import {
   scenarioCategorySchema,
   scenarioSessionSchema,
   type LiveRiskAlert,
-  type ScenarioEvaluationReport,
   type ScenarioSession,
 } from "@/lib/scenario/schema";
 import type {
@@ -39,9 +37,6 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
     inputValue: StartScenarioSessionInput,
   ): Promise<ScenarioSession> {
     const learnerId = z.string().uuid().parse(inputValue.learnerId);
-    const assignmentId = inputValue.assignmentId
-      ? z.string().uuid().parse(inputValue.assignmentId)
-      : undefined;
     const startedAt = inputValue.startedAt
       ? new Date(inputValue.startedAt)
       : new Date();
@@ -77,28 +72,9 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
 
     const sessionId = await this.database.transaction(
       async (transaction) => {
-        if (assignmentId) {
-          const [assignment] = await transaction
-            .select({ id: assignments.id })
-            .from(assignments)
-            .where(
-              and(
-                eq(assignments.id, assignmentId),
-                eq(assignments.learnerId, learnerId),
-                eq(assignments.assignmentType, "scenario"),
-                eq(assignments.scenarioVersionId, version.id),
-              ),
-            )
-            .limit(1);
-          if (!assignment) {
-            throw new Error("训练任务不存在或不属于当前学员。");
-          }
-        }
-
         const [session] = await transaction
           .insert(trainingSessions)
           .values({
-            assignmentId,
             learnerId,
             knowledgeVersionId: version.knowledgeVersionId,
             scenarioVersionId: version.id,
@@ -119,12 +95,6 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
           content: inputValue.scenario.openingMessage,
           createdAt: startedAt,
         });
-        if (assignmentId) {
-          await transaction
-            .update(assignments)
-            .set({ status: "in_progress", startedAt })
-            .where(eq(assignments.id, assignmentId));
-        }
         return session.id;
       },
     );
@@ -427,7 +397,6 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
       const [current] = await transaction
         .select({
           id: trainingSessions.id,
-          assignmentId: trainingSessions.assignmentId,
           knowledgeVersionId: trainingSessions.knowledgeVersionId,
         })
         .from(trainingSessions)
@@ -443,10 +412,6 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
         return;
       }
 
-      const reviewTrigger = determineReviewTrigger(
-        identity.sessionId,
-        report,
-      );
       await transaction
         .insert(evaluationReports)
         .values({
@@ -470,8 +435,8 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
           })),
           confidence: report.confidence.toFixed(3),
           lowConfidence: report.lowConfidence,
-          needsReview: Boolean(reviewTrigger),
-          reviewTrigger,
+          needsReview: false,
+          reviewTrigger: null,
         })
         .onConflictDoNothing({
           target: evaluationReports.trainingSessionId,
@@ -479,10 +444,7 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
       await transaction
         .update(trainingSessions)
         .set({
-          status:
-            report.status === "passed" && !reviewTrigger
-              ? "completed"
-              : "needs_review",
+          status: "completed",
           completedAt,
           updatedAt: completedAt,
         })
@@ -492,43 +454,10 @@ export class DbScenarioSessionStore implements ScenarioSessionStore {
             eq(trainingSessions.status, "in_progress"),
           ),
         );
-      if (current.assignmentId) {
-        await transaction
-          .update(assignments)
-          .set({ status: "completed", completedAt })
-          .where(
-            and(
-              eq(assignments.id, current.assignmentId),
-              eq(assignments.learnerId, identity.learnerId),
-            ),
-          );
-      }
     });
 
     return this.loadSession(identity);
   }
-}
-
-function determineReviewTrigger(
-  sessionId: string,
-  report: ScenarioEvaluationReport,
-):
-  | "critical_risk"
-  | "low_confidence"
-  | "failed"
-  | "random_sample"
-  | null {
-  if (report.risks.length > 0) {
-    return "critical_risk";
-  }
-  if (report.confidence < 0.8) {
-    return "low_confidence";
-  }
-  if (report.status === "needs_retry") {
-    return "failed";
-  }
-  const sampleByte = Number.parseInt(sessionId.replaceAll("-", "").slice(-2), 16);
-  return sampleByte % 10 === 0 ? "random_sample" : null;
 }
 
 function extractRiskAlert(

@@ -21,19 +21,16 @@ describe("LoginContinuePage", () => {
     mocks.requireUser.mockReset();
   });
 
-  it.each([
-    ["admin", "/admin"],
-    ["learner", "/practice"],
-  ] as const)("redirects %s from the persisted session to %s", async (role, path) => {
+  it("always redirects an authenticated learner to practice", async () => {
     mocks.requireUser.mockResolvedValue({
       id: "00000000-0000-4000-8000-000000000001",
-      email: `${role}@example.test`,
-      name: role,
-      role,
+      email: "learner@example.test",
+      name: "客服学员",
+      role: "admin",
     });
 
     await LoginContinuePage();
 
-    expect(mocks.redirect).toHaveBeenCalledWith(path);
+    expect(mocks.redirect).toHaveBeenCalledWith("/practice");
   });
 });

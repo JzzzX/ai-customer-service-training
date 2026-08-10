@@ -3,23 +3,16 @@ import { z } from "zod";
 
 import { resolveRuntimeMode } from "@/lib/runtime/mode";
 
-import type { StoredUserAccount, UserRole } from "./credentials";
+import type { StoredUserAccount } from "./credentials";
 
 type Environment = Record<string, string | undefined>;
 
 const localAccountEnvironmentSchema = z
   .object({
-    SEED_ADMIN_EMAIL: z.string().trim().toLowerCase().email(),
-    SEED_ADMIN_NAME: z.string().trim().min(1),
-    SEED_ADMIN_PASSWORD: z.string().min(1),
     SEED_LEARNER_EMAIL: z.string().trim().toLowerCase().email(),
     SEED_LEARNER_NAME: z.string().trim().min(1),
     SEED_LEARNER_PASSWORD: z.string().min(1),
   })
-  .refine(
-    (value) => value.SEED_ADMIN_EMAIL !== value.SEED_LEARNER_EMAIL,
-    "管理员与学员邮箱不能相同",
-  );
 
 export function shouldUseLocalTestAccounts(
   environment: Environment = process.env,
@@ -54,23 +47,14 @@ export async function findLocalTestUserByEmail(
   const normalizedEmail = email.trim().toLowerCase();
   const config = parsed.data;
   const matchingAccount =
-    normalizedEmail === config.SEED_ADMIN_EMAIL
+    normalizedEmail === config.SEED_LEARNER_EMAIL
       ? {
-          id: "00000000-0000-4000-8000-000000000001",
-          email: config.SEED_ADMIN_EMAIL,
-          name: config.SEED_ADMIN_NAME,
-          password: config.SEED_ADMIN_PASSWORD,
-          role: "admin" as UserRole,
+          id: "00000000-0000-4000-8000-000000000002",
+          email: config.SEED_LEARNER_EMAIL,
+          name: config.SEED_LEARNER_NAME,
+          password: config.SEED_LEARNER_PASSWORD,
         }
-      : normalizedEmail === config.SEED_LEARNER_EMAIL
-        ? {
-            id: "00000000-0000-4000-8000-000000000002",
-            email: config.SEED_LEARNER_EMAIL,
-            name: config.SEED_LEARNER_NAME,
-            password: config.SEED_LEARNER_PASSWORD,
-            role: "learner" as UserRole,
-          }
-        : null;
+      : null;
 
   if (!matchingAccount) {
     return null;
@@ -81,7 +65,6 @@ export async function findLocalTestUserByEmail(
     email: matchingAccount.email,
     name: matchingAccount.name,
     passwordHash: await hash(matchingAccount.password, 4),
-    role: matchingAccount.role,
     isActive: true,
   };
 }

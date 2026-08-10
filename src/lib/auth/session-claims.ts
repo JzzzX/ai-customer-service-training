@@ -1,4 +1,4 @@
-import type { SessionUser, UserRole } from "./credentials";
+import type { SessionUser } from "./credentials";
 
 interface SessionShape {
   expires: string;
@@ -7,7 +7,6 @@ interface SessionShape {
 
 interface SessionClaims {
   id: string;
-  role: UserRole;
 }
 
 export function applyUserToToken<T extends Record<string, unknown>>(
@@ -17,7 +16,6 @@ export function applyUserToToken<T extends Record<string, unknown>>(
   return {
     ...token,
     id: user.id,
-    role: user.role,
   };
 }
 
@@ -30,7 +28,6 @@ export function applyTokenToSession<T extends SessionShape>(
     user: {
       ...session.user,
       id: token.id,
-      role: token.role,
     },
   };
 }

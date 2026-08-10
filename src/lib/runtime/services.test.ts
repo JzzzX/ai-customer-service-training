@@ -2,28 +2,27 @@
 
 import { describe, expect, it } from "vitest";
 
-import { DbQuizReviewStore } from "@/db/repositories/db-quiz-review-store";
 import { DbQuizAttemptStore } from "@/db/repositories/db-quiz-attempt-store";
-import { DbAssignmentStore } from "@/db/repositories/db-assignment-store";
-import { DbReviewStore } from "@/db/repositories/db-review-store";
 import type { DatabaseClient } from "@/db/client";
 import { LocalQuizAttemptStore } from "@/lib/quiz/local-attempt-store";
-import { LocalQuizReviewStore } from "@/lib/quiz/local-review-store";
 
-import {
-  createAssignmentService,
-  createAssignmentStore,
-  createQuizAttemptStore,
-  createQuizReviewStore,
-  createReviewService,
-  createReviewStore,
-  createScenarioTrainingService,
-} from "./services";
+import { createQuizAttemptStore, createScenarioTrainingService } from "./services";
 import { scenarioTemplates } from "@/lib/scenario/templates";
 
 describe("runtime service composition", () => {
-  it("uses the local review adapter only for explicit local demo mode", () => {
-    const store = createQuizReviewStore({
+  it("composes a published quiz reader without review write methods", async () => {
+    const runtime = (await import("./services")) as Record<string, unknown>;
+    expect(runtime.createPublishedQuizStore).toBeTypeOf("function");
+
+    const createPublishedQuizStore = runtime.createPublishedQuizStore as (
+      input: {
+        environment: Record<string, string | undefined>;
+        nodeEnvironment: "development" | "production" | "test" | undefined;
+        projectRoot: string;
+        databaseFactory: () => DatabaseClient;
+      },
+    ) => Record<string, unknown>;
+    const store = createPublishedQuizStore({
       environment: {
         LOCAL_TEST_AUTH_ENABLED: "true",
       },
@@ -34,21 +33,10 @@ describe("runtime service composition", () => {
       },
     });
 
-    expect(store).toBeInstanceOf(LocalQuizReviewStore);
-  });
-
-  it("uses the database review adapter in production even if the local flag is present", () => {
-    const database = {} as DatabaseClient;
-    const store = createQuizReviewStore({
-      environment: {
-        LOCAL_TEST_AUTH_ENABLED: "true",
-      },
-      nodeEnvironment: "production",
-      projectRoot: "/tmp/ai-training-test",
-      databaseFactory: () => database,
-    });
-
-    expect(store).toBeInstanceOf(DbQuizReviewStore);
+    expect(store.loadPublished).toBeTypeOf("function");
+    expect(store.loadReview).toBeUndefined();
+    expect(store.approveQuestion).toBeUndefined();
+    expect(store.publish).toBeUndefined();
   });
 
   it("selects local and database attempt adapters from the same runtime boundary", () => {
@@ -68,37 +56,6 @@ describe("runtime service composition", () => {
 
     expect(local).toBeInstanceOf(LocalQuizAttemptStore);
     expect(production).toBeInstanceOf(DbQuizAttemptStore);
-  });
-
-  it("composes production assignment and review services with database adapters", () => {
-    const database = {} as DatabaseClient;
-    const input = {
-      environment: {},
-      nodeEnvironment: "production" as const,
-      projectRoot: "/tmp/ai-training-test",
-      databaseFactory: () => database,
-    };
-
-    expect(createAssignmentStore(input)).toBeInstanceOf(
-      DbAssignmentStore,
-    );
-    expect(createReviewStore(input)).toBeInstanceOf(DbReviewStore);
-  });
-
-  it("keeps local demo administration read-only", async () => {
-    const input = {
-      environment: { LOCAL_TEST_AUTH_ENABLED: "true" },
-      nodeEnvironment: "development" as const,
-      projectRoot: "/tmp/ai-training-test",
-      databaseFactory: () => {
-        throw new Error("local mode must not initialize the database");
-      },
-    };
-    const assignments = createAssignmentService(input);
-    const reviews = createReviewService(input);
-
-    await expect(assignments.listForAdmin()).resolves.toEqual([]);
-    await expect(reviews.listPending()).resolves.toEqual([]);
   });
 
   it("records real mode when the runtime uses real AI with a legacy mock template", async () => {
