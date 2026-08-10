@@ -5,12 +5,10 @@ import { evaluateProductionSnapshot } from "./production-verification";
 const technicalSnapshot = {
   activeKnowledgeCount: 1,
   questionCount: 40,
-  currentApprovalCount: 1,
   publishedQuizCount: 0,
   publishedQuizKnowledgeMismatchCount: 0,
   publishedScenarioCount: 8,
   publishedScenarioKnowledgeMismatchCount: 0,
-  activeAdminCount: 1,
   activeLearnerCount: 1,
 };
 
@@ -25,15 +23,25 @@ describe("evaluateProductionSnapshot", () => {
     );
   });
 
-  it("passes formal readiness with one published quiz even without manual approvals", () => {
+  it("passes formal readiness with one published quiz", () => {
     const result = evaluateProductionSnapshot({
       ...technicalSnapshot,
-      currentApprovalCount: 0,
       publishedQuizCount: 1,
     });
 
     expect(result.technicalPassed).toBe(true);
     expect(result.formalPassed).toBe(true);
+  });
+
+  it("does not depend on retired admin accounts or manual quiz reviews", () => {
+    const retiredAdminSnapshot = {
+      ...technicalSnapshot,
+      activeAdminCount: 0,
+      currentApprovalCount: 0,
+    };
+    const result = evaluateProductionSnapshot(retiredAdminSnapshot);
+
+    expect(result.technicalPassed).toBe(true);
   });
 
   it("rejects inconsistent production references and content counts", () => {

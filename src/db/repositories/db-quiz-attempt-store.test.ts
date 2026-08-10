@@ -17,6 +17,7 @@ import {
 import { createTestDatabase } from "../test-support/create-test-database";
 import { topicQuizQuestions } from "@/lib/quiz/question-bank";
 import { createTopicQuizHash } from "@/lib/quiz/topic-hash";
+import type { SaveQuizAttemptInput } from "@/lib/quiz/attempt-store";
 
 const adminId = "00000000-0000-4000-8000-000000000001";
 const learnerId = "00000000-0000-4000-8000-000000000002";
@@ -198,7 +199,7 @@ describe("DbQuizAttemptStore", () => {
     );
   });
 
-  it("completes only the matching learner assignment", async () => {
+  it("does not update retired learner assignments", async () => {
     await database.insert(assignments).values({
       id: assignmentId,
       learnerId,
@@ -208,31 +209,33 @@ describe("DbQuizAttemptStore", () => {
       status: "assigned",
     });
 
-    await store.saveAttempt({
-      attemptId,
-      learnerId,
-      quizHash,
-      assignmentId,
-      passingScore: 80,
-      answers: [
-        {
-          questionId: firstQuestionKey,
-          selectedAnswers: ["答案一"],
-          isCorrect: true,
-        },
-      ],
-    });
+    await store.saveAttempt(
+      {
+        attemptId,
+        learnerId,
+        quizHash,
+        assignmentId,
+        passingScore: 80,
+        answers: [
+          {
+            questionId: firstQuestionKey,
+            selectedAnswers: ["答案一"],
+            isCorrect: true,
+          },
+        ],
+      } as unknown as SaveQuizAttemptInput,
+    );
 
     const [assignment] = await database
       .select()
       .from(assignments)
       .where(eq(assignments.id, assignmentId));
     expect(assignment).toMatchObject({
-      status: "completed",
+      status: "assigned",
       learnerId,
       quizSetId,
     });
-    expect(assignment?.completedAt).toBeInstanceOf(Date);
+    expect(assignment?.completedAt).toBeNull();
   });
 
   async function seedPublishedQuiz(): Promise<void> {

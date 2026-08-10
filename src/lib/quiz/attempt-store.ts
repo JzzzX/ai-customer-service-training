@@ -6,7 +6,6 @@ export const quizAttemptRecordSchema = z.object({
   id: z.string().uuid(),
   learnerId: z.string().uuid(),
   quizHash: z.string().regex(/^[a-f0-9]{64}$/),
-  assignmentId: z.string().uuid().optional(),
   topicId: z.string().trim().min(1).optional(),
   status: z.enum(["passed", "needs_retry"]),
   correctCount: z.number().int().min(0),
@@ -28,7 +27,6 @@ export const saveQuizAttemptInputSchema = z.object({
   attemptId: z.string().uuid(),
   learnerId: z.string().uuid(),
   quizHash: z.string().regex(/^[a-f0-9]{64}$/),
-  assignmentId: z.string().uuid().optional(),
   topicId: z.string().trim().min(1).optional(),
   passingScore: z.number().int().min(0).max(100),
   answers: z

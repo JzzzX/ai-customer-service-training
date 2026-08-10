@@ -8,7 +8,6 @@ import {
 
 import type { DatabaseClient } from "../client";
 import {
-  assignments,
   questions,
   quizAnswers,
   quizAttempts,
@@ -32,7 +31,6 @@ type AttemptRow = {
   id: string;
   learnerId: string;
   quizHash: string;
-  assignmentId: string | null;
   status: "in_progress" | "passed" | "needs_retry";
   correctCount: number;
   totalQuestions: number;
@@ -141,24 +139,6 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
         ? new Date(input.completedAt)
         : new Date();
 
-      if (input.assignmentId) {
-        const [assignment] = await transaction
-          .select({ id: assignments.id })
-          .from(assignments)
-          .where(
-            and(
-              eq(assignments.id, input.assignmentId),
-              eq(assignments.learnerId, input.learnerId),
-              eq(assignments.assignmentType, "quiz"),
-              eq(assignments.quizSetId, quizSet.id),
-            ),
-          )
-          .limit(1);
-        if (!assignment) {
-          throw new Error("训练任务不存在或不属于当前学员。");
-        }
-      }
-
       const [inserted] = await transaction
         .insert(quizAttempts)
         .values({
@@ -166,7 +146,6 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
           quizSetId: quizSet.id,
           learnerId: input.learnerId,
           knowledgeVersionId: quizSet.knowledgeVersionId,
-          assignmentId: input.assignmentId,
           status: outcome.status,
           correctCount,
           totalQuestions: checkedAnswers.length,
@@ -188,16 +167,6 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
           answeredAt: completedAt,
         })),
       );
-      if (input.assignmentId) {
-        await transaction
-          .update(assignments)
-          .set({
-            status: "completed",
-            startedAt: completedAt,
-            completedAt,
-          })
-          .where(eq(assignments.id, input.assignmentId));
-      }
     });
 
     return this.loadAttempt(input.learnerId, input.attemptId);
@@ -209,7 +178,6 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
         id: quizAttempts.id,
         learnerId: quizAttempts.learnerId,
         quizHash: quizSets.quizHash,
-        assignmentId: quizAttempts.assignmentId,
         status: quizAttempts.status,
         correctCount: quizAttempts.correctCount,
         totalQuestions: quizAttempts.totalQuestions,
@@ -255,9 +223,6 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
   private async saveTopicAttempt(
     input: SaveQuizAttemptInput & { topicId: string },
   ): Promise<QuizAttemptRecord> {
-    if (input.assignmentId) {
-      throw new Error("专题练习不能关联正式训练任务。");
-    }
     if (input.quizHash !== createTopicQuizHash(input.topicId)) {
       throw new Error("专题练习版本无效，请重新开始练习。");
     }
@@ -380,7 +345,6 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
         id: quizAttempts.id,
         learnerId: quizAttempts.learnerId,
         quizHash: quizSets.quizHash,
-        assignmentId: quizAttempts.assignmentId,
         status: quizAttempts.status,
         correctCount: quizAttempts.correctCount,
         totalQuestions: quizAttempts.totalQuestions,
@@ -447,9 +411,6 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
         id: row.id,
         learnerId: row.learnerId,
         quizHash: row.quizHash,
-        ...(row.assignmentId
-          ? { assignmentId: row.assignmentId }
-          : {}),
         status: row.status,
         correctCount: row.correctCount,
         totalQuestions: row.totalQuestions,

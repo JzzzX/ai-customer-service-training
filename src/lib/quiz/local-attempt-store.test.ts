@@ -5,6 +5,10 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { LocalQuizAttemptStore } from "./local-attempt-store";
+import {
+  quizAttemptRecordSchema,
+  saveQuizAttemptInputSchema,
+} from "./attempt-store";
 
 const learnerA = "00000000-0000-4000-8000-000000000002";
 const learnerB = "00000000-0000-4000-8000-000000000003";
@@ -74,6 +78,30 @@ describe("LocalQuizAttemptStore", () => {
       await readFile(join(outputDir, `attempts-${learnerA}.json`), "utf8"),
     );
     expect(stored).toHaveLength(2);
+  });
+
+  it("drops retired assignment ids from the learner attempt boundary", async () => {
+    const assignmentId = "00000000-0000-4000-8000-000000000040";
+    const input = {
+      attemptId: "00000000-0000-4000-8000-000000000013",
+      learnerId: learnerA,
+      quizHash: "a".repeat(64),
+      assignmentId,
+      passingScore: 80,
+      answers: answerSet(1, 1),
+      completedAt: "2026-07-29T10:00:00.000Z",
+    };
+    const store = new LocalQuizAttemptStore(outputDir);
+
+    const saved = await store.saveAttempt(input);
+
+    expect(saveQuizAttemptInputSchema.parse(input)).not.toHaveProperty(
+      "assignmentId",
+    );
+    expect(saved).not.toHaveProperty("assignmentId");
+    expect(
+      quizAttemptRecordSchema.parse({ ...saved, assignmentId }),
+    ).not.toHaveProperty("assignmentId");
   });
 });
 

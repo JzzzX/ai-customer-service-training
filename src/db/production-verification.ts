@@ -1,7 +1,6 @@
 import { and, count, eq, ne } from "drizzle-orm";
 
 import type { DatabaseClient } from "./client";
-import { DbQuizReviewStore } from "./repositories/db-quiz-review-store";
 import {
   knowledgeVersions,
   questions,
@@ -13,12 +12,10 @@ import {
 export type ProductionSnapshot = {
   activeKnowledgeCount: number;
   questionCount: number;
-  currentApprovalCount: number;
   publishedQuizCount: number;
   publishedQuizKnowledgeMismatchCount: number;
   publishedScenarioCount: number;
   publishedScenarioKnowledgeMismatchCount: number;
-  activeAdminCount: number;
   activeLearnerCount: number;
 };
 
@@ -51,9 +48,6 @@ export function evaluateProductionSnapshot(
   }
   if (snapshot.publishedQuizCount > 1) {
     technicalIssues.push("正式题组只能存在一个当前版本。");
-  }
-  if (snapshot.activeAdminCount < 1) {
-    technicalIssues.push("至少需要一个启用中的管理员账号。");
   }
   if (snapshot.activeLearnerCount < 1) {
     technicalIssues.push("至少需要一个启用中的学员账号。");
@@ -121,39 +115,21 @@ export async function verifyProductionData(
           ),
         )
     : publishedScenarioRows;
-  const activeAdminRows = await database
-    .select({ value: count() })
-    .from(users)
-    .where(
-      and(eq(users.role, "admin"), eq(users.isActive, true)),
-    );
   const activeLearnerRows = await database
     .select({ value: count() })
     .from(users)
     .where(
       and(eq(users.role, "learner"), eq(users.isActive, true)),
     );
-  let currentApprovalCount = 0;
-  try {
-    const review = await new DbQuizReviewStore(database).loadReview();
-    currentApprovalCount = review.questions.filter(
-      (item) => item.decision === "approved",
-    ).length;
-  } catch {
-    currentApprovalCount = 0;
-  }
-
   return evaluateProductionSnapshot({
     activeKnowledgeCount: activeVersions.length,
     questionCount: questionRows[0]?.value ?? 0,
-    currentApprovalCount,
     publishedQuizCount: publishedQuizRows[0]?.value ?? 0,
     publishedQuizKnowledgeMismatchCount:
       quizMismatchRows[0]?.value ?? 0,
     publishedScenarioCount: publishedScenarioRows[0]?.value ?? 0,
     publishedScenarioKnowledgeMismatchCount:
       scenarioMismatchRows[0]?.value ?? 0,
-    activeAdminCount: activeAdminRows[0]?.value ?? 0,
     activeLearnerCount: activeLearnerRows[0]?.value ?? 0,
   });
 }

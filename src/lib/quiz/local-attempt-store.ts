@@ -52,9 +52,6 @@ export class LocalQuizAttemptStore implements QuizAttemptStore {
       id: input.attemptId,
       learnerId,
       quizHash: input.quizHash,
-      ...(input.assignmentId
-        ? { assignmentId: input.assignmentId }
-        : {}),
       ...(input.topicId ? { topicId: input.topicId } : {}),
       status: outcome.status,
       correctCount,
