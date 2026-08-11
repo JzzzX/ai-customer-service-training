@@ -2,11 +2,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   assertDatabaseSchema,
   createDatabaseClient,
+  getDatabase,
   requireSqlitePath,
 } from "./client";
 import { createTestDatabase } from "./test-support/create-test-database";
@@ -80,6 +81,20 @@ describe("SQLite database client", () => {
     } finally {
       client.close();
     }
+  });
+
+  it("uses the non-persistent demo fixture without SQLITE_PATH", () => {
+    vi.stubEnv("DEMO_MODE", "true");
+    vi.stubEnv("SQLITE_PATH", "");
+
+    const database = getDatabase();
+
+    expect(
+      database.$client
+        .prepare("select email from users where id = ?")
+        .get("00000000-0000-4000-8000-000000000001"),
+    ).toEqual({ email: "demo@example.test" });
+    vi.unstubAllEnvs();
   });
 
   it("rejects a schema containing orphaned foreign keys", async () => {

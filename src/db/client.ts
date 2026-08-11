@@ -2,7 +2,9 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 
 import * as schema from "./schema";
+import { initializeDemoDatabase } from "./demo-fixture";
 import { validateRuntimeEnvironment } from "@/lib/runtime/env";
+import { isDemoMode } from "@/lib/runtime/mode";
 
 type Environment = Record<string, string | undefined>;
 
@@ -88,8 +90,13 @@ let database: DatabaseClient | undefined;
 export function getDatabase() {
   validateRuntimeEnvironment();
   if (!database) {
-    const candidate = createDatabaseClient(requireSqlitePath());
+    const candidate = createDatabaseClient(
+      isDemoMode() ? ":memory:" : requireSqlitePath(),
+    );
     try {
+      if (isDemoMode()) {
+        initializeDemoDatabase(candidate);
+      }
       assertDatabaseSchema(candidate);
       database = candidate;
     } catch (error) {
