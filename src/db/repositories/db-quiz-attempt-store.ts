@@ -216,7 +216,8 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
       .orderBy(
         desc(topicQuizAttempts.completedAt),
         desc(topicQuizAttempts.id),
-      );
+      )
+      .all();
     const records = [
       ...(await this.mapAttemptRows(rows)),
       ...(await this.mapTopicAttemptRows(topicRows)),
@@ -399,7 +400,8 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
           quizAnswers.quizAttemptId,
           rows.map((row) => row.id),
         ),
-      );
+      )
+      .all();
     const missedByAttempt = new Map<string, string[]>();
     const answeredByAttempt = new Map<string, string[]>();
     for (const answer of answerRows) {
@@ -449,7 +451,8 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
           topicQuizAnswers.topicQuizAttemptId,
           rows.map((row) => row.id),
         ),
-      );
+      )
+      .all();
     const missedByAttempt = new Map<string, string[]>();
     const answeredByAttempt = new Map<string, string[]>();
     for (const answer of answerRows) {

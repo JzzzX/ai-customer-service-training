@@ -153,7 +153,8 @@ export function createScenarioPublicationStore(
           canUseForScenario: knowledgeUnits.canUseForScenario,
         })
         .from(knowledgeUnits)
-        .where(eq(knowledgeUnits.knowledgeVersionId, version.id));
+        .where(eq(knowledgeUnits.knowledgeVersionId, version.id))
+        .all();
       return { ...version, units };
     },
 

@@ -61,11 +61,13 @@ export class DbKnowledgeQueryStore implements KnowledgeQueryStore {
         .from(knowledgeSources)
         .where(
           eq(knowledgeSources.knowledgeVersionId, version.id),
-        ),
+        )
+        .all(),
       this.database
         .select({ value: count() })
         .from(knowledgeUnits)
-        .where(eq(knowledgeUnits.knowledgeVersionId, version.id)),
+        .where(eq(knowledgeUnits.knowledgeVersionId, version.id))
+        .all(),
       this.database
         .select({ value: count() })
         .from(knowledgeUnits)
@@ -74,11 +76,13 @@ export class DbKnowledgeQueryStore implements KnowledgeQueryStore {
             eq(knowledgeUnits.knowledgeVersionId, version.id),
             eq(knowledgeUnits.hasConflict, true),
           ),
-        ),
+        )
+        .all(),
       this.database
         .select({ value: count() })
         .from(questions)
-        .where(eq(questions.knowledgeVersionId, version.id)),
+        .where(eq(questions.knowledgeVersionId, version.id))
+        .all(),
       this.database
         .select({ value: count() })
         .from(quizSets)
@@ -87,7 +91,8 @@ export class DbKnowledgeQueryStore implements KnowledgeQueryStore {
             eq(quizSets.knowledgeVersionId, version.id),
             eq(quizSets.status, "published"),
           ),
-        ),
+        )
+        .all(),
       this.database
         .select({ value: count() })
         .from(scenarioVersions)
@@ -96,7 +101,8 @@ export class DbKnowledgeQueryStore implements KnowledgeQueryStore {
             eq(scenarioVersions.knowledgeVersionId, version.id),
             eq(scenarioVersions.status, "published"),
           ),
-        ),
+        )
+        .all(),
     ]);
 
     return {

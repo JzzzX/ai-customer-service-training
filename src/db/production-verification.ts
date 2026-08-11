@@ -73,7 +73,8 @@ export async function verifyProductionData(
   const activeVersions = await database
     .select({ id: knowledgeVersions.id })
     .from(knowledgeVersions)
-    .where(eq(knowledgeVersions.isActive, true));
+    .where(eq(knowledgeVersions.isActive, true))
+    .all();
   const activeVersionId = activeVersions[0]?.id;
 
   const questionRows = activeVersionId
@@ -81,15 +82,18 @@ export async function verifyProductionData(
         .select({ value: count() })
         .from(questions)
         .where(eq(questions.knowledgeVersionId, activeVersionId))
+        .all()
     : [{ value: 0 }];
   const publishedQuizRows = await database
     .select({ value: count() })
     .from(quizSets)
-    .where(eq(quizSets.status, "published"));
+    .where(eq(quizSets.status, "published"))
+    .all();
   const publishedScenarioRows = await database
     .select({ value: count() })
     .from(scenarioVersions)
-    .where(eq(scenarioVersions.status, "published"));
+    .where(eq(scenarioVersions.status, "published"))
+    .all();
   const quizMismatchRows = activeVersionId
     ? await database
         .select({ value: count() })
@@ -100,6 +104,7 @@ export async function verifyProductionData(
             ne(quizSets.knowledgeVersionId, activeVersionId),
           ),
         )
+        .all()
     : publishedQuizRows;
   const scenarioMismatchRows = activeVersionId
     ? await database
@@ -114,13 +119,15 @@ export async function verifyProductionData(
             ),
           ),
         )
+        .all()
     : publishedScenarioRows;
   const activeLearnerRows = await database
     .select({ value: count() })
     .from(users)
     .where(
       eq(users.isActive, true),
-    );
+    )
+    .all();
   return evaluateProductionSnapshot({
     activeKnowledgeCount: activeVersions.length,
     questionCount: questionRows[0]?.value ?? 0,

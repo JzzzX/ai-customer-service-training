@@ -192,7 +192,8 @@ export function createQuizDraftPublicationStore(
                   eq(knowledgeUnits.knowledgeVersionId, version.id),
                   inArray(knowledgeUnits.unitKey, unitKeys),
                 ),
-              );
+              )
+              .all();
       return { ...version, units };
     },
 
