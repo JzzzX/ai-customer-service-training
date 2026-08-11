@@ -1,13 +1,18 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import LoginPage from "./page";
 
 vi.mock("./actions", () => ({
+  demoLoginAction: async () => {},
   loginAction: async () => ({}),
 }));
 
 describe("LoginPage", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("offers a learner-only sign-in flow", () => {
     render(<LoginPage />);
 
@@ -23,6 +28,17 @@ describe("LoginPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("仅限已分配的培训账号登录")).toBeInTheDocument();
     expect(screen.queryByText("注册")).not.toBeInTheDocument();
+  });
+
+  it("shows the direct demo entry only when demo mode is enabled", () => {
+    vi.stubEnv("DEMO_MODE", "true");
+
+    render(<LoginPage />);
+
+    expect(
+      screen.getByRole("button", { name: "直接进入演示" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("演示环境，不保存数据")).toBeInTheDocument();
   });
 
 });

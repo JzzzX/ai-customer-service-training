@@ -5,6 +5,12 @@ import type { NextRequest } from "next/server";
 import { authenticateCredentials } from "@/lib/auth/credentials";
 import { decideRouteAccess } from "@/lib/auth/route-access";
 import {
+  DEMO_USER_EMAIL,
+  DEMO_USER_ID,
+  DEMO_USER_NAME,
+} from "@/lib/runtime/demo-identity";
+import { isDemoMode } from "@/lib/runtime/mode";
+import {
   applyTokenToSession,
   applyUserToToken,
 } from "@/lib/auth/session-claims";
@@ -22,6 +28,19 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       },
       authorize: (credentials) =>
         authenticateCredentials(credentials, findUserByEmail),
+    }),
+    Credentials({
+      id: "demo",
+      name: "演示登录",
+      credentials: {},
+      authorize: () =>
+        isDemoMode()
+          ? {
+              id: DEMO_USER_ID,
+              email: DEMO_USER_EMAIL,
+              name: DEMO_USER_NAME,
+            }
+          : null,
     }),
   ],
   callbacks: {

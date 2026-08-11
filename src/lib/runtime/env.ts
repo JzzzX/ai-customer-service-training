@@ -6,8 +6,9 @@ type Environment = Record<string, string | undefined>;
 
 export const productionEnvironmentSchema = z
   .object({
-    SQLITE_PATH: z.string().trim().min(1),
+    SQLITE_PATH: z.string().trim().min(1).optional(),
     AUTH_SECRET: z.string().min(32),
+    DEMO_MODE: z.enum(["true", "false"]).optional(),
     SCENARIO_AI_MODE: z.enum(["mock", "real"]).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_BASE_URL: z.string().url().optional(),
@@ -16,6 +17,13 @@ export const productionEnvironmentSchema = z
     AI_GATEWAY_MODEL: z.string().min(1).optional(),
   })
   .superRefine((environment, context) => {
+    if (environment.DEMO_MODE !== "true" && !environment.SQLITE_PATH) {
+      context.addIssue({
+        code: "custom",
+        message: "SQLITE_PATH is required outside demo mode",
+        path: ["SQLITE_PATH"],
+      });
+    }
     if (environment.SCENARIO_AI_MODE !== "real") {
       return;
     }

@@ -3,9 +3,15 @@ import { join, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { resolveRuntimeMode } from "./mode";
+import { isDemoMode, resolveRuntimeMode } from "./mode";
 
 describe("runtime mode", () => {
+  it("enables the explicit demo mode only when configured", () => {
+    expect(isDemoMode({ DEMO_MODE: "true" })).toBe(true);
+    expect(isDemoMode({ DEMO_MODE: "false" })).toBe(false);
+    expect(isDemoMode({})).toBe(false);
+  });
+
   it("always uses SQLite regardless of legacy environment flags", () => {
     expect(
       resolveRuntimeMode({

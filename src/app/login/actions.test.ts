@@ -19,7 +19,7 @@ vi.mock("@/auth", () => ({
   signIn: mocks.signIn,
 }));
 
-import { loginAction } from "./actions";
+import { demoLoginAction, loginAction } from "./actions";
 
 describe("loginAction", () => {
   beforeEach(() => {
@@ -28,6 +28,7 @@ describe("loginAction", () => {
     mocks.auth.mockReset();
     mocks.auth.mockResolvedValue(null);
     mocks.signIn.mockResolvedValue(undefined);
+    vi.stubEnv("DEMO_MODE", "true");
   });
 
   it("resolves the authenticated role on a follow-up request", async () => {
@@ -42,6 +43,13 @@ describe("loginAction", () => {
       password: "secret",
       redirect: false,
     });
+    expect(mocks.redirect).toHaveBeenCalledWith("/login/continue");
+  });
+
+  it("starts the explicit demo provider and redirects to the learner app", async () => {
+    await demoLoginAction();
+
+    expect(mocks.signIn).toHaveBeenCalledWith("demo", { redirect: false });
     expect(mocks.redirect).toHaveBeenCalledWith("/login/continue");
   });
 });

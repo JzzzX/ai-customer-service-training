@@ -23,6 +23,21 @@ describe("validateRuntimeEnvironment", () => {
     ).toThrow("生产环境配置无效");
   });
 
+  it("allows the SQLite path to be absent only for explicit demo mode", () => {
+    expect(
+      validateRuntimeEnvironment(
+        { AUTH_SECRET: "a".repeat(32), DEMO_MODE: "true" },
+        "production",
+      ),
+    ).toEqual({ mode: "sqlite" });
+    expect(() =>
+      validateRuntimeEnvironment(
+        { AUTH_SECRET: "a".repeat(32) },
+        "production",
+      ),
+    ).toThrow("生产环境配置无效");
+  });
+
   it("requires a complete model configuration for real AI mode", () => {
     expect(() =>
       validateRuntimeEnvironment(
