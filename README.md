@@ -88,7 +88,7 @@ flowchart LR
 │   ├── e2e/                 # Playwright 浏览器流程
 │   ├── load/                # SQLite 并发烟测
 │   └── scripts/             # 历史公司技术栈脚本测试
-├── docs/                    # 部署、交接、验收和历史设计文档
+├── docs/                    # 当前 SQLite 部署与运维文档
 ├── backend/                 # 历史 FastAPI 迁移代码，当前不运行
 ├── frontend/                # 历史 Vue/Vite 迁移代码，当前不运行
 ├── deploy/                  # 历史迁移部署样例，不能代表当前入口
@@ -307,7 +307,6 @@ pnpm test:sqlite:concurrency
 - 账号停用或改密不会立即撤销已经签发的 JWT Session；
 - 登录尚未增加专门的频率限制或失败锁定；
 - 生产依赖审计仍有来自 Next 和 Excel 处理链的安全告警，需要部署人员评估升级；
-- `docs/MVP-ACCEPTANCE.md` 包含旧 Neon 和历史管理员版本信息，不能作为当前 SQLite 架构依据；
 - `backend/`、`frontend/`、`deploy/` 是历史代码，容易误导接手者。
 
 这些问题不影响 Mock 演示和受控开发验证；是否阻断正式试用，要结合部署网络、使用范围和数据要求判断。
@@ -318,6 +317,6 @@ pnpm test:sqlite:concurrency
 |---|---|
 | [`handoff.md`](handoff.md) | 当前适用性、AI 网关、部署和飞书 OAuth 技术交接 |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | SQLite 部署、环境变量、初始化、备份和切换边界 |
-| [`docs/AGENT-HANDOFF.md`](docs/AGENT-HANDOFF.md) | 代码接手与自动化验证入口 |
-| [`docs/PROJECT_TECH_STACK.md`](docs/PROJECT_TECH_STACK.md) | 历史公司技术栈迁移说明，仅供背景参考 |
-| [`docs/archive/`](docs/archive/) | 已归档的旧功能和历史方案 |
+| [`AGENTS.md`](AGENTS.md) | 仓库协作、提交和双远程交付规范 |
+
+过期的 Neon、Vue/FastAPI 迁移、旧验收和过程设计文档已从当前工作树移除。如需追溯，可通过 Git 历史查看。

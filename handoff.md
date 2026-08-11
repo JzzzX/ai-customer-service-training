@@ -172,11 +172,10 @@ App Secret、OAuth token 和 `AUTH_SECRET` 必须保存在服务端环境中。�
 - 没有自动恢复流程；
 - SQLite 并发验证是约 3 秒的短时烟测，不是长期容量证明。
 
-### 7. 文档和历史代码存在干扰
+### 7. 历史代码仍可能干扰判断
 
-- `docs/MVP-ACCEPTANCE.md` 仍包含旧 Neon、管理员版本和历史 Vercel 验收内容，不能作为当前 SQLite MVP 的依据；
-- `docs/PROJECT_TECH_STACK.md` 主要记录历史公司技术栈迁移背景；
 - `backend/`、`frontend/`、`deploy/` 不是当前运行入口；
+- 旧 Neon、Vue/FastAPI 迁移、验收和过程设计文档已从当前工作树移除，需要时只能从 Git 历史追溯；
 - 当前架构和开发入口以 [`README.md`](README.md)、本文件、根 `package.json` 和 `src/` 为准。
 
 ## 交接时不要误判
