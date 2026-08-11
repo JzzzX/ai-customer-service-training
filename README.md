@@ -1,8 +1,8 @@
 # AI 客服训练（学员轻量版）
 
-本分支 `codex/learner-lite-sqlite` 将客服训练收敛为可在国内单机环境轻量运行的学员端：邮箱密码登录、专题/正式题、Mock 或公司 OpenAI 兼容网关的情景训练、报告和个人历史。
+本项目当前以学员 SQLite 版本为基线：邮箱密码登录、专题/正式题、Mock 或公司 OpenAI 兼容网关的情景训练、报告和个人历史。`codex/demo-mode` 另提供仅用于预览的内存演示入口。
 
-它尚未合并到 `main`。`main` 以及现有 Vercel + Neon 生产链路保持不变，服务器、域名、TLS、进程守护和定时备份方案批准前不得把本分支部署到 Vercel。
+持久 SQLite 版本需要单实例、持久可写磁盘；不要把它直接部署到无状态 Vercel/Serverless 作为正式服务。若只是临时预览，可显式设置 `DEMO_MODE=true`，此时数据只存在当前运行实例，冷启动后清空。
 
 ## 运行边界
 
@@ -35,6 +35,14 @@ pnpm db:verify
 pnpm dev
 ```
 
+临时演示部署可以省略 `SQLITE_PATH`，并显式开启内存演示模式：
+
+```bash
+DEMO_MODE=true AUTH_SECRET='<至少32位随机值>' SCENARIO_AI_MODE=mock pnpm dev
+```
+
+登录页会出现“直接进入演示”，可直接体验题库、Mock 情景和报告；该开关不得用于正式学员环境。
+
 `learners.csv` 表头固定为 `email,name,password,is_active`。密码只在导入时使用；已有账号留空密码即可保留原密码哈希。
 
 ## 运维命令
@@ -56,6 +64,7 @@ Neon 导入/导出仅迁移有效学员、活动知识、正式题库和已发�
 ```bash
 pnpm check
 pnpm test:e2e
+DEMO_MODE=true pnpm test:e2e:demo
 pnpm test:sqlite:concurrency
 ```
 

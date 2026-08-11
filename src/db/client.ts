@@ -87,16 +87,30 @@ export function assertDatabaseSchema(database: DatabaseClient): void {
 
 let database: DatabaseClient | undefined;
 
+const globalRuntime = globalThis as typeof globalThis & {
+  __learnerLiteDemoDatabase?: DatabaseClient;
+};
+
 export function getDatabase() {
   validateRuntimeEnvironment();
-  if (!database) {
-    const candidate = createDatabaseClient(
-      isDemoMode() ? ":memory:" : requireSqlitePath(),
-    );
-    try {
-      if (isDemoMode()) {
+  if (isDemoMode()) {
+    if (!globalRuntime.__learnerLiteDemoDatabase) {
+      const candidate = createDatabaseClient(":memory:");
+      try {
         initializeDemoDatabase(candidate);
+        assertDatabaseSchema(candidate);
+        globalRuntime.__learnerLiteDemoDatabase = candidate;
+      } catch (error) {
+        candidate.$client.close();
+        throw error;
       }
+    }
+    return globalRuntime.__learnerLiteDemoDatabase;
+  }
+
+  if (!database) {
+    const candidate = createDatabaseClient(requireSqlitePath());
+    try {
       assertDatabaseSchema(candidate);
       database = candidate;
     } catch (error) {

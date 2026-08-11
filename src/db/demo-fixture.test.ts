@@ -7,6 +7,7 @@ import {
 } from "./client";
 import { DEMO_USER_ID } from "@/lib/runtime/demo-identity";
 import { DbScenarioTemplateStore } from "./repositories/db-scenario-template-store";
+import { DbKnowledgeQueryStore } from "./repositories/db-knowledge-query-store";
 import { initializeDemoDatabase } from "./demo-fixture";
 
 describe("in-memory demo fixture", () => {
@@ -48,5 +49,17 @@ describe("in-memory demo fixture", () => {
       status: "published",
       mockMode: true,
     });
+  });
+
+  it("loads demo knowledge units with production-compatible hashes", async () => {
+    database = createDatabaseClient(":memory:");
+    initializeDemoDatabase(database);
+
+    const units = await new DbKnowledgeQueryStore(database).listUnitsForScenario(
+      "presale",
+    );
+
+    expect(units).toHaveLength(1);
+    expect(units[0]?.contentHash).toMatch(/^[a-f0-9]{64}$/);
   });
 });

@@ -1,6 +1,8 @@
 import { LoginForm } from "./login-form";
 import { isDemoMode } from "@/lib/runtime/mode";
 
+export const dynamic = "force-dynamic";
+
 export default function LoginPage() {
   const demoEnabled = isDemoMode();
 

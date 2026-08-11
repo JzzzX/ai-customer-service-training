@@ -88,7 +88,7 @@ export function initializeDemoDatabase(
         "幼宠主粮需求确认",
         "演示知识：先确认宠物年龄、体重、当前饮食和顾客的核心顾虑，再给出产品建议。",
         JSON.stringify(["售前", "需求确认"]),
-        "demo-unit-content",
+        "b".repeat(64),
         demoSource,
         now,
       );
