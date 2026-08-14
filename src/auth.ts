@@ -7,6 +7,7 @@ import { decideRouteAccess } from "@/lib/auth/route-access";
 import {
   applyTokenToSession,
   applyUserToToken,
+  resolveAuthenticatedUserId,
 } from "@/lib/auth/session-claims";
 import {
   DEMO_USER_EMAIL,
@@ -41,13 +42,16 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   providers,
 
   callbacks: {
-    jwt({ token, user }) {
+    jwt({ token, user, account }) {
       if (!user?.id) {
         return token;
       }
 
       return applyUserToToken(token, {
-        id: user.id,
+        id: resolveAuthenticatedUserId(
+          user.id,
+          account,
+        ),
         email: user.email ?? "",
         name: user.name ?? "",
       });

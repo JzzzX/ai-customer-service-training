@@ -1,8 +1,36 @@
 import { describe, expect, it } from "vitest";
 
-import { applyTokenToSession, applyUserToToken } from "./session-claims";
+import {
+  applyTokenToSession,
+  applyUserToToken,
+  resolveAuthenticatedUserId,
+} from "./session-claims";
 
 describe("Auth.js session claims", () => {
+  it("uses the persisted user id for Feishu OAuth", () => {
+    expect(
+      resolveAuthenticatedUserId(
+        "authjs-temporary-user-id",
+        {
+          provider: "feishu",
+          providerAccountId: "database-user-id",
+        },
+      ),
+    ).toBe("database-user-id");
+  });
+
+  it("keeps the Auth.js user id for non-Feishu providers", () => {
+    expect(
+      resolveAuthenticatedUserId(
+        "original-user-id",
+        {
+          provider: "demo",
+          providerAccountId: "other-account-id",
+        },
+      ),
+    ).toBe("original-user-id");
+  });
+
   it("copies only the authenticated user id into the JWT", () => {
     expect(
       applyUserToToken(

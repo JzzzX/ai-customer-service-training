@@ -13,6 +13,26 @@ interface SessionClaims {
   id: string;
 }
 
+interface AuthAccountIdentity {
+  provider?: string;
+  providerAccountId?: string;
+}
+
+export function resolveAuthenticatedUserId(
+  userId: string,
+  account?: AuthAccountIdentity | null,
+): string {
+  if (account?.provider === "feishu") {
+    const providerAccountId = account.providerAccountId?.trim();
+
+    if (providerAccountId) {
+      return providerAccountId;
+    }
+  }
+
+  return userId;
+}
+
 export function applyUserToToken<T extends Record<string, unknown>>(
   token: T,
   user: SessionUser,
