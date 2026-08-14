@@ -50,6 +50,24 @@ export const users = sqliteTable(
   (table) => [unique("users_email_unique").on(table.email)],
 );
 
+export const feishuIdentities = sqliteTable(
+  "feishu_identities",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    unionId: text("union_id").notNull(),
+    openId: text("open_id").notNull(),
+    ...auditTimestamps(),
+  },
+  (table) => [
+    unique("feishu_identities_user_unique").on(table.userId),
+    unique("feishu_identities_union_unique").on(table.unionId),
+    index("feishu_identities_open_idx").on(table.openId),
+  ],
+);
+
 export const knowledgeVersions = sqliteTable(
   "knowledge_versions",
   {
@@ -534,6 +552,7 @@ export const evaluationReports = sqliteTable(
 
 export const mvpTables = {
   users,
+  feishuIdentities,
   knowledgeVersions,
   knowledgeSources,
   knowledgeUnits,

@@ -9,6 +9,7 @@ import {
   scenarios,
   scenarioVersions,
 } from "./schema";
+import { normalizeSourceLocators } from "@/lib/knowledge/source-locator-compat";
 import type { SourceLocator } from "@/lib/knowledge/schema";
 import {
   scenarioTemplatesSchema,
@@ -144,7 +145,7 @@ export function createScenarioPublicationStore(
       if (!version) {
         return null;
       }
-      const units = await database
+      const rows = await database
         .select({
           id: knowledgeUnits.id,
           unitKey: knowledgeUnits.unitKey,
@@ -155,6 +156,12 @@ export function createScenarioPublicationStore(
         .from(knowledgeUnits)
         .where(eq(knowledgeUnits.knowledgeVersionId, version.id))
         .all();
+
+      const units = rows.map((unit) => ({
+        ...unit,
+        sources: normalizeSourceLocators(unit.sources),
+      }));
+
       return { ...version, units };
     },
 

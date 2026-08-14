@@ -1,4 +1,8 @@
-import type { SessionUser } from "./credentials";
+export interface SessionUser {
+  id: string;
+  email: string;
+  name: string;
+}
 
 interface SessionShape {
   expires: string;

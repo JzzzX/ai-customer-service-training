@@ -238,7 +238,18 @@ const inputs: TemplateInput[] = [
     },
     difficulty: "easy",
     sources: [
-      source("销售场景.md", "h:销售场景/正确推荐产品"),
+      source(
+        "销售场景.md",
+        "markdown",
+        "比熊幼犬咨询",
+        ["卖点结合", "比熊幼犬咨询"],
+      ),
+      source(
+        "销售场景.md",
+        "markdown",
+        "7天过渡法",
+        ["需求代入法", "场景化痛点解决"],
+      ),
     ],
   },
   {
@@ -264,7 +275,9 @@ const inputs: TemplateInput[] = [
     sources: [
       source(
         "销售场景.md",
-        "h:销售场景/客户谈价格，怎么正确回应",
+        "markdown",
+        "客户要求降价",
+        ["客户谈价格", "客户要求降价"],
       ),
     ],
   },
@@ -288,7 +301,18 @@ const inputs: TemplateInput[] = [
       mood: "担心出差前收不到货，反复确认到达时间。",
     },
     difficulty: "medium",
-    sources: [source("销售场景.md", "h:销售场景/正确跟单")],
+    sources: [
+      source(
+        "客服服务流程.md",
+        "mindmap",
+        "路途中无更新",
+        [
+          "售中、售后接待流程",
+          "快递售中问题",
+          "路途中无更新",
+        ],
+      ),
+    ],
   },
   {
     id: `st_${"4".repeat(24)}`,
@@ -310,7 +334,18 @@ const inputs: TemplateInput[] = [
       mood: "急躁想立刻改地址，对流程不耐烦，希望马上解决。",
     },
     difficulty: "medium",
-    sources: [source("销售场景.md", "h:销售场景/正确跟单")],
+    sources: [
+      source(
+        "客服服务流程.md",
+        "mindmap",
+        "拦截退回",
+        [
+          "售中、售后接待流程",
+          "快递售中问题",
+          "拦截退回",
+        ],
+      ),
+    ],
   },
   {
     id: `st_${"5".repeat(24)}`,
@@ -333,10 +368,15 @@ const inputs: TemplateInput[] = [
     },
     difficulty: "medium",
     sources: [
-      excelSource(
-        "售前_客诉接待问题划分.xlsx",
-        37,
-        "缺斤少量（包装无破损，重量不足）",
+      source(
+        "客服服务流程.md",
+        "mindmap",
+        "破损少货接待流程",
+        [
+          "破损少货接待",
+          "接待处理流程",
+          "错漏发",
+        ],
       ),
     ],
   },
@@ -361,10 +401,15 @@ const inputs: TemplateInput[] = [
     },
     difficulty: "hard",
     sources: [
-      excelSource(
-        "售前_客诉接待问题划分.xlsx",
-        22,
-        "包装破损/包装变形/包装不规则",
+      source(
+        "客服服务流程.md",
+        "mindmap",
+        "破损少货接待流程",
+        [
+          "破损少货接待",
+          "接待处理流程",
+          "错漏发",
+        ],
       ),
     ],
   },
@@ -389,10 +434,16 @@ const inputs: TemplateInput[] = [
     },
     difficulty: "medium",
     sources: [
-      excelSource(
-        "售前_客诉接待问题划分.xlsx",
-        1,
-        "不吃（退货运费）",
+      source(
+        "客服服务流程.md",
+        "mindmap",
+        "换新粮未过渡",
+        [
+          "售后接待场景",
+          "犬猫吃了不适",
+          "呕吐腹泻",
+          "主粮类",
+        ],
       ),
     ],
   },
@@ -417,10 +468,17 @@ const inputs: TemplateInput[] = [
     },
     difficulty: "hard",
     sources: [
-      excelSource(
+      source(
         "售前_客诉接待问题划分.xlsx",
-        5,
-        "食后呕吐腹泻",
+        "excel",
+        "食后不适",
+        ["Sheet1"],
+      ),
+      source(
+        "售前_客诉接待问题划分.xlsx",
+        "excel",
+        "严重症状升级",
+        ["Sheet1"],
       ),
     ],
   },
@@ -443,26 +501,16 @@ export function getScenarioTemplate(
   return scenarioTemplates.find((scenario) => scenario.id === scenarioId);
 }
 
-function source(sourcePath: string, anchor: string) {
-  return {
-    sourcePath,
-    kind: "markdown" as const,
-    anchor,
-    path: anchor.replace(/^h:/u, "").split("/"),
-  };
-}
-
-function excelSource(
+function source(
   sourcePath: string,
-  row: number,
-  title: string,
+  kind: "markdown" | "excel" | "mindmap",
+  anchor: string,
+  path: string[],
 ) {
   return {
     sourcePath,
-    kind: "excel" as const,
-    anchor: `sheet:Sheet1/row:${row}`,
-    sheet: "Sheet1",
-    row,
-    path: ["Sheet1", title],
+    kind,
+    anchor,
+    path,
   };
 }

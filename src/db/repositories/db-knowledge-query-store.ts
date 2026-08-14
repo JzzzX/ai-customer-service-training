@@ -13,6 +13,7 @@ import {
 } from "../schema";
 import { selectKnowledgeUnitsForCategory } from "@/lib/scenario/knowledge-matching";
 import type { ScenarioCategory } from "@/lib/scenario/schema";
+import { normalizeSourceLocators } from "@/lib/knowledge/source-locator-compat";
 import { knowledgeUnitSchema, type KnowledgeUnit } from "@/lib/knowledge/schema";
 import type {
   KnowledgeHealth,
@@ -165,7 +166,7 @@ export class DbKnowledgeQueryStore implements KnowledgeQueryStore {
         categoryPath: row.categoryPath,
         semanticKey: row.semanticKey ?? undefined,
         contentHash: row.contentHash,
-        sources: row.sources,
+        sources: normalizeSourceLocators(row.sources),
       }),
     );
     scenarioUnitCache.set(category, {

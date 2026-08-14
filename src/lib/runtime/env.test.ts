@@ -5,6 +5,8 @@ import { validateRuntimeEnvironment } from "./env";
 const valid = {
   SQLITE_PATH: "./data/training.sqlite",
   AUTH_SECRET: "a".repeat(32),
+  FEISHU_APP_CLIENT_ID: "cli_test",
+  FEISHU_APP_CLIENT_SECRET: "test-secret",
 };
 
 describe("validateRuntimeEnvironment", () => {
@@ -18,6 +20,28 @@ describe("validateRuntimeEnvironment", () => {
     expect(() =>
       validateRuntimeEnvironment(
         { ...valid, AUTH_SECRET: "short" },
+        "production",
+      ),
+    ).toThrow("生产环境配置无效");
+  });
+
+  it("requires Feishu OAuth credentials outside demo mode", () => {
+    expect(() =>
+      validateRuntimeEnvironment(
+        {
+          ...valid,
+          FEISHU_APP_CLIENT_ID: "",
+        },
+        "production",
+      ),
+    ).toThrow("生产环境配置无效");
+
+    expect(() =>
+      validateRuntimeEnvironment(
+        {
+          ...valid,
+          FEISHU_APP_CLIENT_SECRET: "",
+        },
         "production",
       ),
     ).toThrow("生产环境配置无效");

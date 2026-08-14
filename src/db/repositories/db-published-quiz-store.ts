@@ -8,6 +8,7 @@ import {
   quizSetQuestions,
   quizSets,
 } from "../schema";
+import { normalizeSourceLocators } from "@/lib/knowledge/source-locator-compat";
 import type { PublishedQuizStore } from "@/lib/quiz/published-store";
 import {
   quizPublishedPackSchema,
@@ -50,9 +51,15 @@ export class DbPublishedQuizStore implements PublishedQuizStore {
       .where(eq(quizSets.status, "published"))
       .orderBy(desc(quizSets.publishedAt), desc(quizSets.id))
       .limit(1).all();
-    if (!set?.sourceQuizHash) {
+    if (!set) {
       return null;
     }
+
+    // Legacy migrated quiz sets may not have sourceQuizHash.
+    // Formal publication uses quizHash as sourceQuizHash,
+    // so preserve that semantic as a read-time fallback.
+    const sourceQuizHash =
+      set.sourceQuizHash?.trim() || set.quizHash;
 
     const questionRows = await this.database
       .select({
@@ -80,7 +87,7 @@ export class DbPublishedQuizStore implements PublishedQuizStore {
     return quizPublishedPackSchema.parse({
       schemaVersion: 1,
       quizHash: set.quizHash,
-      sourceQuizHash: set.sourceQuizHash,
+      sourceQuizHash,
       knowledgePackHash: set.knowledgePackHash,
       title: set.title,
       passingScore: set.passingScore,
@@ -101,7 +108,7 @@ function toPublishedQuestion(row: PublishedQuestionRow) {
     explanation: row.explanation,
     category: row.category,
     difficulty: row.difficulty,
-    sources: row.sources,
+    sources: normalizeSourceLocators(row.sources),
     status: "published" as const,
     position: row.position,
   };

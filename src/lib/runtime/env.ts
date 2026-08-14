@@ -8,6 +8,8 @@ export const productionEnvironmentSchema = z
   .object({
     SQLITE_PATH: z.string().trim().min(1).optional(),
     AUTH_SECRET: z.string().min(32),
+    FEISHU_APP_CLIENT_ID: z.string().trim().min(1).optional(),
+    FEISHU_APP_CLIENT_SECRET: z.string().trim().min(1).optional(),
     DEMO_MODE: z.enum(["true", "false"]).optional(),
     SCENARIO_AI_MODE: z.enum(["mock", "real"]).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
@@ -17,13 +19,29 @@ export const productionEnvironmentSchema = z
     AI_GATEWAY_MODEL: z.string().min(1).optional(),
   })
   .superRefine((environment, context) => {
-    if (environment.DEMO_MODE !== "true" && !environment.SQLITE_PATH) {
-      context.addIssue({
-        code: "custom",
-        message: "SQLITE_PATH is required outside demo mode",
-        path: ["SQLITE_PATH"],
-      });
+    if (environment.DEMO_MODE !== "true") {
+      if (!environment.SQLITE_PATH) {
+        context.addIssue({
+          code: "custom",
+          message: "SQLITE_PATH is required outside demo mode",
+          path: ["SQLITE_PATH"],
+        });
+      }
+
+      for (const field of [
+        "FEISHU_APP_CLIENT_ID",
+        "FEISHU_APP_CLIENT_SECRET",
+      ] as const) {
+        if (!environment[field]) {
+          context.addIssue({
+            code: "custom",
+            message: `${field} is required outside demo mode`,
+            path: [field],
+          });
+        }
+      }
     }
+
     if (environment.SCENARIO_AI_MODE !== "real") {
       return;
     }

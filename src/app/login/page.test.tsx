@@ -5,7 +5,7 @@ import LoginPage from "./page";
 
 vi.mock("./actions", () => ({
   demoLoginAction: async () => {},
-  loginAction: async () => ({}),
+  feishuLoginAction: async () => {},
 }));
 
 describe("LoginPage", () => {
@@ -13,21 +13,30 @@ describe("LoginPage", () => {
     vi.unstubAllEnvs();
   });
 
-  it("offers a learner-only sign-in flow", () => {
+  it("offers Feishu-only sign-in for the persistent learner app", () => {
     render(<LoginPage />);
 
     expect(
-      screen.getByRole("heading", { name: "学员登录", level: 1 }),
+      screen.getByRole("heading", {
+        name: "学员登录",
+        level: 1,
+      }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "学员" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "管理员" })).not.toBeInTheDocument();
-    expect(screen.getByLabelText("邮箱")).toBeInTheDocument();
-    expect(screen.getByLabelText("密码")).toBeInTheDocument();
+
     expect(
-      screen.getByRole("button", { name: "登录并继续" }),
+      screen.getByRole("button", {
+        name: "使用飞书登录",
+      }),
     ).toBeInTheDocument();
-    expect(screen.getByText("仅限已分配的培训账号登录")).toBeInTheDocument();
-    expect(screen.queryByText("注册")).not.toBeInTheDocument();
+
+    expect(screen.queryByLabelText("邮箱")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("密码")).not.toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "仅限已分配并通过飞书验证的培训账号登录",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("shows the direct demo entry only when demo mode is enabled", () => {
@@ -36,9 +45,13 @@ describe("LoginPage", () => {
     render(<LoginPage />);
 
     expect(
-      screen.getByRole("button", { name: "直接进入演示" }),
+      screen.getByRole("button", {
+        name: "直接进入演示",
+      }),
     ).toBeInTheDocument();
-    expect(screen.getByText("演示环境，不保存数据")).toBeInTheDocument();
-  });
 
+    expect(
+      screen.getByText("演示环境，不保存数据"),
+    ).toBeInTheDocument();
+  });
 });

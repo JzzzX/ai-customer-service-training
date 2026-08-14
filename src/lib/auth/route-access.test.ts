@@ -6,7 +6,7 @@ describe("decideRouteAccess", () => {
   it("allows public pages without a session", () => {
     expect(decideRouteAccess("/", null)).toBe("allow");
     expect(decideRouteAccess("/login", null)).toBe("allow");
-    expect(decideRouteAccess("/api/auth/callback/credentials", null)).toBe(
+    expect(decideRouteAccess("/api/auth/callback/feishu", null)).toBe(
       "allow",
     );
   });

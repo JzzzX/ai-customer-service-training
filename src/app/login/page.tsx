@@ -1,4 +1,5 @@
 import { LoginForm } from "./login-form";
+
 import { isDemoMode } from "@/lib/runtime/mode";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +13,7 @@ export default function LoginPage() {
         <LoginForm demoEnabled={demoEnabled} />
 
         <p className="mt-6 text-center text-sm text-ink-faint">
-          仅限已分配的培训账号登录
+          仅限已分配并通过飞书验证的培训账号登录
         </p>
       </section>
     </main>

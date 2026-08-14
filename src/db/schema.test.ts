@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   evaluationReports,
+  feishuIdentities,
   knowledgeUnits,
   knowledgeVersions,
   mvpTables,
@@ -30,6 +31,7 @@ describe("MVP database schema", () => {
     ).toEqual(
       [
         "evaluation_reports",
+        "feishu_identities",
         "knowledge_sources",
         "knowledge_units",
         "knowledge_versions",
@@ -107,7 +109,7 @@ describe("MVP database schema", () => {
     ).toContain("scenario_versions_key_unique");
   });
 
-  it("keeps learner credentials and traceable version bindings explicit", () => {
+  it("keeps learner account compatibility and traceable version bindings explicit", () => {
     expect(columnNames(users)).toEqual(
       expect.arrayContaining([
         "email",
@@ -145,6 +147,19 @@ describe("MVP database schema", () => {
         "knowledge_version_id",
         "verdict",
         "confidence",
+      ]),
+    );
+  });
+
+  it("enforces one Feishu identity per user and unique union id", () => {
+    const identityConfig = getTableConfig(feishuIdentities);
+
+    expect(
+      identityConfig.uniqueConstraints.map((item) => item.name),
+    ).toEqual(
+      expect.arrayContaining([
+        "feishu_identities_user_unique",
+        "feishu_identities_union_unique",
       ]),
     );
   });

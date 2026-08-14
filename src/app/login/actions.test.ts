@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  auth: vi.fn(),
   redirect: vi.fn(),
   signIn: vi.fn(),
 }));
@@ -15,41 +14,39 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/auth", () => ({
-  auth: mocks.auth,
   signIn: mocks.signIn,
 }));
 
-import { demoLoginAction, loginAction } from "./actions";
+import {
+  demoLoginAction,
+  feishuLoginAction,
+} from "./actions";
 
-describe("loginAction", () => {
+describe("login actions", () => {
   beforeEach(() => {
     mocks.redirect.mockReset();
     mocks.signIn.mockReset();
-    mocks.auth.mockReset();
-    mocks.auth.mockResolvedValue(null);
     mocks.signIn.mockResolvedValue(undefined);
     vi.stubEnv("DEMO_MODE", "true");
   });
 
-  it("resolves the authenticated role on a follow-up request", async () => {
-    const formData = new FormData();
-    formData.set("email", "admin@example.test");
-    formData.set("password", "secret");
+  it("starts Feishu OAuth login", async () => {
+    await feishuLoginAction();
 
-    await loginAction({}, formData);
-
-    expect(mocks.signIn).toHaveBeenCalledWith("credentials", {
-      email: "admin@example.test",
-      password: "secret",
-      redirect: false,
+    expect(mocks.signIn).toHaveBeenCalledWith("feishu", {
+      redirectTo: "/login/continue",
     });
-    expect(mocks.redirect).toHaveBeenCalledWith("/login/continue");
   });
 
-  it("starts the explicit demo provider and redirects to the learner app", async () => {
+  it("starts the explicit demo provider in demo mode", async () => {
     await demoLoginAction();
 
-    expect(mocks.signIn).toHaveBeenCalledWith("demo", { redirect: false });
-    expect(mocks.redirect).toHaveBeenCalledWith("/login/continue");
+    expect(mocks.signIn).toHaveBeenCalledWith("demo", {
+      redirect: false,
+    });
+
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      "/login/continue",
+    );
   });
 });
