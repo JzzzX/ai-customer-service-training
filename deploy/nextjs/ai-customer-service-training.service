@@ -1,0 +1,29 @@
+[Unit]
+Description=AI Customer Service Training Next.js
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ai-training
+Group=ai-training
+WorkingDirectory=/opt/ai-customer-service-training
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/ai-customer-service-training/app.env
+ExecStartPre=/usr/bin/test -r /opt/ai-customer-service-training/.next/BUILD_ID
+ExecStart=/usr/bin/env pnpm start -- --hostname 127.0.0.1 --port 3001
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ai-customer-service-training
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/ai-customer-service-training
+
+[Install]
+WantedBy=multi-user.target

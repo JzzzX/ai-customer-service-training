@@ -110,7 +110,10 @@ describe("OpenAIConversationProvider", () => {
           ],
         }),
       ),
-    ).rejects.toThrow("AI 未返回有效回复，请稍后重试。");
+    ).rejects.toMatchObject({
+      code: "AI_EMPTY_RESPONSE",
+      message: "AI 未返回有效回复，请稍后重试。",
+    });
   });
 
   it("fails safely after the model repeats a customer message twice", async () => {
@@ -130,7 +133,10 @@ describe("OpenAIConversationProvider", () => {
           ],
         }),
       ),
-    ).rejects.toThrow("AI 顾客回复重复，请重新发送消息。");
+    ).rejects.toMatchObject({
+      code: "AI_DUPLICATE_RESPONSE",
+      message: "AI 顾客回复重复，请重新发送消息。",
+    });
     expect(create).toHaveBeenCalledTimes(2);
   });
 

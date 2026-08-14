@@ -68,7 +68,7 @@ describe("scenario server actions", () => {
       "00000000-0000-4000-8000-000000000090",
     );
 
-    await startScenarioAction(formData);
+    await startScenarioAction({}, formData);
 
     expect(mocks.start).toHaveBeenCalledWith({
       learnerId,
@@ -77,6 +77,35 @@ describe("scenario server actions", () => {
     expect(mocks.start.mock.calls[0]?.[0]).not.toHaveProperty("assignmentId");
     expect(mocks.redirect).toHaveBeenCalledWith(
       `/practice/scenario/session/${sessionId}`,
+    );
+  });
+
+  it("returns an incident id and logs safe context when session creation fails", async () => {
+    const databaseError = Object.assign(
+      new Error("FOREIGN KEY constraint failed: secret-value"),
+      { code: "SQLITE_CONSTRAINT_FOREIGNKEY" },
+    );
+    mocks.start.mockRejectedValue(databaseError);
+    const formData = new FormData();
+    formData.set("scenarioId", scenarioId);
+
+    const state = await startScenarioAction({}, formData);
+
+    expect(state).toEqual({
+      error: "训练会话创建失败，请重试。",
+      incidentId: expect.stringMatching(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      ),
+    });
+    expect(mocks.reportRuntimeError).toHaveBeenCalledWith(
+      {
+        route: "/practice/scenario",
+        operation: "start_session",
+        userId: learnerId,
+        resourceId: scenarioId,
+        incidentId: state.incidentId,
+      },
+      databaseError,
     );
   });
 
@@ -113,8 +142,11 @@ describe("scenario server actions", () => {
 
   it("hides provider infrastructure details when AI reply generation fails", async () => {
     mocks.sendMessage.mockRejectedValue(
-      new Error(
-        "403 AI Gateway requires a valid credit card on file to service requests.",
+      Object.assign(
+        new Error(
+          "403 AI Gateway requires a valid credit card on file to service requests.",
+        ),
+        { status: 403 },
       ),
     );
     const formData = new FormData();
@@ -128,6 +160,7 @@ describe("scenario server actions", () => {
     });
     expect(mocks.reportRuntimeError).toHaveBeenCalledWith(
       {
+        errorCategory: "authentication",
         route: "/practice/scenario/session",
         userId: learnerId,
         resourceId: sessionId,

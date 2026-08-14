@@ -122,13 +122,19 @@ export class OpenAIConversationProvider implements ConversationProvider {
       } as DoubaoNonStreamingChatParams);
       const reply = (completion.choices[0]?.message?.content ?? "").trim();
       if (!reply) {
-        throw new Error("AI 未返回有效回复，请稍后重试。");
+        throw providerError(
+          "AI_EMPTY_RESPONSE",
+          "AI 未返回有效回复，请稍后重试。",
+        );
       }
       if (previousCustomerMessages.has(normalizeReply(reply))) {
         if (attempt === 0) {
           continue;
         }
-        throw new Error("AI 顾客回复重复，请重新发送消息。");
+        throw providerError(
+          "AI_DUPLICATE_RESPONSE",
+          "AI 顾客回复重复，请重新发送消息。",
+        );
       }
       for (const chunk of splitReplyForDisplay(reply)) {
         yield chunk;
@@ -136,6 +142,10 @@ export class OpenAIConversationProvider implements ConversationProvider {
       return;
     }
   }
+}
+
+function providerError(code: string, message: string): Error {
+  return Object.assign(new Error(message), { code });
 }
 
 function normalizeReply(reply: string): string {

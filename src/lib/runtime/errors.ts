@@ -1,7 +1,10 @@
 export type RuntimeErrorContext = {
   route: string;
+  errorCategory?: string;
+  operation?: string;
   userId?: string;
   resourceId?: string;
+  incidentId?: string;
 };
 
 const PRIVATE_INFRASTRUCTURE_ERROR_PATTERN =
@@ -36,8 +39,11 @@ export function reportRuntimeError(
   console.error({
     event: "runtime_error",
     route: context.route,
+    errorCategory: context.errorCategory,
+    operation: context.operation,
     userId: context.userId,
     resourceId: context.resourceId,
+    incidentId: context.incidentId,
     errorClass:
       error instanceof Error
         ? error.constructor.name

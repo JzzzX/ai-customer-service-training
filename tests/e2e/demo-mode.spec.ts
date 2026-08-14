@@ -25,9 +25,17 @@ test("demo mode enters the learner flow without an account and supports quiz and
   await expect(page.getByRole("link", { name: "开始训练" })).toHaveCount(1);
   await page.getByRole("link", { name: "开始训练" }).click();
   await page.getByRole("button", { name: "开始模拟接待" }).click();
-  await page.getByLabel("回复顾客").fill("您好，我先了解宠物的年龄和当前饮食。");
-  await page.getByRole("button", { name: "发送" }).click();
-  await expect(page.getByText("第 1 / 12 轮")).toBeVisible();
+  for (let turn = 1; turn <= 3; turn += 1) {
+    await page
+      .getByLabel("回复顾客")
+      .fill(`第 ${turn} 轮：先确认宠物信息，再说明处理方案。`);
+    await page.getByRole("button", { name: "发送" }).click();
+    await expect(page.getByText(`第 ${turn} / 12 轮`)).toBeVisible();
+  }
+  await page.reload();
+  await expect(page.getByText("第 3 / 12 轮")).toBeVisible();
   await page.getByRole("button", { name: "结束并查看报告" }).click();
   await expect(page.getByText("报告已生成")).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "查看训练报告" }).click();
+  await expect(page).toHaveURL(/\/practice\/scenario\/report\//);
 });

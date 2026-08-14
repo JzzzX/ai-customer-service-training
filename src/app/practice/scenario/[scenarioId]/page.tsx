@@ -1,16 +1,14 @@
 import { notFound } from "next/navigation";
 
+import { ScenarioStartForm } from "@/components/scenario/scenario-start-form";
 import { PageHeader } from "@/components/ui/page-header";
 import { SoftBadge } from "@/components/ui/soft-badge";
-import { SoftButton } from "@/components/ui/soft-button";
 import { SoftCard } from "@/components/ui/soft-card";
 import { requireUser } from "@/lib/auth/guards";
 import {
   getScenarioAiMode,
   getScenarioTemplateStore,
 } from "@/lib/runtime/services";
-
-import { startScenarioAction } from "../actions";
 
 export default async function ScenarioDetailPage({
   params,
@@ -56,12 +54,7 @@ export default async function ScenarioDetailPage({
             </ul>
           </div>
 
-          <form action={startScenarioAction} className="mt-8">
-            <input name="scenarioId" type="hidden" value={scenario.id} />
-            <SoftButton className="w-full" type="submit" variant="scenario">
-              开始模拟接待
-            </SoftButton>
-          </form>
+          <ScenarioStartForm scenarioId={scenario.id} />
         </SoftCard>
       </div>
     </main>

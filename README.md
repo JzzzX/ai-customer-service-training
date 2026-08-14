@@ -8,13 +8,13 @@
 
 | 能力 | 状态 | 说明 |
 |---|---|---|
-| 邮箱密码登录 | 可用 | 支持批量导入、停用账号和重置密码 |
+| 飞书 OAuth | 可用 | `union_id` 绑定内部学员账号，正式环境只开放飞书登录 |
 | 专题与正式题 | 可用 | 服务端判分，结果按学员保存 |
 | AI 模拟接待 | 本地真实 AI 可用 | 支持多轮对话、刷新恢复、风险提示和评分报告 |
 | Mock 情景 | 可用 | 不访问真实模型，用于开发、测试和线上演示 |
 | 个人历史 | 可用 | 学员只能查看自己的答题和情景记录 |
 | 网页管理后台 | 未提供 | 账号、知识、题库和场景当前通过 CLI 维护 |
-| 飞书 OAuth | 未接入 | 现有 Auth.js 只有 Credentials 登录，可后续增量接入 |
+| 健康与就绪检查 | 可用 | `/api/health` 检查进程，`/api/ready` 检查运行环境和 SQLite |
 
 当前 Vercel 地址 <https://ai-customer-service-training.vercel.app/login> 使用内存 SQLite 和 Mock AI，只用于产品演示。真实 AI 在本地可以连接公司 OpenAI 兼容网关；Vercel 因无法进入公司网络路径而超时。
 
@@ -26,7 +26,7 @@
 flowchart TB
   Browser["学员浏览器"] --> Proxy["src/proxy.ts\n路由登录保护"]
   Proxy --> App["Next.js App Router\n页面 / Server Actions / Route Handler"]
-  App --> Auth["Auth.js\nCredentials + JWT Session"]
+  App --> Auth["Auth.js\n飞书 OAuth + JWT Session"]
   App --> Services["领域服务\nQuiz / Scenario / Knowledge"]
   Services --> Repositories["Drizzle Repository"]
   Repositories --> SQLite["SQLite\n账号 / 内容 / 答题 / 对话 / 报告"]
@@ -60,7 +60,7 @@ flowchart LR
 | 应用框架 | Next.js 16 App Router | 页面、Server Actions、Route Handler、服务端渲染 |
 | UI | React 19、Tailwind CSS 4 | 学员端页面和响应式组件 |
 | 语言 | TypeScript 5.9 | 前后端共享类型和业务逻辑 |
-| 身份认证 | Auth.js 5 beta、bcryptjs | Credentials 登录、JWT Session、密码哈希 |
+| 身份认证 | Auth.js 5 beta | 飞书 OAuth 身份绑定与 JWT Session；Demo 模式保留演示入口 |
 | 数据库 | SQLite、better-sqlite3 | 单实例持久数据或内存演示数据 |
 | ORM 与迁移 | Drizzle ORM、Drizzle Kit | Schema、查询、事务和 SQL migration |
 | AI | OpenAI Node SDK | Mock Provider 或公司 OpenAI 兼容网关 |
@@ -91,12 +91,13 @@ flowchart LR
 ├── docs/                    # 当前 SQLite 部署与运维文档
 ├── backend/                 # 历史 FastAPI 迁移代码，当前不运行
 ├── frontend/                # 历史 Vue/Vite 迁移代码，当前不运行
-├── deploy/                  # 历史迁移部署样例，不能代表当前入口
+├── deploy/nextjs/           # 当前 Next.js systemd、Nginx 与环境模板
+├── deploy/{systemd,nginx}/  # 历史 FastAPI/Vue 部署样例
 ├── package.json             # 当前应用依赖和统一命令
 └── vercel.json              # 当前 Vercel 演示区域配置
 ```
 
-`backend/`、`frontend/`、`deploy/` 仅用于保留此前迁移工作的历史证据。开发当前产品时，先从根目录 `package.json`、`src/`、`drizzle/` 和 `scripts/` 开始，不要运行历史目录中的启动或部署命令。
+`backend/`、`frontend/` 和 `deploy/` 根目录中的旧 systemd/Nginx 文件仅保留历史证据；当前部署只使用 `deploy/nextjs/`。开发当前产品时从根目录 `package.json`、`src/`、`drizzle/` 和 `scripts/` 开始。
 
 ## 核心业务流程
 
@@ -108,15 +109,15 @@ sequenceDiagram
   participant A as Auth.js
   participant DB as SQLite
   participant P as 受保护页面
-  U->>A: 提交邮箱和密码
-  A->>DB: 查询用户并校验 isActive
-  A->>A: bcrypt 校验并签发 JWT Session
+  U->>A: 发起飞书 OAuth
+  A->>DB: union_id 解析/绑定内部 users.id
+  A->>A: 校验 isActive 并签发 JWT Session
   U->>P: 访问 /practice/*
   P->>A: requireUser()
   A-->>P: 返回内部 user.id
 ```
 
-- 正式账号来自 `users` 表；
+- 正式账号来自 `users` 表，飞书稳定身份保存在 `feishu_identities`；
 - 演示登录只有 `DEMO_MODE=true` 时才会启用；
 - 学员停用后不能再次登录；
 - 当前 Session 使用 JWT，账号停用或改密不会立即撤销已经签发的 Session，这是后续认证加固点。
@@ -191,7 +192,7 @@ sequenceDiagram
 | 需求 | 代码入口 |
 |---|---|
 | 修改登录、Session 或演示身份 | `src/auth.ts`、`src/lib/auth/`、`src/app/login/` |
-| 增加飞书 OAuth | `src/auth.ts`、`src/db/schema.ts`、`src/lib/auth/` |
+| 修改飞书 OAuth 或身份绑定 | `src/auth.ts`、`src/db/schema.ts`、`src/lib/auth/` |
 | 修改页面布局与样式 | `src/app/`、`src/components/ui/`、`src/app/globals.css` |
 | 修改题库页面和答题流程 | `src/app/practice/quiz/`、`src/components/quiz/` |
 | 修改题目抽取或判分规则 | `src/lib/quiz/`、`src/db/repositories/db-quiz-attempt-store.ts` |
@@ -250,12 +251,13 @@ DEMO_MODE=true AUTH_SECRET='<至少32位随机值>' SCENARIO_AI_MODE=mock pnpm d
 
 ```text
 SCENARIO_AI_MODE=real
+AI_GATEWAY_ENABLED=false
 OPENAI_API_KEY=<公司网关凭据>
 OPENAI_BASE_URL=<公司 OpenAI 兼容入口>
 OPENAI_MODEL=<批准使用的模型>
 ```
 
-也可以使用代码已支持的 AI Gateway 变量，完整字段见 [`.env.example`](.env.example) 和 [`src/lib/scenario/ai-client.ts`](src/lib/scenario/ai-client.ts)。所有密钥只能保存在部署环境中，不能提交到 Git。
+正式公司网关使用上述 OpenAI 兼容配置；切换前必须在目标服务器执行 `pnpm ai:verify`。真实 AI 失败不会自动降级 Mock。所有密钥只能保存在部署环境中，不能提交到 Git。
 
 ## 测试与质量门禁
 
@@ -265,6 +267,7 @@ pnpm test:e2e
 DEMO_MODE=true pnpm test:e2e:demo
 pnpm e2e:prepare
 pnpm test:sqlite:concurrency
+pnpm test:deploy
 ```
 
 | 命令 | 覆盖范围 |
@@ -273,6 +276,8 @@ pnpm test:sqlite:concurrency
 | `pnpm test:e2e` | 登录、停用账号、跨学员隔离、Mock 对话和报告 |
 | `pnpm test:e2e:demo` | 内存演示入口和演示数据 |
 | `pnpm test:sqlite:concurrency` | 30-worker SQLite 短时并发写入烟测 |
+| `pnpm test:deploy` | 校验根 Next.js 的 systemd、Nginx 和生产环境模板 |
+| `pnpm ai:verify` | 用最小非业务提示预检真实公司网关，不发送学员数据 |
 | `pnpm test:e2e:live` | 真实 AI 冒烟，会产生模型调用，只能在获授权后运行 |
 
 并发测试依赖已完成 migration 的临时数据库，因此要先执行 `pnpm e2e:prepare`。Playwright 默认使用隔离的 `.tmp/learner-lite-e2e.sqlite`，不会读取本地业务数据库。
@@ -289,7 +294,7 @@ pnpm test:sqlite:concurrency
 
 当前 SQLite Client 使用 WAL、5 秒 `busy_timeout`、外键和启动完整性检查。它适合当前轻量单实例架构，但不能把同一个 SQLite 文件交给多个应用实例并行使用。
 
-具体选择部署在哪里、如何配置 HTTPS、进程守护、备份和公司网络，由接手技术人员根据现有基础设施决定。项目只明确以下技术约束：
+公司内网环境的单实例 systemd/Nginx 模板位于 `deploy/nextjs/`，部署顺序和取证命令见 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。项目明确以下技术约束：
 
 - 正式数据不能使用 `DEMO_MODE=true`；
 - `SQLITE_PATH` 必须指向持久、可写磁盘；
@@ -307,7 +312,7 @@ pnpm test:sqlite:concurrency
 - 账号停用或改密不会立即撤销已经签发的 JWT Session；
 - 登录尚未增加专门的频率限制或失败锁定；
 - 生产依赖审计仍有来自 Next 和 Excel 处理链的安全告警，需要部署人员评估升级；
-- `backend/`、`frontend/`、`deploy/` 是历史代码，容易误导接手者。
+- `backend/`、`frontend/` 和 `deploy/` 根目录旧配置是历史代码；当前运维入口是 `deploy/nextjs/`。
 
 这些问题不影响 Mock 演示和受控开发验证；是否阻断正式试用，要结合部署网络、使用范围和数据要求判断。
 

@@ -9,6 +9,8 @@ describe("decideRouteAccess", () => {
     expect(decideRouteAccess("/api/auth/callback/feishu", null)).toBe(
       "allow",
     );
+    expect(decideRouteAccess("/api/health", null)).toBe("allow");
+    expect(decideRouteAccess("/api/ready", null)).toBe("allow");
   });
 
   it("requires a session for learner training pages", () => {

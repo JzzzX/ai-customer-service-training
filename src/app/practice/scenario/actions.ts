@@ -2,10 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth/guards";
 import { getScenarioTrainingService } from "@/lib/runtime/services";
+import { classifyAiGatewayError } from "@/lib/scenario/ai-errors";
 import {
   reportRuntimeError,
   toPublicRuntimeError,
@@ -26,15 +28,42 @@ export type ScenarioMessageActionState = {
   result?: SendMessageResult;
 };
 
+export type ScenarioStartActionState = {
+  error?: string;
+  incidentId?: string;
+};
+
 export async function startScenarioAction(
+  _previousState: ScenarioStartActionState,
   formData: FormData,
-): Promise<void> {
+): Promise<ScenarioStartActionState> {
   const user = await requireUser();
   const scenarioId = scenarioIdSchema.parse(formData.get("scenarioId"));
-  const session = await getScenarioTrainingService().start({
-    learnerId: user.id,
-    scenarioId,
-  });
+  let session: Awaited<
+    ReturnType<ReturnType<typeof getScenarioTrainingService>["start"]>
+  >;
+  try {
+    session = await getScenarioTrainingService().start({
+      learnerId: user.id,
+      scenarioId,
+    });
+  } catch (error) {
+    const incidentId = randomUUID();
+    reportRuntimeError(
+      {
+        route: "/practice/scenario",
+        operation: "start_session",
+        userId: user.id,
+        resourceId: scenarioId,
+        incidentId,
+      },
+      error,
+    );
+    return {
+      error: "训练会话创建失败，请重试。",
+      incidentId,
+    };
+  }
   redirect(`/practice/scenario/session/${session.id}`);
 }
 
@@ -59,6 +88,7 @@ export async function sendScenarioMessageAction(
   } catch (error) {
     reportRuntimeError(
       {
+        errorCategory: classifyAiGatewayError(error).kind,
         route: "/practice/scenario/session",
         userId: user.id,
         resourceId: sessionId,

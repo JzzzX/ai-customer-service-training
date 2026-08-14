@@ -1,6 +1,6 @@
 # AI 客服训练 MVP 技术交接
 
-最后更新：2026-08-11
+最后更新：2026-08-14
 
 ## 这份文档解决什么问题
 
@@ -26,9 +26,10 @@ Vitest + Playwright
 
 - `backend/`：此前 FastAPI 迁移代码；
 - `frontend/`：此前 Vue/Vite 迁移代码；
-- `deploy/`：此前迁移路线的部署样例。
+- `deploy/nextjs/`：当前根 Next.js 的 systemd、Nginx 和环境模板；
+- `deploy/` 根目录中的 systemd/Nginx：此前迁移路线的历史样例。
 
-这些历史目录仍保留在仓库中，容易让接手人误判当前技术栈。不要使用其中的启动、数据库或部署说明操作当前根 Next.js 应用。
+历史目录仍保留在仓库中，容易让接手人误判当前技术栈。当前部署只使用 `deploy/nextjs/` 和 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。
 
 ## 当前已经完成的能力
 
@@ -88,7 +89,7 @@ SCENARIO_AI_MODE=mock
 - 当前 SQLite 方案仍要求单个应用实例；
 - 当前正式库已包含有效学员、活动知识、正式题库和 8 个已发布情景；
 - 环境变量、数据库和备份文件均不进入 Git；
-- 当前 Next.js 进程仍由 `nohup` 临时守护，后续需要收敛为正式 systemd 服务。
+- 仓库已提供根 Next.js 专用 systemd/Nginx 模板；服务器是否已从 `nohup` 切换仍须现场确认。
 
 生产环境仍需继续完善进程守护、自动备份、恢复演练、监控告警以及真实 AI 网络与质量验收。
 
@@ -169,18 +170,20 @@ App Secret、OAuth token 和 `AUTH_SECRET` 必须只保存在服务端环境中�
 
 当前没有在本次交接中升级这些依赖，也没有形成正式安全豁免。接手团队需要根据实际网络暴露范围、输入来源和部署周期决定处理方式。
 
-### 6. 运维能力仍是手工级别
+### 6. 运维能力已补齐代码侧基线，服务器切换仍待现场执行
 
 - 账号和内容通过 CLI 维护；
 - 备份命令已存在，但没有定时任务；
-- 运行时错误只有基础结构化 `console.error`；
-- 没有正式健康/就绪接口、集中日志、监控或告警；
+- 开始训练失败会返回关联 ID，并记录不含凭据、提示词和学员消息的结构化日志；
+- 已提供 `/api/health`、`/api/ready`、systemd/journald 和 Nginx 模板；
+- 已提供 `pnpm ai:verify`，可在目标服务器用最小非业务提示预检公司网关；
+- systemd 替换现有 `nohup`、监控和告警仍需服务器管理员执行并验收；
 - 没有自动恢复流程；
 - SQLite 并发验证是约 3 秒的短时烟测，不是长期容量证明。
 
 ### 7. 历史代码仍可能干扰判断
 
-- `backend/`、`frontend/`、`deploy/` 不是当前运行入口；
+- `backend/`、`frontend/` 和 `deploy/` 根目录旧配置不是当前运行入口；当前运维入口是 `deploy/nextjs/`；
 - 旧 Neon、Vue/FastAPI 迁移、验收和过程设计文档已从当前工作树移除，需要时只能从 Git 历史追溯；
 - 当前架构和开发入口以 [`README.md`](README.md)、本文件、根 `package.json` 和 `src/` 为准。
 
@@ -203,7 +206,7 @@ App Secret、OAuth token 和 `AUTH_SECRET` 必须只保存在服务端环境中�
 
 - [ ] 确认当前分支和需要接手的提交；
 - [ ] 从根目录 `package.json` 启动和构建；
-- [ ] 不把 `backend/`、`frontend/`、`deploy/` 当作当前入口；
+- [ ] 不把 `backend/`、`frontend/` 和 `deploy/` 根目录旧配置当作当前入口；
 - [ ] 确认 `next-env.d.ts` 等自动生成文件没有被手工修改或误提交；
 - [ ] 先阅读 [`README.md`](README.md) 的架构、代码导航和运行模式。
 
@@ -219,6 +222,7 @@ App Secret、OAuth token 和 `AUTH_SECRET` 必须只保存在服务端环境中�
 ### AI
 
 - [ ] 确认目标运行环境能访问公司 AI 网关；
+- [ ] 在服务器执行 `pnpm ai:verify`，确认安全预检通过；
 - [ ] 确认网关凭据、Base URL、模型名、超时和额度；
 - [ ] 区分 Mock 验收与真实 AI 验收；
 - [ ] 真实 AI 至少检查多轮对话、刷新恢复、报告生成和错误脱敏；

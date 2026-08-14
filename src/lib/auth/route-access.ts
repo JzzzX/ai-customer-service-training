@@ -20,6 +20,8 @@ function isPublicPath(pathname: string): boolean {
     pathname === "/" ||
     pathname === "/login" ||
     pathname === "/forbidden" ||
+    pathname === "/api/health" ||
+    pathname === "/api/ready" ||
     isPathWithin(pathname, "/api/auth")
   );
 }

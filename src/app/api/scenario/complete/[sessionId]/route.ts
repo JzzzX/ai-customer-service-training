@@ -3,7 +3,11 @@ import { z } from "zod";
 
 import { auth } from "@/auth";
 import { getScenarioTrainingService } from "@/lib/runtime/services";
-import { toPublicRuntimeError } from "@/lib/runtime/errors";
+import {
+  reportRuntimeError,
+  toPublicRuntimeError,
+} from "@/lib/runtime/errors";
+import { classifyAiGatewayError } from "@/lib/scenario/ai-errors";
 
 const sessionIdSchema = z.string().uuid();
 
@@ -48,6 +52,16 @@ export async function GET(
         }
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
       } catch (error) {
+        reportRuntimeError(
+          {
+            errorCategory: classifyAiGatewayError(error).kind,
+            operation: "complete_session",
+            route: "/api/scenario/complete",
+            userId: session.user.id,
+            resourceId: parsed.data,
+          },
+          error,
+        );
         send({
           error: toPublicRuntimeError(error, "AI 评测服务暂时不可用，请稍后重试。"),
         });
