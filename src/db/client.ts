@@ -8,7 +8,7 @@ import { isDemoMode } from "@/lib/runtime/mode";
 
 type Environment = Record<string, string | undefined>;
 
-export const DATABASE_SCHEMA_VERSION = 1;
+export const DATABASE_SCHEMA_VERSION = 2;
 
 const requiredTables = [
   "app_schema_marker",
@@ -16,6 +16,7 @@ const requiredTables = [
   "knowledge_sources",
   "knowledge_units",
   "knowledge_versions",
+  "question_catalogs",
   "questions",
   "quiz_answers",
   "quiz_attempts",

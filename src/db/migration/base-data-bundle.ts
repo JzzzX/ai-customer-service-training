@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import type { DatabaseClient } from "../client";
 
-export const BASE_DATA_BUNDLE_SCHEMA_VERSION = 1;
+export const BASE_DATA_BUNDLE_SCHEMA_VERSION = 2;
 
 type BaseRecord = Record<string, unknown>;
 
@@ -15,6 +15,7 @@ const learnerSchema = z.object({
   email: z.string().email().refine((email) => email === email.trim().toLowerCase(), "email must be normalized"),
   name: z.string().trim().min(1),
   passwordHash: bcryptHashSchema,
+  role: z.enum(["learner", "admin"]),
   isActive: z.literal(true),
   lastLoginAt: z.number().int().nonnegative().nullable(),
   createdAt: z.number().int().nonnegative(),
@@ -26,6 +27,7 @@ const countSchema = z.object({
   knowledgeSources: z.number().int().nonnegative(),
   knowledgeUnits: z.number().int().nonnegative(),
   quizSets: z.number().int().nonnegative(),
+  questionCatalogs: z.number().int().nonnegative(),
   questions: z.number().int().nonnegative(),
   quizSetQuestions: z.number().int().nonnegative(),
   scenarios: z.number().int().nonnegative(),
@@ -39,20 +41,20 @@ const bundleShape = z.object({
   counts: countSchema,
   learners: z.array(learnerSchema),
   activeKnowledge: z.object({ version: recordSchema, sources: z.array(recordSchema), units: z.array(recordSchema) }),
-  publishedQuiz: z.object({ sets: z.array(recordSchema), questions: z.array(recordSchema), links: z.array(recordSchema) }),
+  publishedQuiz: z.object({ catalogs: z.array(recordSchema), sets: z.array(recordSchema), questions: z.array(recordSchema), links: z.array(recordSchema) }),
   publishedScenarios: z.object({ scenarios: z.array(recordSchema), versions: z.array(recordSchema) }),
 });
 
-export const baseDataBundleV1Schema = bundleShape.extend({
+export const baseDataBundleV2Schema = bundleShape.extend({
   checksum: z.string().regex(/^[a-f0-9]{64}$/),
 });
 
-export type BaseDataBundleV1 = z.infer<typeof baseDataBundleV1Schema>;
+export type BaseDataBundleV2 = z.infer<typeof baseDataBundleV2Schema>;
 export type BaseDataBundleInput = z.infer<typeof bundleShape>;
 
 const importedTables = [
   "users", "knowledge_versions", "knowledge_sources", "knowledge_units", "quiz_sets",
-  "questions", "quiz_set_questions", "scenarios", "scenario_versions",
+  "question_catalogs", "questions", "quiz_set_questions", "scenarios", "scenario_versions",
 ] as const;
 const historyTables = [
   "quiz_attempts", "quiz_answers", "topic_quiz_attempts", "topic_quiz_answers",
@@ -67,7 +69,7 @@ export function sha256(value: unknown): string {
   return createHash("sha256").update(stableJson(value)).digest("hex");
 }
 
-export function createBaseDataBundle(input: Omit<BaseDataBundleInput, "schemaVersion" | "counts"> & { counts?: BaseDataBundleInput["counts"] }): BaseDataBundleV1 {
+export function createBaseDataBundle(input: Omit<BaseDataBundleInput, "schemaVersion" | "counts"> & { counts?: BaseDataBundleInput["counts"] }): BaseDataBundleV2 {
   const counts = input.counts ?? countRecords(input);
   const payload: BaseDataBundleInput = {
     schemaVersion: BASE_DATA_BUNDLE_SCHEMA_VERSION,
@@ -82,8 +84,8 @@ export function createBaseDataBundle(input: Omit<BaseDataBundleInput, "schemaVer
   return { ...payload, checksum: sha256(payload) };
 }
 
-export function parseBaseDataBundle(value: unknown): BaseDataBundleV1 {
-  const bundle = baseDataBundleV1Schema.parse(value);
+export function parseBaseDataBundle(value: unknown): BaseDataBundleV2 {
+  const bundle = baseDataBundleV2Schema.parse(value);
   const { checksum, ...payload } = bundle;
   if (sha256(payload) !== checksum) throw new Error("Base data bundle checksum mismatch.");
   if (stableJson(countRecords(bundle)) !== stableJson(bundle.counts)) {
@@ -102,6 +104,7 @@ export function importBaseDataBundle(value: unknown, database: DatabaseClient): 
     insertRows(database, "knowledge_sources", bundle.activeKnowledge.sources);
     insertRows(database, "knowledge_units", bundle.activeKnowledge.units);
     insertRows(database, "quiz_sets", bundle.publishedQuiz.sets);
+    insertRows(database, "question_catalogs", bundle.publishedQuiz.catalogs);
     insertRows(database, "questions", bundle.publishedQuiz.questions);
     insertRows(database, "quiz_set_questions", bundle.publishedQuiz.links);
     insertRows(database, "scenarios", bundle.publishedScenarios.scenarios);
@@ -120,16 +123,17 @@ export interface PostgresBaseDataReader {
  * Reads only the base entities from the old PostgreSQL schema.  Query text is
  * deliberately fixed: this command never interpolates user input or mutates Neon.
  */
-export async function exportBaseDataBundle(reader: PostgresBaseDataReader, sourceDatabase: string, exportedAt = new Date().toISOString()): Promise<BaseDataBundleV1> {
-  const learners = learnerSchema.array().parse(normaliseRows(await reader.query("SELECT id, email, name, password_hash AS \\\"passwordHash\\\", is_active AS \\\"isActive\\\", last_login_at AS \\\"lastLoginAt\\\", created_at AS \\\"createdAt\\\", updated_at AS \\\"updatedAt\\\" FROM users WHERE is_active = true AND role = 'learner' ORDER BY id")));
+export async function exportBaseDataBundle(reader: PostgresBaseDataReader, sourceDatabase: string, exportedAt = new Date().toISOString()): Promise<BaseDataBundleV2> {
+  const learners = learnerSchema.array().parse(normaliseRows(await reader.query("SELECT id, email, name, password_hash AS \\\"passwordHash\\\", role, is_active AS \\\"isActive\\\", last_login_at AS \\\"lastLoginAt\\\", created_at AS \\\"createdAt\\\", updated_at AS \\\"updatedAt\\\" FROM users WHERE is_active = true ORDER BY id")));
   const versions = normaliseRows(await reader.query("SELECT id, version_hash AS \\\"versionHash\\\", schema_version AS \\\"schemaVersion\\\", source_root AS \\\"sourceRoot\\\", status, is_active AS \\\"isActive\\\", coverage, published_at AS \\\"publishedAt\\\", created_at AS \\\"createdAt\\\" FROM knowledge_versions WHERE is_active = true AND status = 'published' ORDER BY id"));
   if (versions.length !== 1) throw new Error("Neon export requires exactly one active published knowledge version.");
   const knowledgeVersionId = stringField(versions[0], "id");
   const sources = normaliseRows(await reader.query(`SELECT id, knowledge_version_id AS "knowledgeVersionId", source_path AS "sourcePath", kind, source_hash AS "sourceHash", bytes, stats, created_at AS "createdAt" FROM knowledge_sources WHERE knowledge_version_id = '${escapeSqlLiteral(knowledgeVersionId)}' ORDER BY id`));
   const units = normaliseRows(await reader.query(`SELECT id, knowledge_version_id AS "knowledgeVersionId", unit_key AS "unitKey", title, content, category_path AS "categoryPath", semantic_key AS "semanticKey", content_hash AS "contentHash", sources, has_conflict AS "hasConflict", can_use_for_quiz AS "canUseForQuiz", can_use_for_scenario AS "canUseForScenario", can_use_for_evaluation AS "canUseForEvaluation", created_at AS "createdAt" FROM knowledge_units WHERE knowledge_version_id = '${escapeSqlLiteral(knowledgeVersionId)}' ORDER BY id`));
   const knowledgeVersion = withContentHash({ ...versions[0], publicationSource: "cli" }, { version: { ...versions[0], publicationSource: "cli" }, sources, units });
-  const sets = normaliseRows(await reader.query(`SELECT id, knowledge_version_id AS "knowledgeVersionId", quiz_hash AS "quizHash", source_quiz_hash AS "sourceQuizHash", title, description, status, passing_score AS "passingScore", published_at AS "publishedAt", created_at AS "createdAt", updated_at AS "updatedAt" FROM quiz_sets WHERE knowledge_version_id = '${escapeSqlLiteral(knowledgeVersionId)}' AND status = 'published' ORDER BY id`));
-  const questions = normaliseRows(await reader.query(`SELECT DISTINCT q.id, q.knowledge_version_id AS "knowledgeVersionId", q.knowledge_unit_id AS "knowledgeUnitId", q.question_key AS "questionKey", q.type, q.prompt, q.options, q.correct_answers AS "correctAnswers", q.explanation, q.category, q.difficulty, q.status, q.created_at AS "createdAt", q.updated_at AS "updatedAt" FROM questions q JOIN quiz_set_questions link ON link.question_id = q.id JOIN quiz_sets set ON set.id = link.quiz_set_id WHERE set.knowledge_version_id = '${escapeSqlLiteral(knowledgeVersionId)}' AND set.status = 'published' ORDER BY q.id`));
+  const sets = normaliseRows(await reader.query(`SELECT id, knowledge_version_id AS "knowledgeVersionId", quiz_hash AS "quizHash", source_quiz_hash AS "sourceQuizHash", title, description, kind, topic_id AS "topicId", status, passing_score AS "passingScore", published_at AS "publishedAt", created_at AS "createdAt", updated_at AS "updatedAt" FROM quiz_sets WHERE knowledge_version_id = '${escapeSqlLiteral(knowledgeVersionId)}' AND status = 'published' ORDER BY id`));
+  const catalogs = normaliseRows(await reader.query(`SELECT DISTINCT catalog.id, catalog.stable_key AS "stableKey", catalog.created_at AS "createdAt" FROM question_catalogs catalog JOIN questions q ON q.question_catalog_id = catalog.id JOIN quiz_set_questions link ON link.question_id = q.id JOIN quiz_sets set ON set.id = link.quiz_set_id WHERE set.knowledge_version_id = '${escapeSqlLiteral(knowledgeVersionId)}' AND set.status = 'published' ORDER BY catalog.id`));
+  const questions = normaliseRows(await reader.query(`SELECT DISTINCT q.id, q.question_catalog_id AS "questionCatalogId", q.revision, q.content_hash AS "contentHash", q.knowledge_version_id AS "knowledgeVersionId", q.knowledge_unit_id AS "knowledgeUnitId", q.knowledge_unit_key AS "knowledgeUnitKey", q.question_key AS "questionKey", q.type, q.prompt, q.options, q.correct_answers AS "correctAnswers", q.explanation, q.category, q.difficulty, q.sources, q.status, q.created_at AS "createdAt", q.updated_at AS "updatedAt" FROM questions q JOIN quiz_set_questions link ON link.question_id = q.id JOIN quiz_sets set ON set.id = link.quiz_set_id WHERE set.knowledge_version_id = '${escapeSqlLiteral(knowledgeVersionId)}' AND set.status = 'published' ORDER BY q.id`));
   const links = normaliseRows(await reader.query(`SELECT link.quiz_set_id AS "quizSetId", link.question_id AS "questionId", link.position, link.points FROM quiz_set_questions link JOIN quiz_sets set ON set.id = link.quiz_set_id WHERE set.knowledge_version_id = '${escapeSqlLiteral(knowledgeVersionId)}' AND set.status = 'published' ORDER BY link.quiz_set_id, link.position`));
   const quizSets = sets.map((set) => {
     const sqliteSet = { ...set, publicationSource: "cli" };
@@ -144,20 +148,26 @@ export async function exportBaseDataBundle(reader: PostgresBaseDataReader, sourc
     const sqliteVersion = { ...version, publicationSource: "cli" };
     return withContentHash(sqliteVersion, { scenario, version: sqliteVersion });
   });
-  return createBaseDataBundle({ exportedAt, source: { kind: "neon-postgres", database: sourceDatabase }, learners, activeKnowledge: { version: knowledgeVersion, sources, units }, publishedQuiz: { sets: quizSets, questions, links }, publishedScenarios: { scenarios, versions: scenarioVersions } });
+  return createBaseDataBundle({ exportedAt, source: { kind: "neon-postgres", database: sourceDatabase }, learners, activeKnowledge: { version: knowledgeVersion, sources, units }, publishedQuiz: { catalogs, sets: quizSets, questions, links }, publishedScenarios: { scenarios, versions: scenarioVersions } });
 }
 
 function countRecords(input: Pick<BaseDataBundleInput, "learners" | "activeKnowledge" | "publishedQuiz" | "publishedScenarios">): BaseDataBundleInput["counts"] {
-  return { users: input.learners.length, knowledgeVersions: 1, knowledgeSources: input.activeKnowledge.sources.length, knowledgeUnits: input.activeKnowledge.units.length, quizSets: input.publishedQuiz.sets.length, questions: input.publishedQuiz.questions.length, quizSetQuestions: input.publishedQuiz.links.length, scenarios: input.publishedScenarios.scenarios.length, scenarioVersions: input.publishedScenarios.versions.length };
+  return { users: input.learners.length, knowledgeVersions: 1, knowledgeSources: input.activeKnowledge.sources.length, knowledgeUnits: input.activeKnowledge.units.length, quizSets: input.publishedQuiz.sets.length, questionCatalogs: input.publishedQuiz.catalogs.length, questions: input.publishedQuiz.questions.length, quizSetQuestions: input.publishedQuiz.links.length, scenarios: input.publishedScenarios.scenarios.length, scenarioVersions: input.publishedScenarios.versions.length };
 }
 
-function validateBundleContent(bundle: BaseDataBundleV1): void {
+function validateBundleContent(bundle: BaseDataBundleV2): void {
   const version = bundle.activeKnowledge.version;
   if (version.isActive !== true || version.status !== "published") throw new Error("Bundle must contain one active published knowledge version.");
   expectHash(version, { version: without(version, "contentHash"), sources: bundle.activeKnowledge.sources, units: bundle.activeKnowledge.units });
   for (const set of bundle.publishedQuiz.sets) {
     if (set.status !== "published") throw new Error("Bundle includes an unpublished quiz set.");
     expectHash(set, { set: without(set, "contentHash"), questions: bundle.publishedQuiz.questions.filter((question) => bundle.publishedQuiz.links.some((link) => link.quizSetId === set.id && link.questionId === question.id)), links: bundle.publishedQuiz.links.filter((link) => link.quizSetId === set.id) });
+  }
+  const catalogIds = new Set(bundle.publishedQuiz.catalogs.map((catalog) => catalog.id));
+  for (const question of bundle.publishedQuiz.questions) {
+    if (!catalogIds.has(question.questionCatalogId)) {
+      throw new Error("Bundle question references a missing stable catalog.");
+    }
   }
   for (const versionRow of bundle.publishedScenarios.versions) {
     const scenario = bundle.publishedScenarios.scenarios.find((item) => item.id === versionRow.scenarioId);
@@ -182,9 +192,9 @@ function ensureTargetIsEmpty(database: DatabaseClient): void {
   }
 }
 
-function verifyImportedDatabase(database: DatabaseClient, bundle: BaseDataBundleV1): void {
+function verifyImportedDatabase(database: DatabaseClient, bundle: BaseDataBundleV2): void {
   for (const [table, count] of Object.entries({
-    users: bundle.counts.users, knowledge_versions: bundle.counts.knowledgeVersions, knowledge_sources: bundle.counts.knowledgeSources, knowledge_units: bundle.counts.knowledgeUnits, quiz_sets: bundle.counts.quizSets, questions: bundle.counts.questions, quiz_set_questions: bundle.counts.quizSetQuestions, scenarios: bundle.counts.scenarios, scenario_versions: bundle.counts.scenarioVersions,
+    users: bundle.counts.users, knowledge_versions: bundle.counts.knowledgeVersions, knowledge_sources: bundle.counts.knowledgeSources, knowledge_units: bundle.counts.knowledgeUnits, quiz_sets: bundle.counts.quizSets, question_catalogs: bundle.counts.questionCatalogs, questions: bundle.counts.questions, quiz_set_questions: bundle.counts.quizSetQuestions, scenarios: bundle.counts.scenarios, scenario_versions: bundle.counts.scenarioVersions,
   })) {
     const row = database.$client.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get() as { count: number };
     if (row.count !== count) throw new Error(`SQLite import count mismatch for ${table}.`);

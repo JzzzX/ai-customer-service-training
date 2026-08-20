@@ -6,16 +6,19 @@ import type { DatabaseClient } from "../client";
 import {
   knowledgeUnits,
   knowledgeVersions,
+  questionCatalogs,
   questions,
   quizAnswers,
   quizAttempts,
   quizSetQuestions,
   quizSets,
+  topicQuizAnswers,
+  topicQuizAttempts,
   users,
 } from "../schema";
 import { createTestDatabase } from "../test-support/create-test-database";
+import { publishTopicQuizCatalog } from "../topic-quiz-publication";
 import { topicQuizQuestions } from "@/lib/quiz/question-bank";
-import { createTopicQuizHash } from "@/lib/quiz/topic-hash";
 
 const adminId = "00000000-0000-4000-8000-000000000001";
 const learnerId = "00000000-0000-4000-8000-000000000002";
@@ -41,6 +44,7 @@ describe("DbQuizAttemptStore", () => {
   beforeEach(async () => {
     ({ client, database } = await createTestDatabase());
     await seedPublishedQuiz();
+    publishTopicQuizCatalog(database);
     store = new DbQuizAttemptStore(
       database as unknown as DatabaseClient,
     );
@@ -163,12 +167,16 @@ describe("DbQuizAttemptStore", () => {
   it("persists topic practice and recomputes answers from the server bank", async () => {
     const question = topicQuizQuestions[0]!;
     const topicAttemptId = "00000000-0000-4000-8000-000000000060";
-    const topicQuizHash = createTopicQuizHash(question.category);
+    const topicSet = database
+      .select({ quizHash: quizSets.quizHash })
+      .from(quizSets)
+      .where(eq(quizSets.topicId, question.category))
+      .get()!;
 
     const record = await store.saveAttempt({
       attemptId: topicAttemptId,
       learnerId,
-      quizHash: topicQuizHash,
+      quizHash: topicSet.quizHash,
       topicId: question.category,
       passingScore: 80,
       answers: [
@@ -183,7 +191,7 @@ describe("DbQuizAttemptStore", () => {
     expect(record).toMatchObject({
       id: topicAttemptId,
       learnerId,
-      quizHash: topicQuizHash,
+      quizHash: topicSet.quizHash,
       topicId: question.category,
       correctCount: 1,
       totalQuestions: 1,
@@ -193,6 +201,41 @@ describe("DbQuizAttemptStore", () => {
     });
     await expect(store.listAttempts(learnerId)).resolves.toContainEqual(
       record,
+    );
+    await expect(database.select().from(quizAttempts)).resolves.toHaveLength(1);
+    await expect(database.select().from(quizAnswers)).resolves.toHaveLength(1);
+    await expect(database.select().from(topicQuizAttempts)).resolves.toEqual([]);
+    await expect(database.select().from(topicQuizAnswers)).resolves.toEqual([]);
+  });
+
+  it("keeps legacy topic attempts readable without writing new legacy rows", async () => {
+    const legacyAttemptId = "00000000-0000-4000-8000-000000000070";
+    await database.insert(topicQuizAttempts).values({
+      id: legacyAttemptId,
+      learnerId,
+      topicId: "日常问答",
+      quizHash: "f".repeat(64),
+      status: "needs_retry",
+      correctCount: 0,
+      totalQuestions: 1,
+      score: 0,
+      completedAt: new Date("2026-08-01T00:00:00.000Z"),
+    });
+    await database.insert(topicQuizAnswers).values({
+      id: "00000000-0000-4000-8000-000000000071",
+      topicQuizAttemptId: legacyAttemptId,
+      questionKey: topicQuizQuestions[0]!.id,
+      selectedAnswers: ["旧答案"],
+      isCorrect: false,
+      answeredAt: new Date("2026-08-01T00:00:00.000Z"),
+    });
+
+    await expect(store.listAttempts(learnerId)).resolves.toContainEqual(
+      expect.objectContaining({
+        id: legacyAttemptId,
+        topicId: "日常问答",
+        missedQuestionIds: [topicQuizQuestions[0]!.id],
+      }),
     );
   });
 
@@ -297,10 +340,28 @@ sourcePath: "企划问答.xlsx",
       category: "日常问答",
       difficulty: "easy" as const,
       status: "published" as const,
+      revision: 1,
+      contentHash: `${question.id}-content`,
+      knowledgeUnitKey: unitRows.find(
+        (unit) => unit.id === question.knowledgeUnitId,
+      )!.unitKey,
+      sources: unitRows.find(
+        (unit) => unit.id === question.knowledgeUnitId,
+      )!.sources,
     }));
-    await database.insert(questions).values(questionRows);
+    await database.insert(questionCatalogs).values(
+      questionRows.map((question) => ({
+        id: `catalog-${question.id}`,
+        stableKey: question.questionKey,
+      })),
+    );
+    const revisionRows = questionRows.map((question) => ({
+      ...question,
+      questionCatalogId: `catalog-${question.id}`,
+    }));
+    await database.insert(questions).values(revisionRows);
     await database.insert(quizSetQuestions).values(
-      questionRows.map((question, position) => ({
+      revisionRows.map((question, position) => ({
         quizSetId,
         questionId: question.id,
         position,

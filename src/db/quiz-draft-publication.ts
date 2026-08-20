@@ -1,11 +1,11 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { createHash, randomUUID } from "node:crypto";
 
 import { getDatabase } from "./client";
+import { ensureQuestionRevision } from "./question-revision-publication";
 import {
   knowledgeUnits,
   knowledgeVersions,
-  questions,
   quizSetQuestions,
   quizSets,
 } from "./schema";
@@ -40,6 +40,7 @@ export type PreparedQuizDraftPublication = {
   questions: Array<{
     knowledgeVersionId: string;
     knowledgeUnitId: string;
+    knowledgeUnitKey: string;
     questionKey: string;
     type: QuizQuestionDraft["type"];
     prompt: string;
@@ -48,6 +49,7 @@ export type PreparedQuizDraftPublication = {
     explanation: string;
     category: string;
     difficulty: QuizQuestionDraft["difficulty"];
+    sources: QuizQuestionDraft["sources"];
     position: number;
   }>;
 };
@@ -124,6 +126,7 @@ export async function publishQuizDraftToStore(
     return {
       knowledgeVersionId: knowledge.id,
       knowledgeUnitId: unit.id,
+      knowledgeUnitKey: question.knowledgeUnitId,
       questionKey: question.id,
       type: question.type,
       prompt: question.prompt,
@@ -132,6 +135,7 @@ export async function publishQuizDraftToStore(
       explanation: question.explanation,
       category: question.category,
       difficulty: question.difficulty,
+      sources: question.sources,
       position,
     };
   });
@@ -157,7 +161,12 @@ export function createQuizDraftPublicationStore(
       const [quizSet] = await database
         .select({ id: quizSets.id, quizHash: quizSets.quizHash })
         .from(quizSets)
-        .where(eq(quizSets.quizHash, quizHash))
+        .where(
+          and(
+            eq(quizSets.quizHash, quizHash),
+            eq(quizSets.status, "published"),
+          ),
+        )
         .limit(1).all();
       return quizSet ?? null;
     },
@@ -208,6 +217,7 @@ export function createQuizDraftPublicationStore(
             publicationSource: "cli",
             status: "published",
             description: "通过 CLI 发布的正式题库。",
+            kind: "formal",
             publishedAt: new Date(),
           })
           .onConflictDoNothing({ target: quizSets.quizHash })
@@ -222,76 +232,52 @@ export function createQuizDraftPublicationStore(
           if (!existingQuizSet) {
             throw new Error("题库草稿并发发布后无法读取。");
           }
+          transaction
+            .update(quizSets)
+            .set({ status: "archived", updatedAt: new Date() })
+            .where(
+              and(
+                eq(quizSets.kind, "formal"),
+                eq(quizSets.status, "published"),
+                ne(quizSets.id, existingQuizSet.id),
+              ),
+            )
+            .run();
+          transaction
+            .update(quizSets)
+            .set({ status: "published", updatedAt: new Date() })
+            .where(eq(quizSets.id, existingQuizSet.id))
+            .run();
           return existingQuizSet;
         }
 
         transaction
-          .insert(questions)
-          .values(
-            publication.questions.map((question) => ({
-              id: randomUUID(),
-              knowledgeVersionId: question.knowledgeVersionId,
-              knowledgeUnitId: question.knowledgeUnitId,
-              questionKey: question.questionKey,
-              type: question.type,
-              prompt: question.prompt,
-              options: question.options,
-              correctAnswers: question.correctAnswers,
-              explanation: question.explanation,
-              category: question.category,
-              difficulty: question.difficulty,
-              status: "published" as const,
-            })),
-          )
-          .onConflictDoNothing({
-            target: [
-              questions.knowledgeVersionId,
-              questions.questionKey,
-            ],
-          }).run();
-
-        const storedQuestions = transaction
-          .select({
-            id: questions.id,
-            questionKey: questions.questionKey,
-            knowledgeUnitId: questions.knowledgeUnitId,
-            type: questions.type,
-            prompt: questions.prompt,
-            options: questions.options,
-            correctAnswers: questions.correctAnswers,
-            explanation: questions.explanation,
-            category: questions.category,
-            difficulty: questions.difficulty,
-          })
-          .from(questions)
+          .update(quizSets)
+          .set({ status: "archived", updatedAt: new Date() })
           .where(
             and(
-              eq(
-                questions.knowledgeVersionId,
-                publication.quizSet.knowledgeVersionId,
-              ),
-              inArray(
-                questions.questionKey,
-                publication.questions.map(
-                  (question) => question.questionKey,
-                ),
-              ),
+              eq(quizSets.kind, "formal"),
+              eq(quizSets.status, "published"),
+              ne(quizSets.id, insertedQuizSet.id),
             ),
-          ).all();
-        const storedByKey = new Map(
-          storedQuestions.map((question) => [
-            question.questionKey,
-            question,
-          ]),
-        );
+          )
+          .run();
 
         const links = publication.questions.map((question) => {
-          const stored = storedByKey.get(question.questionKey);
-          if (!stored || !matchesPreparedQuestion(stored, question)) {
-            throw new Error(
-              `同一知识版本的问题键存在不同内容：${question.questionKey}`,
-            );
-          }
+          const stored = ensureQuestionRevision(transaction, {
+            stableKey: question.questionKey,
+            knowledgeVersionId: question.knowledgeVersionId,
+            knowledgeUnitId: question.knowledgeUnitId,
+            knowledgeUnitKey: question.knowledgeUnitKey,
+            type: question.type,
+            prompt: question.prompt,
+            options: question.options,
+            correctAnswers: question.correctAnswers,
+            explanation: question.explanation,
+            category: question.category,
+            difficulty: question.difficulty,
+            sources: question.sources,
+          });
           return {
             quizSetId: insertedQuizSet.id,
             questionId: stored.id,
@@ -305,32 +291,6 @@ export function createQuizDraftPublicationStore(
       });
     },
   };
-}
-
-function matchesPreparedQuestion(
-  stored: {
-    knowledgeUnitId: string;
-    type: QuizQuestionDraft["type"];
-    prompt: string;
-    options: string[];
-    correctAnswers: string[];
-    explanation: string;
-    category: string;
-    difficulty: QuizQuestionDraft["difficulty"];
-  },
-  prepared: PreparedQuizDraftPublication["questions"][number],
-): boolean {
-  return (
-    stored.knowledgeUnitId === prepared.knowledgeUnitId &&
-    stored.type === prepared.type &&
-    stored.prompt === prepared.prompt &&
-    JSON.stringify(stored.options) === JSON.stringify(prepared.options) &&
-    JSON.stringify(stored.correctAnswers) ===
-      JSON.stringify(prepared.correctAnswers) &&
-    stored.explanation === prepared.explanation &&
-    stored.category === prepared.category &&
-    stored.difficulty === prepared.difficulty
-  );
 }
 
 function hashContent(value: unknown): string {

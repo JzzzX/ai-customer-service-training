@@ -25,8 +25,6 @@ import {
   type QuizAttemptStore,
   type SaveQuizAttemptInput,
 } from "@/lib/quiz/attempt-store";
-import { topicQuizQuestions } from "@/lib/quiz/question-bank";
-import { createTopicQuizHash } from "@/lib/quiz/topic-hash";
 
 type AttemptRow = {
   id: string;
@@ -37,6 +35,7 @@ type AttemptRow = {
   totalQuestions: number;
   score: number | null;
   completedAt: Date | null;
+  topicId: string | null;
 };
 
 type TopicAttemptRow = {
@@ -58,9 +57,6 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
     inputValue: SaveQuizAttemptInput,
   ): Promise<QuizAttemptRecord> {
     const input = saveQuizAttemptInputSchema.parse(inputValue);
-    if (input.topicId) {
-      return this.saveTopicAttempt({ ...input, topicId: input.topicId });
-    }
     const [existing] = await this.database
       .select({
         id: quizAttempts.id,
@@ -88,6 +84,12 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
           and(
             eq(quizSets.quizHash, input.quizHash),
             eq(quizSets.status, "published"),
+            input.topicId
+              ? and(
+                  eq(quizSets.kind, "topic"),
+                  eq(quizSets.topicId, input.topicId),
+                )
+              : eq(quizSets.kind, "formal"),
           ),
         )
         .limit(1)
@@ -189,6 +191,7 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
         totalQuestions: quizAttempts.totalQuestions,
         score: quizAttempts.score,
         completedAt: quizAttempts.completedAt,
+        topicId: quizSets.topicId,
       })
       .from(quizAttempts)
       .innerJoin(quizSets, eq(quizAttempts.quizSetId, quizSets.id))
@@ -227,125 +230,6 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
     );
   }
 
-  private async saveTopicAttempt(
-    input: SaveQuizAttemptInput & { topicId: string },
-  ): Promise<QuizAttemptRecord> {
-    if (input.quizHash !== createTopicQuizHash(input.topicId)) {
-      throw new Error("专题练习版本无效，请重新开始练习。");
-    }
-    const [existing] = await this.database
-      .select({
-        id: topicQuizAttempts.id,
-        learnerId: topicQuizAttempts.learnerId,
-      })
-      .from(topicQuizAttempts)
-      .where(eq(topicQuizAttempts.id, input.attemptId))
-      .limit(1).all();
-    if (existing && existing.learnerId !== input.learnerId) {
-      throw new Error("无权访问该小测记录。");
-    }
-    if (existing) {
-      return this.loadTopicAttempt(input.learnerId, input.attemptId);
-    }
-
-    const questionByKey = new Map(
-      topicQuizQuestions
-        .filter((question) => question.category === input.topicId)
-        .map((question) => [question.id, question]),
-    );
-    const checkedAnswers = input.answers.map((answer) => {
-      const question = questionByKey.get(answer.questionId);
-      if (!question) {
-        throw new Error("题目不属于当前专题题库。");
-      }
-      return {
-        questionKey: question.id,
-        selectedAnswers: answer.selectedAnswers,
-        isCorrect: evaluateAnswer(
-          answer.selectedAnswers,
-          question.correctAnswers,
-        ),
-      };
-    });
-    const correctCount = checkedAnswers.filter(
-      (answer) => answer.isCorrect,
-    ).length;
-    const outcome = finishQuizAttempt({
-      passingScore: input.passingScore,
-      correctCount,
-      totalQuestions: checkedAnswers.length,
-    });
-    const completedAt = input.completedAt
-      ? new Date(input.completedAt)
-      : new Date();
-
-    this.database.transaction((transaction) => {
-      const [inserted] = transaction
-        .insert(topicQuizAttempts)
-        .values({
-          id: input.attemptId,
-          learnerId: input.learnerId,
-          topicId: input.topicId,
-          quizHash: input.quizHash,
-          status: outcome.status,
-          correctCount,
-          totalQuestions: checkedAnswers.length,
-          score: outcome.score,
-          completedAt,
-          createdAt: completedAt,
-        })
-        .onConflictDoNothing({ target: topicQuizAttempts.id })
-        .returning({ id: topicQuizAttempts.id })
-        .all();
-      if (!inserted) {
-        return;
-      }
-      transaction.insert(topicQuizAnswers).values(
-        checkedAnswers.map((answer) => ({
-          id: randomUUID(),
-          topicQuizAttemptId: inserted.id,
-          ...answer,
-          answeredAt: completedAt,
-        })),
-      ).run();
-    });
-    return this.loadTopicAttempt(input.learnerId, input.attemptId);
-  }
-
-  private async loadTopicAttempt(
-    learnerId: string,
-    attemptId: string,
-  ): Promise<QuizAttemptRecord> {
-    const [row] = await this.database
-      .select({
-        id: topicQuizAttempts.id,
-        learnerId: topicQuizAttempts.learnerId,
-        quizHash: topicQuizAttempts.quizHash,
-        topicId: topicQuizAttempts.topicId,
-        status: topicQuizAttempts.status,
-        correctCount: topicQuizAttempts.correctCount,
-        totalQuestions: topicQuizAttempts.totalQuestions,
-        score: topicQuizAttempts.score,
-        completedAt: topicQuizAttempts.completedAt,
-      })
-      .from(topicQuizAttempts)
-      .where(
-        and(
-          eq(topicQuizAttempts.id, attemptId),
-          eq(topicQuizAttempts.learnerId, learnerId),
-        ),
-      )
-      .limit(1).all();
-    if (!row) {
-      throw new Error("小测记录不存在或无权访问。");
-    }
-    const [record] = await this.mapTopicAttemptRows([row]);
-    if (!record) {
-      throw new Error("小测记录读取失败。");
-    }
-    return record;
-  }
-
   private async loadAttempt(
     learnerId: string,
     attemptId: string,
@@ -360,6 +244,7 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
         totalQuestions: quizAttempts.totalQuestions,
         score: quizAttempts.score,
         completedAt: quizAttempts.completedAt,
+        topicId: quizSets.topicId,
       })
       .from(quizAttempts)
       .innerJoin(quizSets, eq(quizAttempts.quizSetId, quizSets.id))
@@ -426,6 +311,7 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
         correctCount: row.correctCount,
         totalQuestions: row.totalQuestions,
         score: row.score,
+        ...(row.topicId ? { topicId: row.topicId } : {}),
         missedQuestionIds: missedByAttempt.get(row.id) ?? [],
         answeredQuestionIds: answeredByAttempt.get(row.id) ?? [],
         completedAt: row.completedAt?.toISOString(),

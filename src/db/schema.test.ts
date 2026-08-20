@@ -7,6 +7,7 @@ import {
   knowledgeUnits,
   knowledgeVersions,
   mvpTables,
+  questionCatalogs,
   questions,
   quizAttempts,
   quizSets,
@@ -35,6 +36,7 @@ describe("MVP database schema", () => {
         "knowledge_sources",
         "knowledge_units",
         "knowledge_versions",
+        "question_catalogs",
         "questions",
         "quiz_answers",
         "quiz_attempts",
@@ -78,11 +80,35 @@ describe("MVP database schema", () => {
     );
   });
 
+  it("models RBAC and immutable question revisions explicitly", () => {
+    expect(columnNames(users)).toContain("role");
+    expect(columnNames(questionCatalogs)).toEqual(
+      expect.arrayContaining(["stable_key", "created_at"]),
+    );
+    expect(columnNames(questions)).toEqual(
+      expect.arrayContaining([
+        "question_catalog_id",
+        "revision",
+        "content_hash",
+        "knowledge_unit_key",
+        "sources",
+      ]),
+    );
+    expect(columnNames(quizSets)).toEqual(
+      expect.arrayContaining(["kind", "topic_id"]),
+    );
+  });
+
   it("uses text IDs, JSON text and millisecond timestamps for SQLite", () => {
     const questionConfig = getTableConfig(questions);
     expect(
       questionConfig.uniqueConstraints.map((item) => item.name),
-    ).toContain("questions_version_key_unique");
+    ).toEqual(
+      expect.arrayContaining([
+        "questions_catalog_revision_unique",
+        "questions_catalog_content_unique",
+      ]),
+    );
     expect(users.id.getSQLType()).toBe("text");
     expect(questions.options.getSQLType()).toBe("text");
     expect(quizAttempts.startedAt.getSQLType()).toBe("integer");

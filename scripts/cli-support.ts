@@ -68,6 +68,20 @@ export function disableLearner(email: string, database: DatabaseClient = getData
   return result.changes === 1;
 }
 
+export function grantAdmin(
+  email: string,
+  database: DatabaseClient = getDatabase(),
+): boolean {
+  return setUserRole(email, "admin", database);
+}
+
+export function revokeAdmin(
+  email: string,
+  database: DatabaseClient = getDatabase(),
+): boolean {
+  return setUserRole(email, "learner", database);
+}
+
 export async function resetLearnerPassword(email: string, password: string, database: DatabaseClient = getDatabase()): Promise<boolean> {
   if (password.length < 8) throw new Error("新密码至少需要 8 位。");
   const passwordHash = await hash(password, 12);
@@ -91,6 +105,19 @@ export async function backupDatabase(output: string, database: DatabaseClient = 
   await source.backup(target);
 }
 export function contentHash(value: unknown): string { return createHash("sha256").update(JSON.stringify(value)).digest("hex"); }
+
+function setUserRole(
+  email: string,
+  role: "learner" | "admin",
+  database: DatabaseClient,
+): boolean {
+  const result = database
+    .update(users)
+    .set({ role, updatedAt: new Date() })
+    .where(eq(users.email, normalizeEmail(email)))
+    .run();
+  return result.changes === 1;
+}
 
 function parseCsvLine(line: string): string[] {
   const cells: string[] = []; let current = ""; let quoted = false;

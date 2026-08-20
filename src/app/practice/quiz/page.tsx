@@ -4,8 +4,11 @@ import { PageHeader } from "@/components/ui/page-header";
 import { QuizRunner } from "@/components/quiz/quiz-runner";
 import { requireUser } from "@/lib/auth/guards";
 import { demoQuizQuestions } from "@/lib/quiz/demo-questions";
-import { quizTopics, topicQuizQuestions } from "@/lib/quiz/question-bank";
-import { loadPublishedQuiz } from "@/lib/quiz/published-service";
+import { quizTopics } from "@/lib/quiz/question-bank";
+import {
+  loadPublishedQuiz,
+  loadPublishedTopicQuiz,
+} from "@/lib/quiz/published-service";
 import {
   shuffleClientQuestionOptions,
   toClientQuizQuestion,
@@ -37,44 +40,44 @@ export default async function PracticeQuizPage({
   const attemptId = randomUUID();
 
   if (topicMatch) {
-    const topicTotal = topicQuizQuestions.filter(
-      (question) => question.category === topicMatch.id,
-    ).length;
-    const questions = selectQuestionGroupByTopic(
-      topicQuizQuestions,
-      topicMatch.id,
-    );
-    const saveAttempt = saveTopicQuizAttemptAction.bind(null, topicMatch.id);
-    const checkAnswer = checkTopicQuizAnswerAction.bind(null, topicMatch.id);
+    const topicQuiz = await loadPublishedTopicQuiz(topicMatch.id);
+    if (topicQuiz) {
+      const questions = selectQuestionGroupByTopic(
+        topicQuiz.questions,
+        topicMatch.id,
+      );
+      const saveAttempt = saveTopicQuizAttemptAction.bind(null, topicMatch.id);
+      const checkAnswer = checkTopicQuizAnswerAction.bind(null, topicMatch.id);
 
-    return (
-      <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
-        <div className="mx-auto max-w-3xl">
-          <PageHeader
-            backHref="/practice/quiz/topics"
-            badge="专题练习"
-            description={`从该专题 ${topicTotal} 道题中随机抽取 ${questions.length} 题，完成后可重练错题。即时反馈用于学习，不作为防作弊考试或认证成绩。`}
-            label="知识小测"
-            title={`${topicMatch.icon} ${topicMatch.label}`}
-          />
-
-          <div className="mt-8 animate-fade-in-up stagger-1">
-            <QuizRunner
-              attemptId={attemptId}
-              onAnswer={checkAnswer}
-              onComplete={saveAttempt}
-              passingScore={80}
-              questions={questions.map((question) =>
-                shuffleClientQuestionOptions(
-                  toClientQuizQuestion(question),
-                ),
-              )}
-              resultBackHref="/practice/quiz/topics"
+      return (
+        <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
+          <div className="mx-auto max-w-3xl">
+            <PageHeader
+              backHref="/practice/quiz/topics"
+              badge="专题练习"
+              description={`从该专题 ${topicQuiz.questions.length} 道题中随机抽取 ${questions.length} 题，完成后可重练错题。即时反馈用于学习，不作为防作弊考试或认证成绩。`}
+              label="知识小测"
+              title={`${topicMatch.icon} ${topicMatch.label}`}
             />
+
+            <div className="mt-8 animate-fade-in-up stagger-1">
+              <QuizRunner
+                attemptId={attemptId}
+                onAnswer={checkAnswer}
+                onComplete={saveAttempt}
+                passingScore={topicQuiz.passingScore}
+                questions={questions.map((question) =>
+                  shuffleClientQuestionOptions(
+                    toClientQuizQuestion(question),
+                  ),
+                )}
+                resultBackHref="/practice/quiz/topics"
+              />
+            </div>
           </div>
-        </div>
-      </main>
-    );
+        </main>
+      );
+    }
   }
 
   const publishedQuiz = await loadPublishedQuiz();

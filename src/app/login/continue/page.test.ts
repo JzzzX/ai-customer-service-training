@@ -21,12 +21,25 @@ describe("LoginContinuePage", () => {
     mocks.requireUser.mockReset();
   });
 
-  it("always redirects an authenticated learner to practice", async () => {
+  it("redirects an authenticated admin to admin", async () => {
     mocks.requireUser.mockResolvedValue({
       id: "00000000-0000-4000-8000-000000000001",
       email: "learner@example.test",
       name: "客服学员",
       role: "admin",
+    });
+
+    await LoginContinuePage();
+
+    expect(mocks.redirect).toHaveBeenCalledWith("/admin");
+  });
+
+  it("redirects an authenticated learner to practice", async () => {
+    mocks.requireUser.mockResolvedValue({
+      id: "00000000-0000-4000-8000-000000000002",
+      email: "learner@example.test",
+      name: "客服学员",
+      role: "learner",
     });
 
     await LoginContinuePage();

@@ -11,6 +11,7 @@ import {
   feishuIdentities,
   users,
 } from "@/db/schema";
+import type { UserRole } from "@/db/schema";
 
 export interface FeishuIdentityProfile {
   unionId: string;
@@ -23,6 +24,7 @@ export interface ResolvedUser {
   id: string;
   email: string;
   name: string;
+  role: UserRole;
 }
 
 type UserRepositoryDatabase =
@@ -78,6 +80,7 @@ export function resolveFeishuUser(
         email: users.email,
         name: users.name,
         isActive: users.isActive,
+        role: users.role,
       })
       .from(feishuIdentities)
       .innerJoin(
@@ -127,6 +130,7 @@ export function resolveFeishuUser(
         id: bound.userId,
         email: bound.email,
         name: bound.name,
+        role: bound.role,
       };
     }
 
@@ -142,6 +146,7 @@ export function resolveFeishuUser(
           email: users.email,
           name: users.name,
           isActive: users.isActive,
+          role: users.role,
         })
         .from(users)
         .where(
@@ -209,6 +214,7 @@ export function resolveFeishuUser(
           id: existingUser.id,
           email: existingUser.email,
           name: existingUser.name,
+          role: existingUser.role,
         };
       }
     }
@@ -245,6 +251,7 @@ export function resolveFeishuUser(
         name: localName,
         passwordHash,
         isActive: true,
+        role: "learner",
         lastLoginAt: now,
         createdAt: now,
         updatedAt: now,
@@ -266,6 +273,7 @@ export function resolveFeishuUser(
       id: userId,
       email: localEmail,
       name: localName,
+      role: "learner",
     };
   });
 }

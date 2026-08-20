@@ -22,7 +22,7 @@ async function main() {
   const sql = neon(databaseUrl, { readOnly: true });
   const bundle = await exportBaseDataBundle({ query: (query) => sql.query(query) }, "neon-postgres");
   writeFileSync(output, `${JSON.stringify(bundle, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
-  console.log(`已导出 BaseDataBundleV1：${output}`);
+  console.log(`已导出 BaseDataBundleV2：${output}`);
 }
 
 main().catch((error: unknown) => {

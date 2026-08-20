@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getQuizAttemptStore: vi.fn(),
+  getPublishedQuizStore: vi.fn(),
 }));
 
 vi.mock("@/lib/runtime/services", () => mocks);
@@ -27,13 +28,18 @@ describe("getQuizProgressForLearner", () => {
         },
       ]),
     });
+    mocks.getPublishedQuizStore.mockReturnValue({
+      listPublishedTopics: vi.fn().mockResolvedValue([
+        { topicId: "产品属性及卖点", questionCount: 12 },
+      ]),
+    });
 
     const summary = await getQuizProgressForLearner(
       "00000000-0000-4000-8000-000000000002",
     );
 
-    expect(summary.totalQuestions).toBeGreaterThan(0);
+    expect(summary.totalQuestions).toBe(12);
     expect(summary.uniqueAnsweredCount).toBe(1);
-    expect(summary.topics).toHaveLength(5);
+    expect(summary.topics).toHaveLength(1);
   });
 });

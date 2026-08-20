@@ -1,8 +1,7 @@
-import { desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 
 import type { DatabaseClient } from "../client";
 import {
-  knowledgeUnits,
   knowledgeVersions,
   questions,
   quizSetQuestions,
@@ -34,6 +33,42 @@ export class DbPublishedQuizStore implements PublishedQuizStore {
   constructor(private readonly database: DatabaseClient) {}
 
   async loadPublished(): Promise<QuizPublishedPack | null> {
+    return this.loadLatestSet("formal");
+  }
+
+  async loadPublishedTopic(topicId: string): Promise<QuizPublishedPack | null> {
+    return this.loadLatestSet("topic", topicId);
+  }
+
+  async listPublishedTopics() {
+    return this.database
+      .select({
+        topicId: quizSets.topicId,
+        questionCount: count(quizSetQuestions.questionId),
+      })
+      .from(quizSets)
+      .innerJoin(
+        quizSetQuestions,
+        eq(quizSetQuestions.quizSetId, quizSets.id),
+      )
+      .where(
+        and(eq(quizSets.kind, "topic"), eq(quizSets.status, "published")),
+      )
+      .groupBy(quizSets.topicId)
+      .orderBy(quizSets.topicId)
+      .all()
+      .map((row) => {
+        if (!row.topicId) {
+          throw new Error("已发布专题题组缺少 topic_id。");
+        }
+        return { topicId: row.topicId, questionCount: row.questionCount };
+      });
+  }
+
+  private async loadLatestSet(
+    kind: "formal" | "topic",
+    topicId?: string,
+  ): Promise<QuizPublishedPack | null> {
     const [set] = await this.database
       .select({
         id: quizSets.id,
@@ -42,13 +77,21 @@ export class DbPublishedQuizStore implements PublishedQuizStore {
         knowledgePackHash: knowledgeVersions.versionHash,
         title: quizSets.title,
         passingScore: quizSets.passingScore,
+        kind: quizSets.kind,
+        topicId: quizSets.topicId,
       })
       .from(quizSets)
       .innerJoin(
         knowledgeVersions,
         eq(quizSets.knowledgeVersionId, knowledgeVersions.id),
       )
-      .where(eq(quizSets.status, "published"))
+      .where(
+        and(
+          eq(quizSets.status, "published"),
+          eq(quizSets.kind, kind),
+          ...(topicId ? [eq(quizSets.topicId, topicId)] : []),
+        ),
+      )
       .orderBy(desc(quizSets.publishedAt), desc(quizSets.id))
       .limit(1).all();
     if (!set) {
@@ -64,7 +107,7 @@ export class DbPublishedQuizStore implements PublishedQuizStore {
     const questionRows = await this.database
       .select({
         questionKey: questions.questionKey,
-        knowledgeUnitKey: knowledgeUnits.unitKey,
+        knowledgeUnitKey: questions.knowledgeUnitKey,
         type: questions.type,
         prompt: questions.prompt,
         options: questions.options,
@@ -72,15 +115,11 @@ export class DbPublishedQuizStore implements PublishedQuizStore {
         explanation: questions.explanation,
         category: questions.category,
         difficulty: questions.difficulty,
-        sources: knowledgeUnits.sources,
+        sources: questions.sources,
         position: quizSetQuestions.position,
       })
       .from(quizSetQuestions)
       .innerJoin(questions, eq(quizSetQuestions.questionId, questions.id))
-      .innerJoin(
-        knowledgeUnits,
-        eq(questions.knowledgeUnitId, knowledgeUnits.id),
-      )
       .where(eq(quizSetQuestions.quizSetId, set.id))
       .orderBy(quizSetQuestions.position).all();
 
@@ -92,6 +131,8 @@ export class DbPublishedQuizStore implements PublishedQuizStore {
       title: set.title,
       passingScore: set.passingScore,
       status: "published",
+      kind: set.kind,
+      ...(set.topicId ? { topicId: set.topicId } : {}),
       questions: questionRows.map(toPublishedQuestion),
     });
   }

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   requireUser: vi.fn(),
   loadPublishedQuiz: vi.fn(),
+  loadPublishedTopicQuiz: vi.fn(),
   saveQuizAttemptForLearner: vi.fn(),
   getQuizProgressForLearner: vi.fn(),
   revalidatePath: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock("@/lib/auth/guards", () => ({
 
 vi.mock("@/lib/quiz/published-service", () => ({
   loadPublishedQuiz: mocks.loadPublishedQuiz,
+  loadPublishedTopicQuiz: mocks.loadPublishedTopicQuiz,
 }));
 
 vi.mock("@/lib/quiz/attempt-service", () => ({
@@ -64,6 +66,7 @@ describe("saveQuizAttemptAction", () => {
         },
       ],
     });
+    mocks.loadPublishedTopicQuiz.mockResolvedValue(null);
   });
 
   it("rechecks answers on the server and stores them under the session user", async () => {
@@ -132,6 +135,18 @@ describe("saveQuizAttemptAction", () => {
       answeredQuestionIds: [question.id],
       completedAt: "2026-08-03T08:00:00.000Z",
     };
+    mocks.loadPublishedTopicQuiz.mockResolvedValue({
+      schemaVersion: 1,
+      quizHash: "f".repeat(64),
+      sourceQuizHash: "f".repeat(64),
+      knowledgePackHash: "c".repeat(64),
+      title: question.category,
+      passingScore: 80,
+      status: "published",
+      kind: "topic",
+      topicId: question.category,
+      questions: [question],
+    });
     mocks.saveQuizAttemptForLearner.mockResolvedValue(savedAttempt);
     mocks.getQuizProgressForLearner.mockResolvedValue({
       totalQuestions: 350,
@@ -170,6 +185,20 @@ describe("saveQuizAttemptAction", () => {
         totalQuestions: 25,
       }),
     });
+    expect(mocks.saveQuizAttemptForLearner).toHaveBeenCalledWith({
+      attemptId: topicAttemptId,
+      learnerId,
+      quizHash: "f".repeat(64),
+      topicId: question.category,
+      passingScore: 80,
+      answers: [
+        {
+          questionId: question.id,
+          selectedAnswers: question.correctAnswers,
+          isCorrect: true,
+        },
+      ],
+    });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/practice");
     expect(mocks.revalidatePath).toHaveBeenCalledWith(
       "/practice/quiz/topics",
@@ -187,6 +216,20 @@ describe("saveQuizAttemptAction", () => {
         [{ questionId: question.id, selected: question.correctAnswers[0]! }],
       ),
     ).rejects.toThrow();
+    mocks.loadPublishedTopicQuiz.mockResolvedValue({
+      schemaVersion: 1,
+      quizHash: "f".repeat(64),
+      sourceQuizHash: "f".repeat(64),
+      knowledgePackHash: "c".repeat(64),
+      title: "日常问答",
+      passingScore: 80,
+      status: "published",
+      kind: "topic",
+      topicId: "日常问答",
+      questions: topicQuizQuestions.filter(
+        (candidate) => candidate.category === "日常问答",
+      ),
+    });
     await expect(
       saveTopicQuizAttemptAction(
         "日常问答",

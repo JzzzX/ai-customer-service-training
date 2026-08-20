@@ -1,7 +1,10 @@
+import type { UserRole } from "@/db/schema";
+
 export interface SessionUser {
   id: string;
   email: string;
   name: string;
+  role: UserRole;
 }
 
 interface SessionShape {
@@ -11,6 +14,7 @@ interface SessionShape {
 
 interface SessionClaims {
   id: string;
+  role: UserRole;
 }
 
 interface AuthAccountIdentity {
@@ -40,6 +44,7 @@ export function applyUserToToken<T extends Record<string, unknown>>(
   return {
     ...token,
     id: user.id,
+    role: user.role,
   };
 }
 
@@ -52,6 +57,7 @@ export function applyTokenToSession<T extends SessionShape>(
     user: {
       ...session.user,
       id: token.id,
+      role: token.role,
     },
   };
 }

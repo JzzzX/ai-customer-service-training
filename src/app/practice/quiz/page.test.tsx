@@ -8,6 +8,7 @@ import type {
 
 const mocks = vi.hoisted(() => ({
   loadPublishedQuiz: vi.fn(),
+  loadPublishedTopicQuiz: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/guards", () => ({
@@ -21,6 +22,7 @@ vi.mock("@/lib/auth/guards", () => ({
 
 vi.mock("@/lib/quiz/published-service", () => ({
   loadPublishedQuiz: mocks.loadPublishedQuiz,
+  loadPublishedTopicQuiz: mocks.loadPublishedTopicQuiz,
 }));
 
 vi.mock("@/components/quiz/quiz-runner", () => ({
@@ -58,6 +60,7 @@ function publishedQuiz(): QuizPublishedPack {
     title: "客服新人知识基础小测",
     passingScore: 80,
     status: "published",
+    kind: "formal",
     questions: Array.from({ length: 12 }, (_, index) => {
       const idDigit = index.toString(16);
       const type = index < 6 ? "single_choice" : "true_false";
@@ -89,6 +92,7 @@ function publishedQuiz(): QuizPublishedPack {
 describe("PracticeQuizPage", () => {
   beforeEach(() => {
     mocks.loadPublishedQuiz.mockReset();
+    mocks.loadPublishedTopicQuiz.mockReset();
   });
 
   it("uses a 10-question group from the published quiz", async () => {
@@ -113,8 +117,20 @@ describe("PracticeQuizPage", () => {
     );
   });
 
-  it("uses topic question bank when topic searchParam is provided", async () => {
+  it("uses the published database topic set when topic searchParam is provided", async () => {
     mocks.loadPublishedQuiz.mockResolvedValue(null);
+    mocks.loadPublishedTopicQuiz.mockResolvedValue({
+      ...publishedQuiz(),
+      quizHash: "d".repeat(64),
+      sourceQuizHash: "d".repeat(64),
+      title: "产品属性及卖点",
+      kind: "topic",
+      topicId: "产品属性及卖点",
+      questions: publishedQuiz().questions.map((question) => ({
+        ...question,
+        category: "产品属性及卖点",
+      })),
+    });
 
     render(
       await PracticeQuizPage({
@@ -124,11 +140,12 @@ describe("PracticeQuizPage", () => {
 
     expect(screen.getByText("专题练习")).toBeInTheDocument();
     const runner = screen.getByTestId("quiz-runner");
-    expect(runner).toHaveTextContent(/^10\|80\|draft\|产品属性及卖点\|answers-hidden\|recorded\|attempt-id$/);
+    expect(runner).toHaveTextContent(/^10\|80\|published\|产品属性及卖点\|answers-hidden\|recorded\|attempt-id$/);
   });
 
   it("falls back to published quiz when topic is invalid", async () => {
     mocks.loadPublishedQuiz.mockResolvedValue(publishedQuiz());
+    mocks.loadPublishedTopicQuiz.mockResolvedValue(null);
 
     render(
       await PracticeQuizPage({

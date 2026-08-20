@@ -46,7 +46,24 @@ export const quizPublishedPackSchema = z.object({
   title: z.string().trim().min(1),
   passingScore: z.number().int().min(0).max(100),
   status: z.literal("published"),
+  kind: z.enum(["formal", "topic", "remediation"]).default("formal"),
+  topicId: z.string().trim().min(1).optional(),
   questions: z.array(quizQuestionPublishedSchema).min(1),
+}).superRefine((pack, context) => {
+  if (pack.kind === "topic" && !pack.topicId) {
+    context.addIssue({
+      code: "custom",
+      message: "专题题组必须包含 topicId。",
+      path: ["topicId"],
+    });
+  }
+  if (pack.kind !== "topic" && pack.topicId) {
+    context.addIssue({
+      code: "custom",
+      message: "非专题题组不能包含 topicId。",
+      path: ["topicId"],
+    });
+  }
 });
 
 export type QuizQuestionDraft = z.infer<typeof quizQuestionDraftSchema>;

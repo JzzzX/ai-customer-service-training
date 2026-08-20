@@ -5,7 +5,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { SoftCard } from "@/components/ui/soft-card";
 import { requireUser } from "@/lib/auth/guards";
 import { getQuizProgressForLearner } from "@/lib/quiz/attempt-service";
-import { quizTopics, topicQuizQuestions } from "@/lib/quiz/question-bank";
+import { quizTopics } from "@/lib/quiz/question-bank";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
   dateStyle: "medium",
@@ -17,17 +17,6 @@ export default async function QuizTopicsPage() {
   const user = await requireUser();
   const progress = await getQuizProgressForLearner(user.id, { recentLimit: 1 });
 
-  const topicCounts = new Map<string, number>();
-  for (const question of topicQuizQuestions) {
-    topicCounts.set(
-      question.category,
-      (topicCounts.get(question.category) ?? 0) + 1,
-    );
-  }
-  const totalTopicQuestions = [...topicCounts.values()].reduce(
-    (total, count) => total + count,
-    0,
-  );
   const topicProgressById = new Map(
     progress.topics.map((topic) => [topic.topicId, topic]),
   );
@@ -42,7 +31,7 @@ export default async function QuizTopicsPage() {
       <div className="mx-auto max-w-4xl">
         <PageHeader
           backHref="/practice"
-          description={`5 个专题 · ${totalTopicQuestions} 道题 · 每次随机抽 10 题，完成后可重练错题。`}
+          description={`5 个专题 · ${progress.totalQuestions} 道题 · 每次随机抽 10 题，完成后可重练错题。`}
           label="知识小测"
           title="选择专题"
         />
@@ -80,8 +69,8 @@ export default async function QuizTopicsPage() {
 
         <section className="mt-10 grid gap-5 sm:grid-cols-2 animate-fade-in-up stagger-1">
           {quizTopics.map((topic) => {
-            const count = topicCounts.get(topic.id) ?? 0;
             const topicProgress = topicProgressById.get(topic.id);
+            const count = topicProgress?.totalQuestions ?? 0;
             const coveredCount = topicProgress?.uniqueAnsweredCount ?? 0;
             return (
               <Link

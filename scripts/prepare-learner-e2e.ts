@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { hash } from "bcryptjs";
 
 import { createDatabaseClient } from "../src/db/client";
+import { publishTopicQuizCatalog } from "../src/db/topic-quiz-publication";
 
 const sqlitePath = resolve(
   process.env.SQLITE_PATH ?? ".tmp/learner-lite-e2e.sqlite",
@@ -31,6 +32,7 @@ async function main(): Promise<void> {
     }
     await seedLearners(database.$client);
     seedPublishedScenario(database.$client);
+    publishTopicQuizCatalog(database);
   } finally {
     database.$client.close();
   }

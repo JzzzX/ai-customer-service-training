@@ -10,12 +10,13 @@ import {
   saveQuizAttemptForLearner,
 } from "@/lib/quiz/attempt-service";
 import { demoQuizQuestions } from "@/lib/quiz/demo-questions";
-import { quizTopics, topicQuizQuestions } from "@/lib/quiz/question-bank";
-import { loadPublishedQuiz } from "@/lib/quiz/published-service";
+import {
+  loadPublishedQuiz,
+  loadPublishedTopicQuiz,
+} from "@/lib/quiz/published-service";
 import type { QuizAttemptRecord } from "@/lib/quiz/attempt-store";
 import type { QuizTopicProgress } from "@/lib/quiz/progress";
 import type { QuizQuestion } from "@/lib/quiz/schema";
-import { createTopicQuizHash } from "@/lib/quiz/topic-hash";
 
 const submittedAnswerSchema = z.object({
   questionId: z.string().regex(/^qq_[a-f0-9]{24}$/),
@@ -75,11 +76,11 @@ export async function checkTopicQuizAnswerAction(
 ): Promise<QuizAnswerFeedback> {
   await requireUser();
   const topic = z.string().trim().min(1).parse(topicId);
-  return checkAnswer(
-    topicQuizQuestions.filter((question) => question.category === topic),
-    questionId,
-    selected,
-  );
+  const publishedQuiz = await loadPublishedTopicQuiz(topic);
+  if (!publishedQuiz) {
+    throw new Error("专题不存在或尚未发布，请重新选择。");
+  }
+  return checkAnswer(publishedQuiz.questions, questionId, selected);
 }
 
 export async function saveQuizAttemptAction(
@@ -133,15 +134,13 @@ export async function saveTopicQuizAttemptAction(
   const topic = z.string().trim().min(1).parse(topicId);
   const attemptId = z.string().uuid().parse(attemptIdInput);
   const answers = submittedAnswersSchema.parse(submittedAnswers);
-  if (!quizTopics.some((candidate) => candidate.id === topic)) {
-    throw new Error("专题不存在，请重新选择。");
+  const publishedQuiz = await loadPublishedTopicQuiz(topic);
+  if (!publishedQuiz || publishedQuiz.topicId !== topic) {
+    throw new Error("专题不存在或尚未发布，请重新选择。");
   }
-  const topicQuestions = topicQuizQuestions.filter(
-    (question) => question.category === topic,
-  );
 
   const questionsById = new Map(
-    topicQuestions.map((question) => [question.id, question]),
+    publishedQuiz.questions.map((question) => [question.id, question]),
   );
   const checkedAnswers = answers.map((answer) => {
     const question = questionsById.get(answer.questionId);
@@ -158,9 +157,9 @@ export async function saveTopicQuizAttemptAction(
   const savedAttempt = await saveQuizAttemptForLearner({
     attemptId,
     learnerId: user.id,
-    quizHash: createTopicQuizHash(topic),
+    quizHash: publishedQuiz.quizHash,
     topicId: topic,
-    passingScore: 80,
+    passingScore: publishedQuiz.passingScore,
     answers: checkedAnswers,
   });
   const progress = await getQuizProgressForLearner(user.id);

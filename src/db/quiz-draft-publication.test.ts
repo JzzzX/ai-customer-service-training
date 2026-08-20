@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createQuizDraftPublicationStore,
   publishQuizDraftToStore,
   type PreparedQuizDraftPublication,
   type QuizDraftPublicationStore,
   type ResolvedQuizKnowledge,
 } from "./quiz-draft-publication";
+import { knowledgeUnits, knowledgeVersions } from "./schema";
+import { createTestDatabase } from "./test-support/create-test-database";
 import type { QuizDraftPack } from "@/lib/quiz/schema";
 
 const quizHash = "a".repeat(64);
@@ -114,7 +117,107 @@ describe("quiz draft database publication", () => {
     ).rejects.toThrow("必须恰好包含 40 道题");
     expect(store.publishCount).toBe(0);
   });
+
+  it("reuses unchanged revisions and appends changed content without rewriting old links", async () => {
+    const fixture = await createTestDatabase();
+    try {
+      await seedKnowledge(fixture.database);
+      const store = createQuizDraftPublicationStore(fixture.database);
+      await publishQuizDraftToStore(draft(), createdById, store);
+
+      const revised = draft();
+      revised.quizHash = "c".repeat(64);
+      revised.questions[0] = {
+        ...revised.questions[0]!,
+        prompt: "修订后的第一题",
+      };
+      await publishQuizDraftToStore(revised, createdById, store);
+
+      expect(
+        fixture.client.prepare("SELECT COUNT(*) AS value FROM question_catalogs").get(),
+      ).toEqual({ value: 40 });
+      expect(
+        fixture.client.prepare("SELECT COUNT(*) AS value FROM questions").get(),
+      ).toEqual({ value: 41 });
+      expect(
+        fixture.client
+          .prepare(
+            `SELECT revision, prompt FROM questions
+              WHERE question_key = 'qq_000000000000000000000000'
+              ORDER BY revision`,
+          )
+          .all(),
+      ).toEqual([
+        { revision: 1, prompt: "第 1 题" },
+        { revision: 2, prompt: "修订后的第一题" },
+      ]);
+      expect(
+        fixture.client
+          .prepare(
+            `SELECT set_row.quiz_hash AS quizHash, link.question_id AS questionId
+               FROM quiz_set_questions link
+               JOIN quiz_sets set_row ON set_row.id = link.quiz_set_id
+              WHERE link.position = 0 ORDER BY set_row.quiz_hash`,
+          )
+          .all(),
+      ).toEqual([
+        { quizHash: "a".repeat(64), questionId: expect.any(String) },
+        { quizHash: "c".repeat(64), questionId: expect.any(String) },
+      ]);
+      const linkedIds = fixture.client
+        .prepare(
+          `SELECT link.question_id AS questionId
+             FROM quiz_set_questions link
+             JOIN quiz_sets set_row ON set_row.id = link.quiz_set_id
+            WHERE link.position = 0 ORDER BY set_row.quiz_hash`,
+        )
+        .all() as Array<{ questionId: string }>;
+      expect(linkedIds[0]?.questionId).not.toBe(linkedIds[1]?.questionId);
+      expect(
+        fixture.client
+          .prepare(
+            "SELECT quiz_hash AS quizHash, status FROM quiz_sets ORDER BY quiz_hash",
+          )
+          .all(),
+      ).toEqual([
+        { quizHash: "a".repeat(64), status: "archived" },
+        { quizHash: "c".repeat(64), status: "published" },
+      ]);
+    } finally {
+      fixture.client.close();
+    }
+  });
 });
+
+async function seedKnowledge(
+  database: Awaited<ReturnType<typeof createTestDatabase>>["database"],
+): Promise<void> {
+  await database.insert(knowledgeVersions).values({
+    id: resolvedKnowledge().id,
+    versionHash: knowledgePackHash,
+    contentHash: "d".repeat(64),
+    schemaVersion: 1,
+    sourceRoot: "formal-test",
+    status: "published",
+    isActive: true,
+    coverage: {},
+    publishedAt: new Date(1000),
+  });
+  await database.insert(knowledgeUnits).values(
+    resolvedKnowledge().units.map((unit, index) => ({
+      id: unit.id,
+      knowledgeVersionId: resolvedKnowledge().id,
+      unitKey: unit.unitKey,
+      title: `第 ${index + 1} 题`,
+      content: `第 ${index + 1} 题知识`,
+      categoryPath: ["产品属性及卖点"],
+      contentHash: String((index % 9) + 1).repeat(64),
+      sources: draft().questions[index]!.sources,
+      hasConflict: false,
+      canUseForQuiz: true,
+    })),
+  );
+}
 
 function draft(): QuizDraftPack {
   return {

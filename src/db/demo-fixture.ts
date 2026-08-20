@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { hashSync } from "bcryptjs";
 
 import type { DatabaseClient } from "./client";
+import { publishTopicQuizCatalog } from "./topic-quiz-publication";
 import {
   DEMO_USER_EMAIL,
   DEMO_USER_ID,
@@ -148,6 +149,7 @@ export function initializeDemoDatabase(
         now,
       );
   })();
+  publishTopicQuizCatalog(database);
 }
 
 function applyMigrations(database: DatabaseClient, projectRoot: string): void {

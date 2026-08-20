@@ -10,6 +10,11 @@ const technicalSnapshot = {
   publishedScenarioCount: 8,
   publishedScenarioKnowledgeMismatchCount: 0,
   activeLearnerCount: 1,
+  activeAdminCount: 1,
+  publishedTopicCount: 5,
+  publishedTopicCategoryCount: 5,
+  publishedTopicKnowledgeMismatchCount: 0,
+  topicQuestionCount: 350,
 };
 
 describe("evaluateProductionSnapshot", () => {
@@ -33,15 +38,16 @@ describe("evaluateProductionSnapshot", () => {
     expect(result.formalPassed).toBe(true);
   });
 
-  it("does not depend on retired admin accounts or manual quiz reviews", () => {
-    const retiredAdminSnapshot = {
+  it("requires a live administrator but not manual quiz review records", () => {
+    const missingAdminSnapshot = {
       ...technicalSnapshot,
       activeAdminCount: 0,
       currentApprovalCount: 0,
     };
-    const result = evaluateProductionSnapshot(retiredAdminSnapshot);
+    const result = evaluateProductionSnapshot(missingAdminSnapshot);
 
-    expect(result.technicalPassed).toBe(true);
+    expect(result.technicalPassed).toBe(false);
+    expect(result.technicalIssues).toContain("至少需要一个启用中的管理员账号。");
   });
 
   it("rejects inconsistent production references and content counts", () => {
@@ -51,6 +57,10 @@ describe("evaluateProductionSnapshot", () => {
       questionCount: 39,
       publishedScenarioCount: 7,
       publishedScenarioKnowledgeMismatchCount: 1,
+      publishedTopicCount: 4,
+      publishedTopicCategoryCount: 4,
+      publishedTopicKnowledgeMismatchCount: 1,
+      topicQuestionCount: 349,
     });
 
     expect(result.technicalPassed).toBe(false);
@@ -60,6 +70,9 @@ describe("evaluateProductionSnapshot", () => {
         "活动知识版本必须有40道题目。",
         "必须发布8个场景版本。",
         "场景版本必须全部引用活动知识版本。",
+        "必须发布5个专题题组。",
+        "专题题库必须包含350道题和5个分类。",
+        "专题题组必须引用活动知识版本。",
       ]),
     );
   });

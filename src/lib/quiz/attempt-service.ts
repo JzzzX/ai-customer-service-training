@@ -1,10 +1,12 @@
-import { getQuizAttemptStore } from "@/lib/runtime/services";
+import {
+  getPublishedQuizStore,
+  getQuizAttemptStore,
+} from "@/lib/runtime/services";
 
 import type {
   QuizAttemptRecord,
   SaveQuizAttemptInput,
 } from "./attempt-store";
-import { quizTopics, topicQuizQuestions } from "./question-bank";
 import {
   summarizeQuizProgress,
   type QuizProgressSummary,
@@ -27,15 +29,12 @@ export async function getQuizProgressForLearner(
   options: { recentLimit?: number } = {},
 ): Promise<QuizProgressSummary> {
   const attempts = await listQuizAttemptsForLearner(learnerId);
-  const totals = new Map<string, number>();
-  for (const question of topicQuizQuestions) {
-    totals.set(question.category, (totals.get(question.category) ?? 0) + 1);
-  }
+  const topics = await getPublishedQuizStore().listPublishedTopics();
   return summarizeQuizProgress(
     attempts,
-    quizTopics.map((topic) => ({
-      id: topic.id,
-      totalQuestions: totals.get(topic.id) ?? 0,
+    topics.map((topic) => ({
+      id: topic.topicId,
+      totalQuestions: topic.questionCount,
     })),
     options.recentLimit,
   );

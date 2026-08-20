@@ -3,6 +3,6 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/guards";
 
 export default async function LoginContinuePage() {
-  await requireUser();
-  redirect("/practice");
+  const user = await requireUser();
+  redirect(user.role === "admin" ? "/admin" : "/practice");
 }

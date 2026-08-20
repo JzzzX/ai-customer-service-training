@@ -80,6 +80,7 @@ describe(
           email:
             "new.employee@example.com",
           name: "新员工",
+          role: "learner",
         });
 
         const storedUsers =
@@ -103,6 +104,7 @@ describe(
             "new.employee@example.com",
           name: "新员工",
           isActive: true,
+          role: "learner",
         });
 
         expect(
@@ -205,6 +207,7 @@ describe(
               "existing@example.com",
             name: "已有员工",
             passwordHash: "not-used",
+            role: "admin",
             isActive: true,
           });
 
@@ -221,6 +224,7 @@ describe(
           email:
             "existing@example.com",
           name: "已有员工",
+          role: "admin",
         });
 
         const identity =

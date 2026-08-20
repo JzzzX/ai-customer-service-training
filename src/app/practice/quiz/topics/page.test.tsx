@@ -23,7 +23,7 @@ import QuizTopicsPage from "./page";
 describe("QuizTopicsPage", () => {
   it("renders 5 topic cards with links to /practice/quiz?topic=", async () => {
     mocks.getQuizProgressForLearner.mockResolvedValue({
-      totalQuestions: 230,
+      totalQuestions: 12,
       uniqueAnsweredCount: 3,
       totalCorrectAnswers: 3,
       totalAnsweredAnswers: 3,
@@ -32,7 +32,7 @@ describe("QuizTopicsPage", () => {
       topics: [
         {
           topicId: "产品属性及卖点",
-          totalQuestions: 25,
+          totalQuestions: 12,
           uniqueAnsweredCount: 3,
           totalCorrectAnswers: 3,
           totalAnsweredAnswers: 3,
@@ -83,10 +83,11 @@ describe("QuizTopicsPage", () => {
     expect(
       screen.getByText(
         (_, element) =>
-          element?.tagName === "P" && element.textContent === "3 / 230 题",
+          element?.tagName === "P" && element.textContent === "3 / 12 题",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText(/已覆盖 3 \/ 65 题/)).toBeInTheDocument();
+    expect(screen.getByText(/已覆盖 3 \/ 12 题/)).toBeInTheDocument();
+    expect(screen.getByText(/5 个专题 · 12 道题/)).toBeInTheDocument();
     expect(screen.getByText(/最近一次：产品属性及卖点/)).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "查看详细记录" }),

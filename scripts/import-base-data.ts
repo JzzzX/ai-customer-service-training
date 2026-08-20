@@ -19,7 +19,7 @@ try {
   const file = resolve(requiredOption("--file"));
   const bundle = JSON.parse(readFileSync(file, "utf8")) as unknown;
   importBaseDataBundle(bundle, getDatabase());
-  console.log("BaseDataBundleV1 已原子导入 SQLite（未导入训练历史）。");
+  console.log("BaseDataBundleV2 已原子导入 SQLite（未导入训练历史）。");
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;

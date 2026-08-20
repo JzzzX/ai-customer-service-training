@@ -5,4 +5,11 @@ import type { QuizPublishedPack } from "./schema";
  */
 export interface PublishedQuizStore {
   loadPublished(): Promise<QuizPublishedPack | null>;
+  loadPublishedTopic(topicId: string): Promise<QuizPublishedPack | null>;
+  listPublishedTopics(): Promise<PublishedTopicSummary[]>;
 }
+
+export type PublishedTopicSummary = {
+  topicId: string;
+  questionCount: number;
+};

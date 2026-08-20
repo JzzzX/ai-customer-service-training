@@ -6,6 +6,7 @@ import {
   knowledgeSources,
   knowledgeUnits,
   knowledgeVersions,
+  questionCatalogs,
   questions,
   quizSets,
   users,
@@ -36,8 +37,8 @@ describe("DbKnowledgeQueryStore", () => {
     });
     await database.insert(knowledgeSources).values({
       knowledgeVersionId: versionId,
-            id: crypto.randomUUID(),
-sourcePath: "产品卖点.md",
+      id: crypto.randomUUID(),
+      sourcePath: "产品卖点.md",
       kind: "markdown",
       sourceHash: "b".repeat(64),
       bytes: 128,
@@ -54,10 +55,19 @@ sourcePath: "产品卖点.md",
       sources: [],
       hasConflict: true,
     });
+    const questionCatalogId = "00000000-0000-4000-8000-000000000035";
+    await database.insert(questionCatalogs).values({
+      id: questionCatalogId,
+      stableKey: "q_test",
+    });
     await database.insert(questions).values({
       id: "00000000-0000-4000-8000-000000000040",
+      questionCatalogId,
+      revision: 1,
+      contentHash: "e".repeat(64),
       knowledgeVersionId: versionId,
       knowledgeUnitId: unitId,
+      knowledgeUnitKey: "ku_test",
       questionKey: "q_test",
       type: "true_false",
       prompt: "测试",
@@ -65,6 +75,7 @@ sourcePath: "产品卖点.md",
       correctAnswers: ["正确"],
       explanation: "测试",
       category: "产品",
+      sources: [],
     });
     await database.insert(quizSets).values({
       id: "00000000-0000-4000-8000-000000000050",

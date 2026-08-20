@@ -1,9 +1,10 @@
-import { and, count, eq, ne } from "drizzle-orm";
+import { and, count, countDistinct, eq, isNotNull, ne } from "drizzle-orm";
 
 import type { DatabaseClient } from "./client";
 import {
   knowledgeVersions,
   questions,
+  quizSetQuestions,
   quizSets,
   scenarioVersions,
   users,
@@ -17,6 +18,11 @@ export type ProductionSnapshot = {
   publishedScenarioCount: number;
   publishedScenarioKnowledgeMismatchCount: number;
   activeLearnerCount: number;
+  activeAdminCount: number;
+  publishedTopicCount: number;
+  publishedTopicCategoryCount: number;
+  publishedTopicKnowledgeMismatchCount: number;
+  topicQuestionCount: number;
 };
 
 export type ProductionVerification = {
@@ -52,6 +58,21 @@ export function evaluateProductionSnapshot(
   if (snapshot.activeLearnerCount < 1) {
     technicalIssues.push("至少需要一个启用中的学员账号。");
   }
+  if (snapshot.activeAdminCount < 1) {
+    technicalIssues.push("至少需要一个启用中的管理员账号。");
+  }
+  if (snapshot.publishedTopicCount !== 5) {
+    technicalIssues.push("必须发布5个专题题组。");
+  }
+  if (snapshot.publishedTopicKnowledgeMismatchCount !== 0) {
+    technicalIssues.push("专题题组必须引用活动知识版本。");
+  }
+  if (
+    snapshot.topicQuestionCount !== 350 ||
+    snapshot.publishedTopicCategoryCount !== 5
+  ) {
+    technicalIssues.push("专题题库必须包含350道题和5个分类。");
+  }
 
   const formalIssues = [...technicalIssues];
   if (snapshot.publishedQuizCount !== 1) {
@@ -79,15 +100,44 @@ export async function verifyProductionData(
 
   const questionRows = activeVersionId
     ? await database
-        .select({ value: count() })
+        .select({ value: countDistinct(questions.questionCatalogId) })
         .from(questions)
-        .where(eq(questions.knowledgeVersionId, activeVersionId))
+        .where(
+          and(
+            eq(questions.knowledgeVersionId, activeVersionId),
+            isNotNull(questions.knowledgeUnitId),
+          ),
+        )
         .all()
     : [{ value: 0 }];
   const publishedQuizRows = await database
     .select({ value: count() })
     .from(quizSets)
-    .where(eq(quizSets.status, "published"))
+    .where(
+      and(eq(quizSets.status, "published"), eq(quizSets.kind, "formal")),
+    )
+    .all();
+  const publishedTopicRows = await database
+    .select({ value: count() })
+    .from(quizSets)
+    .where(
+      and(eq(quizSets.status, "published"), eq(quizSets.kind, "topic")),
+    )
+    .all();
+  const publishedTopicCategoryRows = await database
+    .select({ value: countDistinct(quizSets.topicId) })
+    .from(quizSets)
+    .where(
+      and(eq(quizSets.status, "published"), eq(quizSets.kind, "topic")),
+    )
+    .all();
+  const topicQuestionRows = await database
+    .select({ value: count() })
+    .from(quizSetQuestions)
+    .innerJoin(quizSets, eq(quizSetQuestions.quizSetId, quizSets.id))
+    .where(
+      and(eq(quizSets.status, "published"), eq(quizSets.kind, "topic")),
+    )
     .all();
   const publishedScenarioRows = await database
     .select({ value: count() })
@@ -101,11 +151,25 @@ export async function verifyProductionData(
         .where(
           and(
             eq(quizSets.status, "published"),
+            eq(quizSets.kind, "formal"),
             ne(quizSets.knowledgeVersionId, activeVersionId),
           ),
         )
         .all()
     : publishedQuizRows;
+  const topicMismatchRows = activeVersionId
+    ? await database
+        .select({ value: count() })
+        .from(quizSets)
+        .where(
+          and(
+            eq(quizSets.status, "published"),
+            eq(quizSets.kind, "topic"),
+            ne(quizSets.knowledgeVersionId, activeVersionId),
+          ),
+        )
+        .all()
+    : publishedTopicRows;
   const scenarioMismatchRows = activeVersionId
     ? await database
         .select({ value: count() })
@@ -125,7 +189,14 @@ export async function verifyProductionData(
     .select({ value: count() })
     .from(users)
     .where(
-      eq(users.isActive, true),
+      and(eq(users.isActive, true), eq(users.role, "learner")),
+    )
+    .all();
+  const activeAdminRows = await database
+    .select({ value: count() })
+    .from(users)
+    .where(
+      and(eq(users.isActive, true), eq(users.role, "admin")),
     )
     .all();
   return evaluateProductionSnapshot({
@@ -138,5 +209,12 @@ export async function verifyProductionData(
     publishedScenarioKnowledgeMismatchCount:
       scenarioMismatchRows[0]?.value ?? 0,
     activeLearnerCount: activeLearnerRows[0]?.value ?? 0,
+    activeAdminCount: activeAdminRows[0]?.value ?? 0,
+    publishedTopicCount: publishedTopicRows[0]?.value ?? 0,
+    publishedTopicCategoryCount:
+      publishedTopicCategoryRows[0]?.value ?? 0,
+    publishedTopicKnowledgeMismatchCount:
+      topicMismatchRows[0]?.value ?? 0,
+    topicQuestionCount: topicQuestionRows[0]?.value ?? 0,
   });
 }

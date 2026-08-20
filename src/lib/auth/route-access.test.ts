@@ -20,20 +20,30 @@ describe("decideRouteAccess", () => {
     ).toBe("allow");
   });
 
-  it("does not use roles to guard retired admin paths", () => {
+  it("allows only admins into admin paths", () => {
     expect(decideRouteAccess("/admin", null)).toBe("login");
     expect(decideRouteAccess("/admin/questions", { role: "learner" })).toBe(
-      "allow",
+      "forbidden",
     );
+    expect(decideRouteAccess("/admin/questions", { role: "admin" })).toBe("allow");
   });
 
-  it("allows every authenticated learner into training routes", () => {
+  it("allows only learners into training routes", () => {
     expect(decideRouteAccess("/practice", { role: "admin" })).toBe(
-      "allow",
+      "forbidden",
     );
     expect(
       decideRouteAccess("/practice/profile?tab=quiz", { role: "admin" }),
-    ).toBe("allow");
+    ).toBe("forbidden");
     expect(decideRouteAccess("/practice", { role: "learner" })).toBe("allow");
+  });
+
+  it("denies protected role paths when an old token has no role claim", () => {
+    expect(decideRouteAccess("/practice", { id: "legacy-session" })).toBe(
+      "forbidden",
+    );
+    expect(decideRouteAccess("/admin", { id: "legacy-session" })).toBe(
+      "forbidden",
+    );
   });
 });

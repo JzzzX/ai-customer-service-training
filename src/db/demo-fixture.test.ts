@@ -25,14 +25,31 @@ describe("in-memory demo fixture", () => {
     expect(() => assertDatabaseSchema(database!)).not.toThrow();
     expect(
       database.$client
-        .prepare("select id, email, name, is_active from users")
+        .prepare("select id, email, name, role, is_active from users")
         .get(),
     ).toEqual({
       id: DEMO_USER_ID,
       email: "demo@example.test",
       name: "演示学员",
+      role: "learner",
       is_active: 1,
     });
+  });
+
+  it("deterministically publishes the complete topic catalog for demo practice", () => {
+    database = createDatabaseClient(":memory:");
+    initializeDemoDatabase(database);
+
+    expect(
+      database.$client
+        .prepare("select count(*) as count from question_catalogs")
+        .get(),
+    ).toEqual({ count: 350 });
+    expect(
+      database.$client
+        .prepare("select count(*) as count from quiz_sets where kind = 'topic' and status = 'published'")
+        .get(),
+    ).toEqual({ count: 5 });
   });
 
   it("publishes one mock scenario for the full demo flow", async () => {

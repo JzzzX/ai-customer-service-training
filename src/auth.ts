@@ -29,6 +29,7 @@ const providers = [
             id: DEMO_USER_ID,
             email: DEMO_USER_EMAIL,
             name: DEMO_USER_NAME,
+            role: "learner" as const,
           }),
         }),
       ]
@@ -54,16 +55,21 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         ),
         email: user.email ?? "",
         name: user.name ?? "",
+        role: user.role === "admin" ? "admin" : "learner",
       });
     },
 
     session({ session, token }) {
-      if (typeof token.id !== "string") {
+      if (
+        typeof token.id !== "string" ||
+        (token.role !== "admin" && token.role !== "learner")
+      ) {
         return session;
       }
 
       return applyTokenToSession(session, {
         id: token.id,
+        role: token.role,
       });
     },
 
@@ -82,6 +88,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         loginUrl.searchParams.set("callbackUrl", callbackUrl.toString());
 
         return Response.redirect(loginUrl);
+      }
+
+      if (decision === "forbidden") {
+        return Response.redirect(new URL("/forbidden", resolveBaseUrl(request)));
       }
 
       return true;

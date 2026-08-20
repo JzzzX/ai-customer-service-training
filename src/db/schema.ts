@@ -19,6 +19,10 @@ import type {
 } from "@/lib/scenario/schema";
 
 const lifecycleStatus = ["draft", "published", "disabled", "archived"] as const;
+export const userRoles = ["learner", "admin"] as const;
+export type UserRole = (typeof userRoles)[number];
+export const quizSetKinds = ["formal", "topic", "remediation"] as const;
+export type QuizSetKind = (typeof quizSetKinds)[number];
 const questionTypes = ["single_choice", "true_false"] as const;
 const difficulties = ["easy", "medium", "hard"] as const;
 const quizAttemptStatuses = ["in_progress", "passed", "needs_retry"] as const;
@@ -43,11 +47,15 @@ export const users = sqliteTable(
     email: text("email").notNull(),
     name: text("name").notNull(),
     passwordHash: text("password_hash").notNull(),
+    role: text("role", { enum: userRoles }).default("learner").notNull(),
     isActive: bool("is_active").default(true).notNull(),
     lastLoginAt: integer("last_login_at", { mode: "timestamp_ms" }),
     ...auditTimestamps(),
   },
-  (table) => [unique("users_email_unique").on(table.email)],
+  (table) => [
+    unique("users_email_unique").on(table.email),
+    check("users_role_check", sql`${table.role} in ('learner', 'admin')`),
+  ],
 );
 
 export const feishuIdentities = sqliteTable(
@@ -168,6 +176,8 @@ export const quizSets = sqliteTable(
     sourceQuizHash: text("source_quiz_hash"),
     title: text("title").notNull(),
     description: text("description"),
+    kind: text("kind", { enum: quizSetKinds }).default("formal").notNull(),
+    topicId: text("topic_id"),
     publicationSource: text("publication_source").default("cli").notNull(),
     status: text("status", { enum: lifecycleStatus }).default("draft").notNull(),
     passingScore: integer("passing_score").default(80).notNull(),
@@ -188,6 +198,31 @@ export const quizSets = sqliteTable(
       "quiz_sets_status_check",
       sql`${table.status} in ('draft', 'published', 'disabled', 'archived')`,
     ),
+    check(
+      "quiz_sets_kind_check",
+      sql`${table.kind} in ('formal', 'topic', 'remediation')`,
+    ),
+    check(
+      "quiz_sets_topic_check",
+      sql`(${table.kind} = 'topic' and ${table.topicId} is not null) or (${table.kind} <> 'topic' and ${table.topicId} is null)`,
+    ),
+    index("quiz_sets_kind_topic_status_idx").on(
+      table.kind,
+      table.topicId,
+      table.status,
+    ),
+  ],
+);
+
+export const questionCatalogs = sqliteTable(
+  "question_catalogs",
+  {
+    id: text("id").primaryKey(),
+    stableKey: text("stable_key").notNull(),
+    createdAt: timestamp("created_at").notNull(),
+  },
+  (table) => [
+    unique("question_catalogs_stable_key_unique").on(table.stableKey),
   ],
 );
 
@@ -195,12 +230,17 @@ export const questions = sqliteTable(
   "questions",
   {
     id: text("id").primaryKey(),
+    questionCatalogId: text("question_catalog_id")
+      .notNull()
+      .references(() => questionCatalogs.id, { onDelete: "restrict" }),
+    revision: integer("revision").notNull(),
+    contentHash: text("content_hash").notNull(),
     knowledgeVersionId: text("knowledge_version_id")
       .notNull()
       .references(() => knowledgeVersions.id, { onDelete: "restrict" }),
     knowledgeUnitId: text("knowledge_unit_id")
-      .notNull()
       .references(() => knowledgeUnits.id, { onDelete: "restrict" }),
+    knowledgeUnitKey: text("knowledge_unit_key").notNull(),
     questionKey: text("question_key").notNull(),
     type: text("type", { enum: questionTypes }).notNull(),
     prompt: text("prompt").notNull(),
@@ -209,14 +249,21 @@ export const questions = sqliteTable(
     explanation: text("explanation").notNull(),
     category: text("category").notNull(),
     difficulty: text("difficulty", { enum: difficulties }).default("easy").notNull(),
+    sources: json<SourceLocator[]>("sources").notNull(),
     status: text("status", { enum: lifecycleStatus }).default("draft").notNull(),
     ...auditTimestamps(),
   },
   (table) => [
-    unique("questions_version_key_unique").on(
-      table.knowledgeVersionId,
-      table.questionKey,
+    unique("questions_catalog_revision_unique").on(
+      table.questionCatalogId,
+      table.revision,
     ),
+    unique("questions_catalog_content_unique").on(
+      table.questionCatalogId,
+      table.contentHash,
+    ),
+    index("questions_question_key_idx").on(table.questionKey),
+    index("questions_catalog_idx").on(table.questionCatalogId),
     index("questions_knowledge_unit_idx").on(table.knowledgeUnitId),
     index("questions_status_category_idx").on(table.status, table.category),
     check(
@@ -231,6 +278,7 @@ export const questions = sqliteTable(
       "questions_status_check",
       sql`${table.status} in ('draft', 'published', 'disabled', 'archived')`,
     ),
+    check("questions_revision_check", sql`${table.revision} >= 1`),
   ],
 );
 
@@ -557,6 +605,7 @@ export const mvpTables = {
   knowledgeSources,
   knowledgeUnits,
   quizSets,
+  questionCatalogs,
   questions,
   quizSetQuestions,
   quizAttempts,
