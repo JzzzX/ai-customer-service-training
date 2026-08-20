@@ -35,30 +35,87 @@ export async function GET(
 
   const service = getScenarioTrainingService();
   const encoder = new TextEncoder();
+  let cancelStream = () => {};
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (data: unknown) => {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify(data)}\n\n`),
-        );
+      const abortController = new AbortController();
+      const signal = AbortSignal.any([
+        request.signal,
+        abortController.signal,
+      ]);
+      let cancelled = false;
+      let closed = false;
+      let heartbeat: ReturnType<typeof setInterval> | undefined;
+      const stopHeartbeat = () => {
+        if (heartbeat !== undefined) {
+          clearInterval(heartbeat);
+          heartbeat = undefined;
+        }
       };
+      const abort = () => {
+        if (!abortController.signal.aborted) {
+          abortController.abort();
+        }
+      };
+      const stop = () => {
+        stopHeartbeat();
+        abort();
+      };
+      const enqueue = (chunk: Uint8Array) => {
+        if (cancelled || closed) return false;
+        try {
+          controller.enqueue(chunk);
+          return true;
+        } catch {
+          closed = true;
+          stopHeartbeat();
+          abort();
+          return false;
+        }
+      };
+      const close = () => {
+        stopHeartbeat();
+        if (cancelled || closed) return;
+        closed = true;
+        try {
+          controller.close();
+        } catch {
+          // The consumer may have closed the stream concurrently.
+        }
+      };
+      const cancel = () => {
+        cancelled = true;
+        stop();
+      };
+      const onRequestAbort = () => {
+        stop();
+        close();
+      };
+      request.signal.addEventListener("abort", onRequestAbort, { once: true });
+      if (request.signal.aborted) {
+        onRequestAbort();
+      }
+      cancelStream = cancel;
+      const send = (data: unknown) =>
+        enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+
       // 立即发送 SSE 注释行，确保生产模式下响应头不被缓冲
-      controller.enqueue(encoder.encode(": stream-open\n\n"));
-      const heartbeat = setInterval(() => {
-        controller.enqueue(encoder.encode(": heartbeat\n\n"));
+      enqueue(encoder.encode(": stream-open\n\n"));
+      heartbeat = setInterval(() => {
+        enqueue(encoder.encode(": heartbeat\n\n"));
       }, 15_000);
       try {
         for await (const chunk of service.completeStream({
           learnerId: session.user.id,
           sessionId: parsed.data,
-          signal: request.signal,
+          signal,
         })) {
-          send(chunk);
+          if (!send(chunk)) return;
         }
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        enqueue(encoder.encode("data: [DONE]\n\n"));
       } catch (error) {
-        if (request.signal.aborted) {
+        if (signal.aborted) {
           return;
         }
         reportRuntimeError(
@@ -75,9 +132,12 @@ export async function GET(
           error: toPublicAiGatewayError(error),
         });
       } finally {
-        clearInterval(heartbeat);
-        controller.close();
+        request.signal.removeEventListener("abort", onRequestAbort);
+        close();
       }
+    },
+    cancel() {
+      cancelStream();
     },
   });
 

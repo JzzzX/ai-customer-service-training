@@ -312,6 +312,44 @@ describe("ScenarioChat", () => {
     }
   });
 
+  it("keeps the report connection active when repeated raw heartbeat frames arrive", async () => {
+    vi.useFakeTimers();
+    try {
+      let heartbeat = () => {};
+      vi.stubGlobal(
+        "fetch",
+        vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+          const stream = createHeartbeatReportResponse(init?.signal);
+          heartbeat = stream.heartbeat;
+          return Promise.resolve(stream.response);
+        }),
+      );
+
+      render(
+        <ScenarioChat
+          initialSession={initialSession}
+          scenarioTitle={scenarioTemplates[0].title}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "结束并查看报告" }));
+      await act(async () => {
+        await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(15_000);
+        heartbeat();
+        await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(15_000);
+        heartbeat();
+        await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(30_000);
+      });
+
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.getByText("正在生成训练报告")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("renders a warning risk alert card attached to the learner message", () => {
     const sessionWithRisk: ScenarioSession = {
       ...initialSession,
@@ -400,4 +438,25 @@ function createStalledReportResponse(signal?: AbortSignal | null): Response {
   }), {
     headers: { "Content-Type": "text/event-stream" },
   });
+}
+
+function createHeartbeatReportResponse(signal?: AbortSignal | null): {
+  response: Response;
+  heartbeat: () => void;
+} {
+  let controller: ReadableStreamDefaultController<Uint8Array> | undefined;
+  const response = new Response(new ReadableStream<Uint8Array>({
+    start(streamController) {
+      controller = streamController;
+      signal?.addEventListener("abort", () => {
+        streamController.error(new DOMException("Aborted", "AbortError"));
+      });
+    },
+  }), {
+    headers: { "Content-Type": "text/event-stream" },
+  });
+  return {
+    response,
+    heartbeat: () => controller?.enqueue(new TextEncoder().encode(": heartbeat\n\n")),
+  };
 }

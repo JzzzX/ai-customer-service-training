@@ -32,7 +32,7 @@ describe("GET /api/scenario/complete/:sessionId", () => {
     });
   });
 
-  it("passes the client disconnect signal into report generation", async () => {
+  it("passes a stream-owned abort signal into report generation", async () => {
     const abort = new AbortController();
     mocks.completeStream.mockImplementationOnce(async function* () {
       yield { phase: "analyzing" };
@@ -51,11 +51,7 @@ describe("GET /api/scenario/complete/:sessionId", () => {
         signal: expect.any(AbortSignal),
       }),
     );
-    const input = mocks.completeStream.mock.calls[0]?.[0] as {
-      signal: AbortSignal;
-    };
-    abort.abort();
-    expect(input.signal.aborted).toBe(true);
+    expect(abort.signal.aborted).toBe(false);
   });
 
   it("emits a heartbeat every 15 seconds while report evaluation is pending", async () => {
@@ -99,15 +95,14 @@ describe("GET /api/scenario/complete/:sessionId", () => {
   });
 
   it("stops quietly when the client disconnects", async () => {
-    mocks.completeStream.mockImplementationOnce(async function* (input: {
-      signal: AbortSignal;
-    }) {
+    vi.useFakeTimers();
+    let finish = () => {};
+    const pending = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    mocks.completeStream.mockImplementationOnce(async function* () {
       yield { phase: "analyzing" };
-      await new Promise<never>((_resolve, reject) => {
-        input.signal.addEventListener("abort", () => {
-          reject(new DOMException("Aborted", "AbortError"));
-        });
-      });
+      await pending;
     });
     const abort = new AbortController();
     const response = await GET(
@@ -120,8 +115,46 @@ describe("GET /api/scenario/complete/:sessionId", () => {
 
     abort.abort();
 
+    expect(vi.getTimerCount()).toBe(0);
+    finish();
     await expect(reader?.read()).resolves.toMatchObject({ done: true });
     expect(mocks.reportRuntimeError).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it("aborts pending report generation and clears its heartbeat when the reader cancels", async () => {
+    vi.useFakeTimers();
+    let observedSignal: AbortSignal | undefined;
+    let upstreamStopped = () => {};
+    const stopped = new Promise<void>((resolve) => {
+      upstreamStopped = resolve;
+    });
+    mocks.completeStream.mockImplementationOnce(async function* (input: {
+      signal: AbortSignal;
+    }) {
+      observedSignal = input.signal;
+      yield { phase: "analyzing" };
+      await new Promise<void>((resolve) => {
+        input.signal.addEventListener("abort", () => resolve(), { once: true });
+      });
+      upstreamStopped();
+    });
+
+    const response = await GET(new Request("http://localhost"), {
+      params: Promise.resolve({ sessionId }),
+    });
+    const reader = response.body?.getReader();
+    await reader?.read();
+    await reader?.read();
+
+    await reader?.cancel();
+    await stopped;
+    await vi.advanceTimersByTimeAsync(15_000);
+
+    expect(observedSignal?.aborted).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(mocks.reportRuntimeError).not.toHaveBeenCalled();
+    vi.useRealTimers();
   });
 
   it("classifies and logs report gateway failures without exposing details", async () => {

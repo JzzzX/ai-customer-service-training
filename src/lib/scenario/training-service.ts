@@ -198,6 +198,9 @@ export class ScenarioTrainingService {
       throw new Error("AI 评测结果解析失败，请稍后重试。");
     }
     yield { phase: "saving" };
+    if (input.signal?.aborted) {
+      throw new DOMException("Aborted", "AbortError");
+    }
     const completed = await this.store.completeSession({ ...input, report });
     yield { report };
     yield { session: completed };

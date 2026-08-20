@@ -105,6 +105,44 @@ describe("StreamingReport", () => {
       vi.useRealTimers();
     }
   });
+
+  it("keeps the report connection active when repeated raw heartbeat frames arrive", async () => {
+    vi.useFakeTimers();
+    try {
+      let heartbeat = () => {};
+      vi.stubGlobal(
+        "fetch",
+        vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+          const stream = createHeartbeatSseResponse(init?.signal);
+          heartbeat = stream.heartbeat;
+          return Promise.resolve(stream.response);
+        }),
+      );
+
+      render(
+        <StreamingReport sessionId={sessionId} scenario={scenario} />,
+      );
+      await act(async () => {
+        await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(15_000);
+        heartbeat();
+        await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(15_000);
+        heartbeat();
+        await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(30_000);
+      });
+
+      expect(
+        screen.queryByRole("heading", { name: "报告生成遇到问题" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "AI 正在聆听对话…" }),
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 function createSseResponse(payload: unknown) {
@@ -141,6 +179,27 @@ function createStalledSseResponse(signal?: AbortSignal | null) {
   }), {
     headers: { "Content-Type": "text/event-stream" },
   });
+}
+
+function createHeartbeatSseResponse(signal?: AbortSignal | null): {
+  response: Response;
+  heartbeat: () => void;
+} {
+  let controller: ReadableStreamDefaultController<Uint8Array> | undefined;
+  const response = new Response(new ReadableStream<Uint8Array>({
+    start(streamController) {
+      controller = streamController;
+      signal?.addEventListener("abort", () => {
+        streamController.error(new DOMException("Aborted", "AbortError"));
+      });
+    },
+  }), {
+    headers: { "Content-Type": "text/event-stream" },
+  });
+  return {
+    response,
+    heartbeat: () => controller?.enqueue(new TextEncoder().encode(": heartbeat\n\n")),
+  };
 }
 
 function createReport(): ScenarioEvaluationReport {
