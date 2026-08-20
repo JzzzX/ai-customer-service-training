@@ -74,6 +74,26 @@ export function classifyAiGatewayError(
   };
 }
 
+export function toPublicAiGatewayError(error: unknown): string {
+  switch (classifyAiGatewayError(error).kind) {
+    case "timeout":
+      return "AI 服务响应超时，请稍后重试。";
+    case "network":
+      return "AI 服务网络连接异常，请稍后重试。";
+    case "rate_limit":
+      return "AI 服务当前繁忙，请稍后重试。";
+    case "authentication":
+      return "AI 服务认证异常，请联系管理员。";
+    case "empty_response":
+      return "AI 未返回有效内容，请重新发送。";
+    case "invalid_response":
+      return "AI 返回结果异常，请稍后重试。";
+    case "upstream":
+    case "unknown":
+      return "AI 服务暂时不可用，请稍后重试。";
+  }
+}
+
 function errorDetails(error: unknown): {
   status?: number;
   code?: string;

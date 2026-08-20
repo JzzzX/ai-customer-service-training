@@ -113,6 +113,7 @@ export function getOpenAIClient(
 
 /** 报告生成保留 reasoning，需更长 timeout（思考过程耗时长）。 */
 export const EVALUATION_TIMEOUT_MS = 180_000;
+export const CONVERSATION_TIMEOUT_MS = 60_000;
 
 export function resolveOpenAiModel(
   environment: Environment = process.env,

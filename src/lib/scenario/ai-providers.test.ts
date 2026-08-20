@@ -2,7 +2,10 @@ import type OpenAI from "openai";
 import { describe, expect, it, vi } from "vitest";
 
 import { scenarioTemplates } from "./templates";
-import { OpenAIConversationProvider } from "./ai-providers";
+import {
+  OpenAIConversationProvider,
+  OpenAIEvaluationProvider,
+} from "./ai-providers";
 
 function fakeClient(replies: string[]) {
   const create = vi.fn();
@@ -28,6 +31,28 @@ async function collect(stream: AsyncIterable<string>): Promise<string> {
 }
 
 describe("OpenAIConversationProvider", () => {
+  it("sets a 60-second deadline for the customer reply request", async () => {
+    const scenario = scenarioTemplates[0];
+    const { client, create } = fakeClient(["它3个月大，是泰迪。"]);
+    const provider = new OpenAIConversationProvider(client, "test-model");
+
+    await collect(
+      provider.streamCustomerReply({
+        scenario,
+        learnerTurnCount: 0,
+        messages: [
+          { role: "customer", content: scenario.openingMessage },
+          { role: "learner", content: "狗狗多大？" },
+        ],
+      }),
+    );
+
+    expect(create).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ timeout: 60_000 }),
+    );
+  });
+
   it("sends the ordered transcript and current turn to the model", async () => {
     const scenario = scenarioTemplates[0];
     const { client, create } = fakeClient(["它3个月大，体重2.1公斤。"]);
@@ -65,6 +90,7 @@ describe("OpenAIConversationProvider", () => {
           },
         ],
       }),
+      expect.objectContaining({ timeout: 60_000 }),
     );
   });
 
@@ -161,5 +187,53 @@ describe("OpenAIConversationProvider", () => {
     );
 
     expect(create.mock.calls[0]?.[0]).not.toHaveProperty("thinking");
+  });
+});
+
+describe("OpenAIEvaluationProvider", () => {
+  it("passes the report deadline and caller abort signal to the AI request", async () => {
+    const scenario = scenarioTemplates[0];
+    const signal = new AbortController().signal;
+    const create = vi.fn().mockResolvedValue({
+      async *[Symbol.asyncIterator]() {
+        yield {
+          choices: [
+            {
+              delta: {
+                content: JSON.stringify({
+                  confidence: 0.9,
+                  dimensions: scenario.scoringDimensions.map((dimension) => ({
+                    name: dimension.name,
+                    score: dimension.weight,
+                    evidence: ["已确认"],
+                  })),
+                  risks: [],
+                  recommendations: [],
+                }),
+              },
+            },
+          ],
+        };
+      },
+    });
+    const client = {
+      chat: { completions: { create } },
+    } as unknown as OpenAI;
+    const provider = new OpenAIEvaluationProvider(client, "test-model");
+
+    const chunks = [];
+    for await (const chunk of provider.evaluateStream({
+      scenario,
+      learnerMessages: ["我会先确认宠物年龄。"],
+      signal,
+    })) {
+      chunks.push(chunk);
+    }
+
+    expect(chunks).toHaveLength(2);
+    expect(create).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ timeout: 180_000, signal }),
+    );
   });
 });

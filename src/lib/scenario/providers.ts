@@ -30,6 +30,7 @@ export interface EvaluationProvider {
   evaluateStream(input: {
     scenario: ScenarioTemplate;
     learnerMessages: string[];
+    signal?: AbortSignal;
   }): AsyncIterable<EvaluationStreamChunk>;
 }
 

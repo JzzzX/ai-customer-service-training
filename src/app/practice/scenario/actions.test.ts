@@ -156,7 +156,7 @@ describe("scenario server actions", () => {
     const state = await sendScenarioMessageAction({}, formData);
 
     expect(state).toEqual({
-      error: "AI 服务暂时不可用，请稍后重试。",
+      error: "AI 服务认证异常，请联系管理员。",
     });
     expect(mocks.reportRuntimeError).toHaveBeenCalledWith(
       {

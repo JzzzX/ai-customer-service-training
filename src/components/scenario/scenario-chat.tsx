@@ -68,8 +68,20 @@ export function ScenarioChat({
     reportAbortRef.current = controller;
     setReportPhase("analyzing");
     setReportError("");
+    let silenceTimer: number | undefined;
+    let timedOut = false;
+    const resetSilenceTimer = () => {
+      if (silenceTimer !== undefined) {
+        window.clearTimeout(silenceTimer);
+      }
+      silenceTimer = window.setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, 45_000);
+    };
 
     try {
+      resetSilenceTimer();
       const response = await fetch(
         `/api/scenario/complete/${session.id}`,
         { signal: controller.signal },
@@ -117,6 +129,7 @@ export function ScenarioChat({
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        resetSilenceTimer();
         buffer += decoder.decode(value, { stream: true });
         const events = buffer.split("\n\n");
         buffer = events.pop() ?? "";
@@ -128,15 +141,20 @@ export function ScenarioChat({
         throw new Error("报告生成失败，请稍后重试。");
       }
     } catch (caught) {
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted && !timedOut) return;
       setReportPhase("error");
       setReportError(
-        caught instanceof Error
+        timedOut
+          ? "与评测服务的连接已中断，请重新生成报告。"
+          : caught instanceof Error
           ? caught.message
           : "报告生成失败，请稍后重试。",
       );
       replaceFinishingFlag(false);
     } finally {
+      if (silenceTimer !== undefined) {
+        window.clearTimeout(silenceTimer);
+      }
       if (reportAbortRef.current === controller) {
         reportAbortRef.current = null;
       }

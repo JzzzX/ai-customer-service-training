@@ -165,7 +165,7 @@ export class ScenarioTrainingService {
   }
 
   async *completeStream(
-    input: SessionIdentity,
+    input: SessionIdentity & { signal?: AbortSignal },
   ): AsyncIterable<EvaluationStreamChunk | { session: ScenarioSession }> {
     const { session, scenario } = await this.loadWithScenario(input);
     if (session.status === "completed" && session.report) {
@@ -182,6 +182,7 @@ export class ScenarioTrainingService {
     for await (const chunk of this.evaluationProvider.evaluateStream({
       scenario,
       learnerMessages,
+      signal: input.signal,
     })) {
       if (!scoringStarted) {
         scoringStarted = true;

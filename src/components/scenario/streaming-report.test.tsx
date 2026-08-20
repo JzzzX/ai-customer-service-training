@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { scenarioTemplates } from "@/lib/scenario/templates";
@@ -76,6 +76,35 @@ describe("StreamingReport", () => {
     );
     expect(mocks.completeScenarioAction).not.toHaveBeenCalled();
   });
+
+  it("offers a retry when the report stream is silent for 45 seconds", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn((_input: RequestInfo | URL, init?: RequestInit) =>
+          Promise.resolve(createStalledSseResponse(init?.signal)),
+        ),
+      );
+
+      render(
+        <StreamingReport sessionId={sessionId} scenario={scenario} />,
+      );
+      await act(async () => {
+        await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(45_000);
+      });
+
+      expect(
+        screen.getByRole("heading", { name: "报告生成遇到问题" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("与评测服务的连接已中断，请重新生成报告。"),
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 function createSseResponse(payload: unknown) {
@@ -100,6 +129,18 @@ function createSseResponse(payload: unknown) {
       },
     },
   };
+}
+
+function createStalledSseResponse(signal?: AbortSignal | null) {
+  return new Response(new ReadableStream<Uint8Array>({
+    start(controller) {
+      signal?.addEventListener("abort", () => {
+        controller.error(new DOMException("Aborted", "AbortError"));
+      });
+    },
+  }), {
+    headers: { "Content-Type": "text/event-stream" },
+  });
 }
 
 function createReport(): ScenarioEvaluationReport {

@@ -52,9 +52,21 @@ export function StreamingReport({
     const controller = new AbortController();
     let cancelled = false;
     let accumulated = "";
+    let silenceTimer: number | undefined;
+    let timedOut = false;
+    const resetSilenceTimer = () => {
+      if (silenceTimer !== undefined) {
+        window.clearTimeout(silenceTimer);
+      }
+      silenceTimer = window.setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, 45_000);
+    };
 
     (async () => {
       try {
+        resetSilenceTimer();
         const response = await fetch(
           `/api/scenario/complete/${sessionId}`,
           { signal: controller.signal },
@@ -72,6 +84,7 @@ export function StreamingReport({
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          resetSilenceTimer();
           buffer += decoder.decode(value, { stream: true });
           const events = buffer.split("\n\n");
           buffer = events.pop() ?? "";
@@ -113,14 +126,20 @@ export function StreamingReport({
           }
         }
       } catch (error) {
-        if (cancelled || controller.signal.aborted) return;
+        if (cancelled || (controller.signal.aborted && !timedOut)) return;
         setState({
           phase: "error",
           message:
-            error instanceof Error
+            timedOut
+              ? "与评测服务的连接已中断，请重新生成报告。"
+              : error instanceof Error
               ? error.message
               : "报告生成失败，请稍后重试。",
         });
+      } finally {
+        if (silenceTimer !== undefined) {
+          window.clearTimeout(silenceTimer);
+        }
       }
     })();
 

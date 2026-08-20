@@ -7,11 +7,11 @@ import { z } from "zod";
 
 import { requireUser } from "@/lib/auth/guards";
 import { getScenarioTrainingService } from "@/lib/runtime/services";
-import { classifyAiGatewayError } from "@/lib/scenario/ai-errors";
+import { reportRuntimeError } from "@/lib/runtime/errors";
 import {
-  reportRuntimeError,
-  toPublicRuntimeError,
-} from "@/lib/runtime/errors";
+  classifyAiGatewayError,
+  toPublicAiGatewayError,
+} from "@/lib/scenario/ai-errors";
 
 const scenarioIdSchema = z.string().regex(/^st_[a-f0-9]{24}$/);
 const sessionIdSchema = z.string().uuid();
@@ -96,7 +96,7 @@ export async function sendScenarioMessageAction(
       error,
     );
     return {
-      error: toPublicRuntimeError(error, "AI 服务暂时不可用，请稍后重试。"),
+      error: toPublicAiGatewayError(error),
     };
   }
 }

@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -193,8 +194,9 @@ describe("ScenarioChat", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
 
-    expect(await screen.findByText("好的，那我先了解了。"))
-      .toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText("好的，那我先了解了。")).toBeInTheDocument(),
+    );
     expect(await screen.findByText("报告已生成")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "查看训练报告" }),
@@ -277,6 +279,39 @@ describe("ScenarioChat", () => {
     );
   });
 
+  it("offers a retry when no report frame arrives for 45 seconds", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn((_input: RequestInfo | URL, init?: RequestInit) =>
+          Promise.resolve(createStalledReportResponse(init?.signal)),
+        ),
+      );
+
+      render(
+        <ScenarioChat
+          initialSession={initialSession}
+          scenarioTitle={scenarioTemplates[0].title}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "结束并查看报告" }));
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(45_000);
+      });
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "与评测服务的连接已中断，请重新生成报告。",
+      );
+      expect(
+        screen.getByRole("button", { name: "重新生成报告" }),
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("renders a warning risk alert card attached to the learner message", () => {
     const sessionWithRisk: ScenarioSession = {
       ...initialSession,
@@ -351,6 +386,18 @@ function createReportResponse(events: unknown[]): Response {
     .map((event) => `data: ${JSON.stringify(event)}\n\n`)
     .join("");
   return new Response(body, {
+    headers: { "Content-Type": "text/event-stream" },
+  });
+}
+
+function createStalledReportResponse(signal?: AbortSignal | null): Response {
+  return new Response(new ReadableStream<Uint8Array>({
+    start(controller) {
+      signal?.addEventListener("abort", () => {
+        controller.error(new DOMException("Aborted", "AbortError"));
+      });
+    },
+  }), {
     headers: { "Content-Type": "text/event-stream" },
   });
 }

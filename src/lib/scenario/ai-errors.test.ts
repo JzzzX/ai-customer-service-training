@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { classifyAiGatewayError } from "./ai-errors";
+import {
+  classifyAiGatewayError,
+  toPublicAiGatewayError,
+} from "./ai-errors";
 
 describe("classifyAiGatewayError", () => {
   it.each([
@@ -65,5 +68,20 @@ describe("classifyAiGatewayError", () => {
       kind: "network",
       retryable: true,
     });
+  });
+
+  it.each([
+    [Object.assign(new Error("gateway secret"), { code: "ETIMEDOUT" }), "AI 服务响应超时，请稍后重试。"],
+    [Object.assign(new Error("gateway secret"), { code: "ECONNREFUSED" }), "AI 服务网络连接异常，请稍后重试。"],
+    [Object.assign(new Error("gateway secret"), { status: 429 }), "AI 服务当前繁忙，请稍后重试。"],
+    [Object.assign(new Error("gateway secret"), { status: 403 }), "AI 服务认证异常，请联系管理员。"],
+    [Object.assign(new Error("gateway secret"), { code: "AI_EMPTY_RESPONSE" }), "AI 未返回有效内容，请重新发送。"],
+    [Object.assign(new Error("gateway secret"), { code: "AI_INVALID_RESPONSE" }), "AI 返回结果异常，请稍后重试。"],
+    [Object.assign(new Error("gateway secret"), { status: 502 }), "AI 服务暂时不可用，请稍后重试。"],
+  ])("publishes a safe message for %o", (error, expected) => {
+    const message = toPublicAiGatewayError(error);
+
+    expect(message).toBe(expected);
+    expect(message).not.toContain("gateway secret");
   });
 });

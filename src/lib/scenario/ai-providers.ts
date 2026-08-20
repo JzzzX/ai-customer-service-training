@@ -8,6 +8,7 @@ import {
   buildLiveRiskPrompt,
 } from "./prompt-templates";
 import {
+  CONVERSATION_TIMEOUT_MS,
   EVALUATION_TIMEOUT_MS,
   type DoubaoNonStreamingChatParams,
   type DoubaoStreamingChatParams,
@@ -119,7 +120,7 @@ export class OpenAIConversationProvider implements ConversationProvider {
         ...(this.useDoubaoThinking
           ? { thinking: { type: "disabled" as const } }
           : {}),
-      } as DoubaoNonStreamingChatParams);
+      } as DoubaoNonStreamingChatParams, { timeout: CONVERSATION_TIMEOUT_MS });
       const reply = (completion.choices[0]?.message?.content ?? "").trim();
       if (!reply) {
         throw providerError(
@@ -260,7 +261,10 @@ export class OpenAIEvaluationProvider implements EvaluationProvider {
         { role: "user", content: userPrompt },
       ],
       response_format: { type: "json_object" },
-    } as DoubaoStreamingChatParams, { timeout: EVALUATION_TIMEOUT_MS });
+    } as DoubaoStreamingChatParams, {
+      timeout: EVALUATION_TIMEOUT_MS,
+      signal: input.signal,
+    });
     let accumulated = "";
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta?.content;
