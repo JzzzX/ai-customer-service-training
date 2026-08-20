@@ -65,10 +65,17 @@ export function FeishuProvider() {
         .trim()
         .toLowerCase();
 
+      const name = (
+        profile.name ??
+        profile.en_name ??
+        ""
+      ).trim();
+
       const user = resolveFeishuUser({
         unionId: profile.union_id,
         openId: profile.open_id,
         email,
+        name,
       });
 
       if (!user) {
