@@ -97,6 +97,10 @@ export async function GET(
         onRequestAbort();
       }
       cancelStream = cancel;
+      if (signal.aborted || closed) {
+        request.signal.removeEventListener("abort", onRequestAbort);
+        return;
+      }
       const send = (data: unknown) =>
         enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
 

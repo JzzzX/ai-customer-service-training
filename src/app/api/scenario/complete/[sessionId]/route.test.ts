@@ -32,17 +32,26 @@ describe("GET /api/scenario/complete/:sessionId", () => {
     });
   });
 
-  it("passes a stream-owned abort signal into report generation", async () => {
+  it("propagates a Request.signal abort to report generation", async () => {
     const abort = new AbortController();
-    mocks.completeStream.mockImplementationOnce(async function* () {
+    let observedSignal: AbortSignal | undefined;
+    mocks.completeStream.mockImplementationOnce(async function* (input: {
+      signal: AbortSignal;
+    }) {
+      observedSignal = input.signal;
       yield { phase: "analyzing" };
+      await new Promise<void>((resolve) => {
+        input.signal.addEventListener("abort", () => resolve(), { once: true });
+      });
     });
     const request = new Request("http://localhost", { signal: abort.signal });
 
     const response = await GET(request, {
       params: Promise.resolve({ sessionId }),
     });
-    await response.text();
+    const reader = response.body?.getReader();
+    await reader?.read();
+    await reader?.read();
 
     expect(mocks.completeStream).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -51,7 +60,34 @@ describe("GET /api/scenario/complete/:sessionId", () => {
         signal: expect.any(AbortSignal),
       }),
     );
-    expect(abort.signal.aborted).toBe(false);
+    expect(observedSignal).not.toBe(abort.signal);
+
+    abort.abort();
+
+    expect(observedSignal?.aborted).toBe(true);
+    await expect(reader?.read()).resolves.toMatchObject({ done: true });
+  });
+
+  it("does not start report work or a heartbeat for a pre-aborted request", async () => {
+    vi.useFakeTimers();
+    try {
+      const abort = new AbortController();
+      abort.abort();
+
+      const response = await GET(
+        new Request("http://localhost", { signal: abort.signal }),
+        { params: Promise.resolve({ sessionId }) },
+      );
+      const reader = response.body?.getReader();
+
+      expect(mocks.completeStream).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+      await expect(reader?.read()).resolves.toMatchObject({ done: true });
+      expect(mocks.reportRuntimeError).not.toHaveBeenCalled();
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
   });
 
   it("emits a heartbeat every 15 seconds while report evaluation is pending", async () => {
