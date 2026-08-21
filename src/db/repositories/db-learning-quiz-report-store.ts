@@ -1,4 +1,5 @@
 import type { DatabaseClient } from "../client";
+import { DbRemediationExamStore } from "./db-remediation-exam-store";
 import {
   resolveBeijingDateRange,
   toBeijingDate,
@@ -41,11 +42,11 @@ type Answer = {
 export class DbLearningQuizReportStore {
   constructor(private readonly database: DatabaseClient) {}
 
-  async getReport(
+  getReport(
     learnerId: string,
     rangeInput: BeijingDateRangeInput,
     now = new Date(),
-  ): Promise<LearningQuizReport> {
+  ): LearningQuizReport {
     const range = resolveBeijingDateRange(rangeInput, now);
     const start = new Date(range.startAt).getTime();
     const end = new Date(range.endExclusiveAt).getTime();
@@ -83,6 +84,7 @@ export class DbLearningQuizReportStore {
       trend: buildTrend(attempts, answers),
       categories: buildCategories(answers),
       questionWeaknesses: buildQuestionWeaknesses(answers),
+      remediationExams: new DbRemediationExamStore(this.database).listCompletedForLearner(learnerId, range.startAt, range.endExclusiveAt),
     };
   }
 

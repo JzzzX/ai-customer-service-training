@@ -23,6 +23,21 @@ type RequireAdminDependencies = {
   deny?: (path: string) => never;
 };
 
+export async function requireLearner(
+  dependencies: RequireAdminDependencies = {},
+) {
+  const authenticate = dependencies.authenticate ?? (() => auth());
+  const deny = dependencies.deny ?? redirect;
+  const session = await authenticate();
+  if (!session?.user) return deny("/login");
+  const database = dependencies.database ?? getDatabase();
+  const liveLearner = database.select({ id: users.id, role: users.role }).from(users).where(and(
+    eq(users.id, session.user.id), eq(users.isActive, true), eq(users.role, "learner"),
+  )).get();
+  if (!liveLearner) return deny("/forbidden");
+  return { ...session.user, role: liveLearner.role };
+}
+
 export async function requireAdmin(
   dependencies: RequireAdminDependencies = {},
 ) {

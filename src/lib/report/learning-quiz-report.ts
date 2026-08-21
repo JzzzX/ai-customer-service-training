@@ -64,6 +64,7 @@ export interface LearningQuizReport {
   }>;
   categories: CategoryWeakness[];
   questionWeaknesses: QuestionWeaknessEvidence[];
+  remediationExams: import("@/lib/remediation/schema").RemediationExam[];
 }
 
 const BEIJING_OFFSET_MS = 8 * 60 * 60 * 1000;

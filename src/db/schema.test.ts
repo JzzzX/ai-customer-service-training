@@ -13,6 +13,8 @@ import {
   quizAttempts,
   quizAttemptQuestions,
   quizSets,
+  remediationExams,
+  remediationExamTargets,
   scenarios,
   scenarioVersions,
   trainingSessions,
@@ -46,6 +48,8 @@ describe("MVP database schema", () => {
         "quiz_attempts",
         "quiz_set_questions",
         "quiz_sets",
+        "remediation_exams",
+        "remediation_exam_targets",
         "scenario_versions",
         "scenarios",
         "training_messages",
@@ -55,6 +59,11 @@ describe("MVP database schema", () => {
         "topic_quiz_attempts",
       ].sort(),
     );
+  });
+
+  it("stores remediation metadata separately from immutable attempt snapshots", () => {
+    expect(columnNames(remediationExams)).toEqual(expect.arrayContaining(["learner_id", "quiz_set_id", "attempt_id", "weakness_fingerprint", "report_data_cutoff_at", "status"]));
+    expect(columnNames(remediationExamTargets)).toEqual(expect.arrayContaining(["exam_id", "category", "position", "question_count"]));
   });
 
   it("binds mutable authoring rows to stable external identities", () => {

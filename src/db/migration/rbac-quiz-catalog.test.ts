@@ -36,10 +36,10 @@ describe("RBAC and unified quiz catalog migration", () => {
       database.$client.exec(await readFile(migration, "utf8"));
     }
 
-    expect(DATABASE_SCHEMA_VERSION).toBe(4);
+    expect(DATABASE_SCHEMA_VERSION).toBe(5);
     expect(
       database.$client.prepare("SELECT version FROM app_schema_marker").get(),
-    ).toEqual({ version: 4 });
+    ).toEqual({ version: 5 });
     expect(count(database.$client, "quiz_attempt_questions")).toBe(0);
     expect(
       database.$client.prepare("SELECT catalog_id AS catalogId, current_question_id AS questionId FROM question_catalog_publications").get(),
@@ -121,7 +121,7 @@ describe("RBAC and unified quiz catalog migration", () => {
 
     expect(
       database.$client.prepare("SELECT version FROM app_schema_marker").get(),
-    ).toEqual({ version: 4 });
+    ).toEqual({ version: 5 });
     expect(
       database.$client
         .prepare("SELECT created_at AS createdAt FROM __drizzle_migrations ORDER BY created_at")
@@ -131,6 +131,7 @@ describe("RBAC and unified quiz catalog migration", () => {
       { createdAt: 1787215765257 },
       { createdAt: 1787275299372 },
       { createdAt: 1787276649479 },
+      { createdAt: 1787280881392 },
     ]);
     expect(database.$client.pragma("foreign_key_check")).toEqual([]);
     expect(

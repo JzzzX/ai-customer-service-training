@@ -19,7 +19,7 @@ describe("AdminReportsPage", () => {
       learner: { id: "learner-1", name: "娄伊娜", email: "lou@example.test" },
       range: { preset: "today", startDate: "2026-08-21", endDate: "2026-08-21", startAt: "2026-08-20T16:00:00.000Z", endExclusiveAt: "2026-08-21T16:00:00.000Z" },
       summary: { completedAttempts: 0, answeredCount: 0, correctCount: 0, accuracy: 0, passedAttempts: 0, passRate: 0 },
-      trend: [], categories: [], questionWeaknesses: [],
+      trend: [], categories: [], questionWeaknesses: [], remediationExams: [],
     });
   });
 
@@ -31,6 +31,7 @@ describe("AdminReportsPage", () => {
     expect(screen.getByRole("heading", { name: "学员知识测试报告" })).toBeInTheDocument();
     expect(screen.getAllByText("娄伊娜")).toHaveLength(2);
     expect(screen.getByText(/暂无已完成的知识测试/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /生成 10 题改善考卷/ })).not.toBeInTheDocument();
   });
 
   it("does not read report data when the live guard rejects access", async () => {

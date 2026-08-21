@@ -58,6 +58,7 @@ const importedTables = [
 ] as const;
 const historyTables = [
   "quiz_attempts", "quiz_attempt_questions", "quiz_answers", "topic_quiz_attempts", "topic_quiz_answers",
+  "remediation_exam_targets", "remediation_exams",
   "training_sessions", "training_messages", "evaluation_reports",
 ] as const;
 

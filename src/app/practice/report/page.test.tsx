@@ -33,6 +33,7 @@ describe("PracticeReportPage", () => {
     expect(screen.getByText("高频错点")).toBeInTheDocument();
     expect(screen.getByText("本期错题")).toBeInTheDocument();
     expect(screen.getByText("历史题干")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /生成 10 题改善考卷/ })).toBeInTheDocument();
   });
 
   it("shows an invalid custom range without querying report data", async () => {
@@ -54,5 +55,6 @@ function reportFixture() {
       { stableKey: "q-1", category: "产品属性及卖点", classification: "high_frequency", answeredCount: 2, wrongCount: 2, errorRate: 100, latestWrongAt: "2026-08-21T01:00:00.000Z", evidence: [{ attemptId: "a-1", source: "standard", revisionId: "rev-1", prompt: "历史题干", selectedAnswers: ["错误"], correctAnswers: ["正确"], explanation: "历史解析", answeredAt: "2026-08-21T01:00:00.000Z", isCorrect: false }] },
       { stableKey: "q-2", category: "服务流程与规则", classification: "period_mistake", answeredCount: 1, wrongCount: 1, errorRate: 100, latestWrongAt: "2026-08-20T01:00:00.000Z", evidence: [{ attemptId: "a-2", source: "legacy", revisionId: null, prompt: null, selectedAnswers: ["未知"], correctAnswers: null, explanation: null, answeredAt: "2026-08-20T01:00:00.000Z", isCorrect: false }] },
     ],
+    remediationExams: [],
   };
 }

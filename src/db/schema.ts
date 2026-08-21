@@ -414,6 +414,44 @@ export const quizAnswers = sqliteTable(
   ],
 );
 
+export const remediationExams = sqliteTable(
+  "remediation_exams",
+  {
+    id: text("id").primaryKey(),
+    learnerId: text("learner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+    quizSetId: text("quiz_set_id").notNull().references(() => quizSets.id, { onDelete: "restrict" }),
+    attemptId: text("attempt_id").notNull().references(() => quizAttempts.id, { onDelete: "restrict" }),
+    weaknessFingerprint: text("weakness_fingerprint").notNull(),
+    reportStartAt: integer("report_start_at", { mode: "timestamp_ms" }).notNull(),
+    reportEndExclusiveAt: integer("report_end_exclusive_at", { mode: "timestamp_ms" }).notNull(),
+    reportDataCutoffAt: integer("report_data_cutoff_at", { mode: "timestamp_ms" }).notNull(),
+    status: text("status", { enum: ["in_progress", "completed"] }).default("in_progress").notNull(),
+    createdAt: timestamp("created_at").notNull(),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+  },
+  (table) => [
+    unique("remediation_exams_quiz_set_unique").on(table.quizSetId),
+    unique("remediation_exams_attempt_unique").on(table.attemptId),
+    uniqueIndex("remediation_exams_in_progress_fingerprint_unique").on(table.learnerId, table.weaknessFingerprint).where(sql`${table.status} = 'in_progress'`),
+    check("remediation_exams_status_check", sql`${table.status} in ('in_progress', 'completed')`),
+  ],
+);
+
+export const remediationExamTargets = sqliteTable(
+  "remediation_exam_targets",
+  {
+    examId: text("exam_id").notNull().references(() => remediationExams.id, { onDelete: "cascade" }),
+    category: text("category").notNull(),
+    position: integer("position").notNull(),
+    questionCount: integer("question_count").notNull(),
+  },
+  (table) => [
+    primaryKey({ name: "remediation_exam_targets_pk", columns: [table.examId, table.category] }),
+    unique("remediation_exam_targets_position_unique").on(table.examId, table.position),
+    check("remediation_exam_targets_count_check", sql`${table.questionCount} in (5, 10)`),
+  ],
+);
+
 export const topicQuizAttempts = sqliteTable(
   "topic_quiz_attempts",
   {
@@ -660,6 +698,8 @@ export const mvpTables = {
   quizAttempts,
   quizAttemptQuestions,
   quizAnswers,
+  remediationExams,
+  remediationExamTargets,
   topicQuizAttempts,
   topicQuizAnswers,
   scenarios,

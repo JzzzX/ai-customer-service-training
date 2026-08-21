@@ -61,7 +61,7 @@ export async function checkPublishedQuizAnswerAction(
   const user = await requireUser();
   const attemptId = z.string().uuid().parse(attemptIdInput);
   const snapshot = await loadQuizAttemptSnapshotForLearner(user.id, attemptId);
-  if (snapshot.topicId) throw new Error("小测类型不匹配，请重新开始练习。");
+  if (snapshot.kind !== "formal") throw new Error("小测类型不匹配，请重新开始练习。");
   return checkAnswer(snapshot.questions, questionId, selected);
 }
 
@@ -73,7 +73,7 @@ export async function checkTopicQuizAnswerAction(
   const user = await requireUser();
   const attemptId = z.string().uuid().parse(attemptIdInput);
   const snapshot = await loadQuizAttemptSnapshotForLearner(user.id, attemptId);
-  if (!snapshot.topicId) throw new Error("小测类型不匹配，请重新开始练习。");
+  if (snapshot.kind !== "topic" || !snapshot.topicId) throw new Error("小测类型不匹配，请重新开始练习。");
   return checkAnswer(snapshot.questions, questionId, selected);
 }
 

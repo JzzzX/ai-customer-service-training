@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { sourceLocatorSchema } from "@/lib/knowledge/schema";
+export type { QuizSetKind } from "@/db/schema";
 
 export const quizQuestionTypeSchema = z.enum([
   "single_choice",

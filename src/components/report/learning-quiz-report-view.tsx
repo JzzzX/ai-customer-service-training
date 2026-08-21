@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { generateRemediationExamAction } from "@/app/practice/report/actions";
 
 import { SoftBadge } from "@/components/ui/soft-badge";
 import { SoftCard } from "@/components/ui/soft-card";
@@ -12,10 +13,12 @@ export function LearningQuizReportView({
   report,
   basePath,
   preservedParams = {},
+  allowRemediationGeneration = false,
 }: {
   report: LearningQuizReport;
   basePath: string;
   preservedParams?: Record<string, string>;
+  allowRemediationGeneration?: boolean;
 }) {
   return (
     <>
@@ -26,6 +29,26 @@ export function LearningQuizReportView({
         <Metric label="正确率" value={`${report.summary.accuracy}%`} />
         <Metric label="通过率" value={`${report.summary.passRate}%`} />
       </section>
+      {allowRemediationGeneration ? (
+        <form action={generateRemediationExamAction} className="mt-4">
+          <input name="preset" type="hidden" value={report.range.preset} /><input name="start" type="hidden" value={report.range.startDate} /><input name="end" type="hidden" value={report.range.endDate} />
+          <button className="min-h-11 rounded-[var(--radius-control)] bg-brand px-5 font-bold text-white" type="submit">根据薄弱点生成 10 题改善考卷</button>
+        </form>
+      ) : null}
+
+      {report.remediationExams.length ? (
+        <section className="mt-8">
+          <h2 className="text-xl font-black text-ink">薄弱点改善结果</h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {report.remediationExams.map((exam) => (
+              <SoftCard key={exam.id}>
+                <div className="flex items-center justify-between gap-3"><strong className="text-ink">{exam.result?.improved ? "已改善" : "仍需巩固"}</strong><SoftBadge variant={exam.result?.improved ? "brand" : "muted"}>{exam.result?.totalScore}%</SoftBadge></div>
+                <p className="mt-2 text-sm text-ink-soft">{exam.result?.categories.map((item) => `${item.category} ${item.accuracy}%`).join(" · ")}</p>
+              </SoftCard>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {report.summary.completedAttempts === 0 ? (
         <SoftCard className="mt-6 text-sm text-ink-soft">

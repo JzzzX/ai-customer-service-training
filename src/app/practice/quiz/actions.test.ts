@@ -52,6 +52,7 @@ describe("saveQuizAttemptAction", () => {
       learnerId,
       quizHash,
       passingScore: 80,
+      kind: "formal",
       status: "in_progress",
       questions: [
         {
@@ -160,6 +161,7 @@ describe("saveQuizAttemptAction", () => {
       quizHash: "f".repeat(64),
       passingScore: 80,
       status: "in_progress",
+      kind: "topic",
       topicId: question.category,
       questions: [{ ...question, revisionId: "topic-revision-1" }],
     });
@@ -243,6 +245,7 @@ describe("saveQuizAttemptAction", () => {
       quizHash: "f".repeat(64),
       passingScore: 80,
       status: "in_progress",
+      kind: "topic",
       topicId: "日常问答",
       questions: topicQuizQuestions.filter(
         (candidate) => candidate.category === "日常问答",

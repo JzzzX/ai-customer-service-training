@@ -13,6 +13,7 @@ import {
   questions,
   questionCatalogPublications,
   quizAnswers,
+  remediationExams,
   quizAttemptQuestions,
   quizAttempts,
   quizSetQuestions,
@@ -134,6 +135,7 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
         quizHash: quizSets.quizHash,
         topicId: quizSets.topicId,
         passingScore: quizSets.passingScore,
+        kind: quizSets.kind,
         status: quizAttempts.status,
       })
       .from(quizAttempts)
@@ -291,6 +293,7 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
           answeredAt: completedAt,
         })),
       ).run();
+      transaction.update(remediationExams).set({ status: "completed", completedAt }).where(eq(remediationExams.attemptId, input.attemptId)).run();
     }, { behavior: "immediate" });
 
     return this.loadAttempt(input.learnerId, input.attemptId);

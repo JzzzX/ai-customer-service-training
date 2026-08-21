@@ -63,9 +63,10 @@ async function main(): Promise<void> {
       .all();
     const duplicateScores = admin.$client.prepare("SELECT count(*) AS count FROM (SELECT learner_id, id, count(*) AS duplicates FROM quiz_attempts GROUP BY learner_id, id HAVING duplicates > 1)").get() as { count: number };
     const duplicateMessages = admin.$client.prepare("SELECT count(*) AS count FROM (SELECT training_session_id, position, count(*) AS duplicates FROM training_messages GROUP BY training_session_id, position HAVING duplicates > 1)").get() as { count: number };
+    const duplicateRemediation = admin.$client.prepare("SELECT count(*) AS count FROM (SELECT learner_id, weakness_fingerprint, count(*) AS duplicates FROM remediation_exams WHERE status='in_progress' GROUP BY learner_id, weakness_fingerprint HAVING duplicates > 1)").get() as { count: number };
     const foreignKeyViolations = admin.$client.pragma("foreign_key_check") as unknown[];
-    if (failed || attemptCount?.count !== expected || duplicateScores.count || duplicateMessages.count || foreignKeyViolations.length) {
-      throw new Error(JSON.stringify({ expected, actual: attemptCount?.count, failed, duplicateScores: duplicateScores.count, duplicateMessages: duplicateMessages.count, foreignKeyViolations: foreignKeyViolations.length }));
+    if (failed || attemptCount?.count !== expected || duplicateScores.count || duplicateMessages.count || duplicateRemediation.count || foreignKeyViolations.length) {
+      throw new Error(JSON.stringify({ expected, actual: attemptCount?.count, failed, duplicateScores: duplicateScores.count, duplicateMessages: duplicateMessages.count, duplicateRemediation: duplicateRemediation.count, foreignKeyViolations: foreignKeyViolations.length }));
     }
     console.log(`SQLite 并发烟测通过：${clientCount} workers，${expected} 条真实并发写入，无锁失败、重复成绩/消息或外键损坏。`);
   } finally {

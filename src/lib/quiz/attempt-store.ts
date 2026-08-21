@@ -73,6 +73,7 @@ export const quizAttemptSnapshotSchema = z.object({
   quizHash: z.string().regex(/^[a-f0-9]{64}$/),
   topicId: z.string().trim().min(1).optional(),
   passingScore: z.number().int().min(0).max(100),
+  kind: z.enum(["formal", "topic", "remediation"]).default("formal"),
   status: z.enum(["in_progress", "passed", "needs_retry"]),
   questions: z.array(
     quizQuestionPublishedSchema.extend({ revisionId: z.string().min(1) }),

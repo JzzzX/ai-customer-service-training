@@ -8,7 +8,7 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 import { users } from "@/db/schema";
 import { createTestDatabase } from "@/db/test-support/create-test-database";
 
-import { requireAdmin } from "./guards";
+import { requireAdmin, requireLearner } from "./guards";
 
 describe("requireAdmin", () => {
   const clients: Array<{ close(): void }> = [];
@@ -60,6 +60,23 @@ describe("requireAdmin", () => {
         deny,
       }),
     ).rejects.toThrow("FORBIDDEN");
+    expect(deny).toHaveBeenCalledWith("/forbidden");
+  });
+});
+
+describe("requireLearner", () => {
+  const clients: Array<{ close(): void }> = [];
+  afterEach(() => clients.splice(0).forEach((client) => client.close()));
+
+  it("rejects an admin even when a stale route session reaches a learner mutation", async () => {
+    const fixture = await createTestDatabase(); clients.push(fixture.client);
+    await fixture.database.insert(users).values({ id: "admin-live", email: "admin-live@example.test", name: "管理员", passwordHash: "hash", role: "admin" });
+    const deny = vi.fn(() => { throw new Error("FORBIDDEN"); });
+    await expect(requireLearner({
+      authenticate: async () => ({ user: { id: "admin-live", email: "admin-live@example.test", name: "管理员", role: "learner" }, expires: "2099-01-01T00:00:00.000Z" }),
+      database: fixture.database,
+      deny,
+    })).rejects.toThrow("FORBIDDEN");
     expect(deny).toHaveBeenCalledWith("/forbidden");
   });
 });
