@@ -38,7 +38,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "SCENARIO_AI_MODE=mock playwright test tests/e2e/learner-lite-smoke.spec.ts",
-    "test:e2e:demo": "SCENARIO_AI_MODE=mock playwright test tests/e2e/demo-mode.spec.ts",
+    "test:e2e:demo": "DEMO_MODE=true SCENARIO_AI_MODE=mock playwright test tests/e2e/demo-mode.spec.ts",
     "e2e:prepare": "tsx scripts/prepare-learner-e2e.ts",
     "test:sqlite:concurrency": "SQLITE_PATH=.tmp/learner-lite-e2e.sqlite tsx tests/load/sqlite-concurrency.ts",
     "test:deploy": "bash tests/scripts/next-production-deploy.sh",
