@@ -38,7 +38,7 @@ vi.mock("@/lib/runtime/services", () => ({
 import PracticePage from "./page";
 
 describe("PracticePage", () => {
-  it("shows only the two primary training entrances and the profile link", async () => {
+  it("shows training entrances, the separate knowledge report, and the profile link", async () => {
     mocks.getQuizProgressForLearner.mockResolvedValue({
       totalQuestions: 10,
       uniqueAnsweredCount: 1,
@@ -66,6 +66,7 @@ describe("PracticePage", () => {
     expect(
       screen.getByRole("link", { name: "开始实战" }),
     ).toHaveAttribute("href", "/practice/scenario");
+    expect(screen.getByRole("link", { name: "查看报告" })).toHaveAttribute("href", "/practice/report");
     expect(screen.queryByRole("link", { name: "查看任务" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "查看练习记录" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "进入个人中心" })).toHaveAttribute(

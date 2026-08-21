@@ -11,6 +11,7 @@ describe("AdminPage", () => {
     render(await AdminPage());
     expect(requireAdmin).toHaveBeenCalledOnce();
     expect(screen.getByRole("link", { name: "进入题库管理" })).toHaveAttribute("href", "/admin/questions");
+    expect(screen.getByRole("link", { name: "查看学员报告" })).toHaveAttribute("href", "/admin/reports");
     expect(screen.queryByText("开始练习")).not.toBeInTheDocument();
   });
 });

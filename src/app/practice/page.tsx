@@ -26,6 +26,14 @@ const entries = [
     icon: "💬",
     tone: "scenario",
   },
+  {
+    label: "知识测试报告",
+    description: "汇总正式测试、专题练习与薄弱点考卷，定位本期错题和高频错点。",
+    href: "/practice/report",
+    action: "查看报告",
+    icon: "📊",
+    tone: "brand",
+  },
 ] as const;
 
 export default async function PracticePage() {
@@ -44,6 +52,7 @@ export default async function PracticePage() {
   const progressByLabel: Record<string, string> = {
     知识小测: `已覆盖 ${quizProgress.uniqueAnsweredCount} / ${quizProgress.totalQuestions} 题 · 累计正确率 ${quizProgress.accuracy}%`,
     情景实战: `已完成 ${scenarioProgress.completedScenarioCount} / ${scenarioProgress.publishedScenarioCount} 个场景 · 最近平均 ${scenarioProgress.recentAverageScore} 分`,
+    知识测试报告: "按北京时间查看今日、近 7 天或自定义区间",
   };
 
   return (
