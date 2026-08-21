@@ -1,4 +1,4 @@
-import { and, count, countDistinct, eq, isNotNull, ne } from "drizzle-orm";
+import { and, count, countDistinct, eq, ne } from "drizzle-orm";
 
 import type { DatabaseClient } from "./client";
 import {
@@ -13,6 +13,8 @@ import {
 export type ProductionSnapshot = {
   activeKnowledgeCount: number;
   questionCount: number;
+  formalCatalogCount: number;
+  formalRevisionCount: number;
   publishedQuizCount: number;
   publishedQuizKnowledgeMismatchCount: number;
   publishedScenarioCount: number;
@@ -23,6 +25,18 @@ export type ProductionSnapshot = {
   publishedTopicCategoryCount: number;
   publishedTopicKnowledgeMismatchCount: number;
   topicQuestionCount: number;
+  topicCatalogCount: number;
+  topicRevisionCount: number;
+  topicCategoryMismatchCount: number;
+  topicQuestionCounts: Record<string, number>;
+};
+
+const expectedTopicQuestionCounts: Record<string, number> = {
+  "产品属性及卖点": 65,
+  "宠物生理和喂养": 72,
+  "活动促销": 72,
+  "服务流程与规则": 75,
+  "日常问答": 66,
 };
 
 export type ProductionVerification = {
@@ -40,8 +54,13 @@ export function evaluateProductionSnapshot(
   if (snapshot.activeKnowledgeCount !== 1) {
     technicalIssues.push("必须且只能有一个活动知识版本。");
   }
-  if (snapshot.questionCount !== 40) {
-    technicalIssues.push("活动知识版本必须有40道题目。");
+  if (
+    snapshot.publishedQuizCount === 1 &&
+    (snapshot.questionCount !== 40 ||
+      snapshot.formalCatalogCount !== 40 ||
+      snapshot.formalRevisionCount !== 40)
+  ) {
+    technicalIssues.push("当前正式题组必须链接40道不同目录、不同版本的题目。");
   }
   if (snapshot.publishedScenarioCount !== 8) {
     technicalIssues.push("必须发布8个场景版本。");
@@ -69,14 +88,32 @@ export function evaluateProductionSnapshot(
   }
   if (
     snapshot.topicQuestionCount !== 350 ||
-    snapshot.publishedTopicCategoryCount !== 5
+    snapshot.publishedTopicCategoryCount !== 5 ||
+    snapshot.topicCatalogCount !== 350 ||
+    snapshot.topicRevisionCount !== 350 ||
+    snapshot.topicCategoryMismatchCount !== 0
   ) {
-    technicalIssues.push("专题题库必须包含350道题和5个分类。");
+    technicalIssues.push("专题题库必须包含350道不同目录、不同版本的题目，且题目分类与题组一致。");
+  }
+  if (
+    Object.entries(expectedTopicQuestionCounts).some(
+      ([topicId, expected]) => snapshot.topicQuestionCounts[topicId] !== expected,
+    )
+  ) {
+    technicalIssues.push("专题题库分类题数必须为65/72/72/75/66。");
   }
 
   const formalIssues = [...technicalIssues];
   if (snapshot.publishedQuizCount !== 1) {
     formalIssues.push("正式题组尚未发布。");
+  }
+  if (
+    snapshot.questionCount !== 40 ||
+    snapshot.formalCatalogCount !== 40 ||
+    snapshot.formalRevisionCount !== 40
+  ) {
+    const issue = "当前正式题组必须链接40道不同目录、不同版本的题目。";
+    if (!formalIssues.includes(issue)) formalIssues.push(issue);
   }
 
   return {
@@ -98,18 +135,17 @@ export async function verifyProductionData(
     .all();
   const activeVersionId = activeVersions[0]?.id;
 
-  const questionRows = activeVersionId
-    ? await database
-        .select({ value: countDistinct(questions.questionCatalogId) })
-        .from(questions)
-        .where(
-          and(
-            eq(questions.knowledgeVersionId, activeVersionId),
-            isNotNull(questions.knowledgeUnitId),
-          ),
-        )
-        .all()
-    : [{ value: 0 }];
+  const formalQuestionRows = await database
+    .select({
+      linkCount: count(),
+      catalogCount: countDistinct(questions.questionCatalogId),
+      revisionCount: countDistinct(questions.id),
+    })
+    .from(quizSetQuestions)
+    .innerJoin(quizSets, eq(quizSetQuestions.quizSetId, quizSets.id))
+    .innerJoin(questions, eq(quizSetQuestions.questionId, questions.id))
+    .where(and(eq(quizSets.status, "published"), eq(quizSets.kind, "formal")))
+    .all();
   const publishedQuizRows = await database
     .select({ value: count() })
     .from(quizSets)
@@ -132,12 +168,37 @@ export async function verifyProductionData(
     )
     .all();
   const topicQuestionRows = await database
-    .select({ value: count() })
+    .select({
+      value: count(),
+      catalogCount: countDistinct(questions.questionCatalogId),
+      revisionCount: countDistinct(questions.id),
+    })
     .from(quizSetQuestions)
     .innerJoin(quizSets, eq(quizSetQuestions.quizSetId, quizSets.id))
+    .innerJoin(questions, eq(quizSetQuestions.questionId, questions.id))
     .where(
       and(eq(quizSets.status, "published"), eq(quizSets.kind, "topic")),
     )
+    .all();
+  const topicCategoryMismatchRows = await database
+    .select({ value: count() })
+    .from(quizSetQuestions)
+    .innerJoin(quizSets, eq(quizSetQuestions.quizSetId, quizSets.id))
+    .innerJoin(questions, eq(quizSetQuestions.questionId, questions.id))
+    .where(
+      and(
+        eq(quizSets.status, "published"),
+        eq(quizSets.kind, "topic"),
+        ne(questions.category, quizSets.topicId),
+      ),
+    )
+    .all();
+  const topicQuestionCountRows = await database
+    .select({ topicId: quizSets.topicId, value: count() })
+    .from(quizSetQuestions)
+    .innerJoin(quizSets, eq(quizSetQuestions.quizSetId, quizSets.id))
+    .where(and(eq(quizSets.status, "published"), eq(quizSets.kind, "topic")))
+    .groupBy(quizSets.topicId)
     .all();
   const publishedScenarioRows = await database
     .select({ value: count() })
@@ -201,7 +262,9 @@ export async function verifyProductionData(
     .all();
   return evaluateProductionSnapshot({
     activeKnowledgeCount: activeVersions.length,
-    questionCount: questionRows[0]?.value ?? 0,
+    questionCount: formalQuestionRows[0]?.linkCount ?? 0,
+    formalCatalogCount: formalQuestionRows[0]?.catalogCount ?? 0,
+    formalRevisionCount: formalQuestionRows[0]?.revisionCount ?? 0,
     publishedQuizCount: publishedQuizRows[0]?.value ?? 0,
     publishedQuizKnowledgeMismatchCount:
       quizMismatchRows[0]?.value ?? 0,
@@ -216,5 +279,13 @@ export async function verifyProductionData(
     publishedTopicKnowledgeMismatchCount:
       topicMismatchRows[0]?.value ?? 0,
     topicQuestionCount: topicQuestionRows[0]?.value ?? 0,
+    topicCatalogCount: topicQuestionRows[0]?.catalogCount ?? 0,
+    topicRevisionCount: topicQuestionRows[0]?.revisionCount ?? 0,
+    topicCategoryMismatchCount: topicCategoryMismatchRows[0]?.value ?? 0,
+    topicQuestionCounts: Object.fromEntries(
+      topicQuestionCountRows.flatMap((row) =>
+        row.topicId ? [[row.topicId, row.value] as const] : [],
+      ),
+    ),
   });
 }

@@ -18,10 +18,18 @@ export type TopicQuizPublicationResult = {
   questionCount: number;
 };
 
+const expectedTopicQuestionCounts = new Map<string, number>([
+  ["产品属性及卖点", 65],
+  ["宠物生理和喂养", 72],
+  ["活动促销", 72],
+  ["服务流程与规则", 75],
+  ["日常问答", 66],
+]);
+
 export function publishTopicQuizCatalog(
   database: DatabaseClient,
 ): TopicQuizPublicationResult {
-  validateStaticCatalog();
+  validateTopicQuizCatalog(quizTopics, topicQuizQuestions);
   const activeVersions = database
     .select({ id: knowledgeVersions.id })
     .from(knowledgeVersions)
@@ -147,17 +155,33 @@ export function publishTopicQuizCatalog(
   });
 }
 
-function validateStaticCatalog(): void {
-  if (quizTopics.length !== 5 || topicQuizQuestions.length !== 350) {
+export function validateTopicQuizCatalog(
+  topics: ReadonlyArray<{ id: string }>,
+  questions: ReadonlyArray<{ id: string; category: string }>,
+): void {
+  if (topics.length !== 5 || questions.length !== 350) {
     throw new Error("专题题库必须包含5个专题和350个稳定题目键。");
   }
-  const topicIds = new Set(quizTopics.map((topic) => topic.id));
+  const topicIds = new Set(topics.map((topic) => topic.id));
   if (
-    new Set(topicQuizQuestions.map((question) => question.id)).size !==
-      topicQuizQuestions.length ||
-    topicQuizQuestions.some((question) => !topicIds.has(question.category))
+    new Set(questions.map((question) => question.id)).size !== questions.length ||
+    questions.some((question) => !topicIds.has(question.category))
   ) {
     throw new Error("专题题库包含重复稳定键或未知分类。");
+  }
+  const actualCounts = new Map<string, number>();
+  for (const question of questions) {
+    actualCounts.set(
+      question.category,
+      (actualCounts.get(question.category) ?? 0) + 1,
+    );
+  }
+  if (
+    [...expectedTopicQuestionCounts].some(
+      ([topicId, expected]) => actualCounts.get(topicId) !== expected,
+    )
+  ) {
+    throw new Error("专题题库分类题数必须为65/72/72/75/66。");
   }
 }
 

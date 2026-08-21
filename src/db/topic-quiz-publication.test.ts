@@ -4,7 +4,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { knowledgeVersions } from "./schema";
 import { createTestDatabase } from "./test-support/create-test-database";
-import { publishTopicQuizCatalog } from "./topic-quiz-publication";
+import {
+  publishTopicQuizCatalog,
+  validateTopicQuizCatalog,
+} from "./topic-quiz-publication";
 import { quizTopics, topicQuizQuestions } from "@/lib/quiz/question-bank";
 
 describe("topic quiz catalog publication", () => {
@@ -97,6 +100,16 @@ describe("topic quiz catalog publication", () => {
       topicQuizQuestions.length,
     );
     expect(quizTopics.map((topic) => topic.id)).toHaveLength(5);
+  });
+
+  it("rejects a static catalog whose per-topic distribution drifts", () => {
+    const driftedQuestions = topicQuizQuestions.map((question, index) =>
+      index === 0 ? { ...question, category: "日常问答" } : question,
+    );
+
+    expect(() =>
+      validateTopicQuizCatalog(quizTopics, driftedQuestions),
+    ).toThrow("专题题库分类题数必须为65/72/72/75/66");
   });
 
   it("publishes new immutable revisions when the active knowledge version changes", async () => {

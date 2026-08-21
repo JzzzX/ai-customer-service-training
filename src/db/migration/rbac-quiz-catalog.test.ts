@@ -1,17 +1,26 @@
 // @vitest-environment node
 
-import { readFile, readdir } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
+import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createDatabaseClient, DATABASE_SCHEMA_VERSION } from "../client";
 
 describe("RBAC and unified quiz catalog migration", () => {
   const clients: Array<{ close(): void }> = [];
+  const tempDirectories: string[] = [];
 
-  afterEach(() => {
+  afterEach(async () => {
     clients.splice(0).forEach((client) => client.close());
+    await Promise.all(
+      tempDirectories.splice(0).map((directory) =>
+        rm(directory, { recursive: true, force: true }),
+      ),
+    );
   });
 
   it("upgrades a v1 database without changing question IDs or losing attempts", async () => {
@@ -23,7 +32,6 @@ describe("RBAC and unified quiz catalog migration", () => {
       database.$client.exec(await readFile(migration, "utf8"));
     }
     seedV1History(database.$client);
-
     for (const migration of migrations.slice(3)) {
       database.$client.exec(await readFile(migration, "utf8"));
     }
@@ -77,35 +85,68 @@ describe("RBAC and unified quiz catalog migration", () => {
     expect(database.$client.pragma("foreign_key_check")).toEqual([]);
   });
 
-  it("supports Drizzle's transactional migration runner with foreign keys enabled", async () => {
-    const database = createDatabaseClient(":memory:");
+  it("upgrades a journaled v1 database through the real Drizzle migrator", async () => {
+    const directory = await mkdtemp(resolve(tmpdir(), "customer-training-v1-"));
+    tempDirectories.push(directory);
+    const database = createDatabaseClient(resolve(directory, "v1.sqlite"));
     clients.push(database.$client);
     const migrations = await migrationFiles();
     for (const migration of migrations.slice(0, 3)) {
       database.$client.exec(await readFile(migration, "utf8"));
     }
     seedV1History(database.$client);
-    const migration = await readFile(migrations[3]!, "utf8");
+    const v1MigrationHash = createHash("sha256")
+      .update(await readFile(migrations[2]!, "utf8"))
+      .digest("hex");
+    database.$client.exec(`
+      CREATE TABLE __drizzle_migrations (
+        id SERIAL PRIMARY KEY,
+        hash text NOT NULL,
+        created_at numeric
+      );
+    `);
+    database.$client
+      .prepare(
+        "INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, 1786521668604)",
+      )
+      .run(v1MigrationHash);
 
     expect(() =>
-      database.$client.transaction(() => {
-        for (const [index, statement] of migration
-          .split("--> statement-breakpoint")
-          .entries()) {
-          try {
-            database.$client.exec(statement);
-          } catch (error) {
-            throw new Error(`migration statement ${index + 1} failed`, {
-              cause: error,
-            });
-          }
-        }
-        expect(database.$client.pragma("foreign_key_check")).toEqual([]);
-      })(),
+      migrate(database, { migrationsFolder: resolve(process.cwd(), "drizzle") }),
     ).not.toThrow();
+
+    expect(
+      database.$client.prepare("SELECT version FROM app_schema_marker").get(),
+    ).toEqual({ version: 2 });
+    expect(
+      database.$client
+        .prepare("SELECT created_at AS createdAt FROM __drizzle_migrations ORDER BY created_at")
+        .all(),
+    ).toEqual([
+      { createdAt: 1786521668604 },
+      { createdAt: 1787215765257 },
+    ]);
     expect(database.$client.pragma("foreign_key_check")).toEqual([]);
+    expect(
+      database.$client.prepare("SELECT question_id AS questionId FROM quiz_answers").get(),
+    ).toEqual({ questionId: "question-physical-1" });
+    expect(
+      database.$client
+        .prepare("SELECT id, quiz_set_id AS quizSetId FROM quiz_attempts")
+        .get(),
+    ).toEqual({ id: "attempt-1", quizSetId: "set-1" });
+    expect(
+      database.$client
+        .prepare("SELECT id, topic_quiz_attempt_id AS attemptId FROM topic_quiz_answers")
+        .get(),
+    ).toEqual({
+      id: "legacy-topic-answer-1",
+      attemptId: "legacy-topic-attempt-1",
+    });
     expect(count(database.$client, "quiz_attempts")).toBe(1);
+    expect(count(database.$client, "quiz_answers")).toBe(1);
     expect(count(database.$client, "topic_quiz_attempts")).toBe(1);
+    expect(count(database.$client, "topic_quiz_answers")).toBe(1);
   });
 });
 
