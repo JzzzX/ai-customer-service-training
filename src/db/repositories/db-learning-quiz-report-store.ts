@@ -28,6 +28,7 @@ type Revision = {
 
 type Answer = {
   attemptId: string;
+  completedAt: number;
   stableKey: string;
   selectedAnswers: string[];
   isCorrect: boolean;
@@ -102,10 +103,12 @@ export class DbLearningQuizReportStore {
     const rows = this.database.$client.prepare(`
       SELECT a.quiz_attempt_id AS attemptId, c.stable_key AS stableKey,
         a.selected_answers AS selectedAnswers, a.is_correct AS isCorrect,
-        a.answered_at AS answeredAt, q.id, q.question_key AS questionKey,
+        a.answered_at AS answeredAt, qa.completed_at AS completedAt,
+        q.id, q.question_key AS questionKey,
         q.prompt, q.correct_answers AS correctAnswers, q.explanation, q.category,
         q.created_at AS createdAt, q.revision
       FROM quiz_answers a
+      INNER JOIN quiz_attempts qa ON qa.id = a.quiz_attempt_id
       INNER JOIN questions q ON q.id = a.question_id
       INNER JOIN question_catalogs c ON c.id = q.question_catalog_id
       WHERE a.quiz_attempt_id IN (${placeholders})
@@ -114,6 +117,7 @@ export class DbLearningQuizReportStore {
       const revision = mapRevision(row);
       return {
         attemptId: String(row.attemptId),
+        completedAt: Number(row.completedAt),
         stableKey: String(row.stableKey),
         selectedAnswers: parseAnswers(row.selectedAnswers),
         isCorrect: Boolean(row.isCorrect),
@@ -131,26 +135,26 @@ export class DbLearningQuizReportStore {
     const rows = this.database.$client.prepare(`
       SELECT a.topic_quiz_attempt_id AS attemptId, a.question_key AS stableKey,
         a.selected_answers AS selectedAnswers, a.is_correct AS isCorrect,
-        a.answered_at AS answeredAt, t.topic_id AS topicId
+        a.answered_at AS answeredAt, t.completed_at AS completedAt, t.topic_id AS topicId
       FROM topic_quiz_answers a
       INNER JOIN topic_quiz_attempts t ON t.id = a.topic_quiz_attempt_id
       WHERE a.topic_quiz_attempt_id IN (${placeholders})
     `).all(...attemptIds) as Array<Record<string, unknown>>;
     const revisionQuery = this.database.$client.prepare(`
-      SELECT id, question_key AS questionKey, prompt, correct_answers AS correctAnswers,
-        explanation, category, created_at AS createdAt, revision
-      FROM questions
-      WHERE question_key = ?
-      ORDER BY CASE WHEN created_at <= ? THEN 0 ELSE 1 END,
-        CASE WHEN created_at <= ? THEN created_at END DESC,
-        revision ASC
+      SELECT q.id, q.question_key AS questionKey, q.prompt, q.correct_answers AS correctAnswers,
+        q.explanation, q.category, q.created_at AS createdAt, q.revision
+      FROM questions q
+      INNER JOIN question_catalogs c ON c.id = q.question_catalog_id
+      WHERE c.stable_key = ? AND q.created_at <= ?
+      ORDER BY q.created_at DESC, q.revision DESC, q.id DESC
       LIMIT 1
     `);
     return rows.map((row) => {
-      const revisionRow = revisionQuery.get(row.stableKey, row.answeredAt, row.answeredAt) as Record<string, unknown> | undefined;
+      const revisionRow = revisionQuery.get(row.stableKey, row.answeredAt) as Record<string, unknown> | undefined;
       const revision = revisionRow ? mapRevision(revisionRow) : null;
       return {
         attemptId: String(row.attemptId),
+        completedAt: Number(row.completedAt),
         stableKey: String(row.stableKey),
         selectedAnswers: parseAnswers(row.selectedAnswers),
         isCorrect: Boolean(row.isCorrect),
@@ -185,7 +189,7 @@ function buildTrend(attempts: Attempt[], answers: Answer[]) {
     dates.set(date, item);
   }
   for (const answer of answers) {
-    const date = toBeijingDate(new Date(answer.answeredAt));
+    const date = toBeijingDate(new Date(answer.completedAt));
     const item = dates.get(date) ?? { completedAttempts: 0, answeredCount: 0, correctCount: 0 };
     item.answeredCount += 1;
     if (answer.isCorrect) item.correctCount += 1;
@@ -252,11 +256,11 @@ function buildQuestionWeaknesses(answers: Answer[]): QuestionWeaknessEvidence[] 
 }
 
 function compareWeakness(
-  left: { wrongCount: number; errorRate: number; latestWrongAt: string | null },
-  right: { wrongCount: number; errorRate: number; latestWrongAt: string | null },
+  left: { wrongCount: number; answeredCount: number; latestWrongAt: string | null },
+  right: { wrongCount: number; answeredCount: number; latestWrongAt: string | null },
 ) {
   return right.wrongCount - left.wrongCount
-    || right.errorRate - left.errorRate
+    || right.wrongCount * left.answeredCount - left.wrongCount * right.answeredCount
     || (right.latestWrongAt ?? "").localeCompare(left.latestWrongAt ?? "");
 }
 

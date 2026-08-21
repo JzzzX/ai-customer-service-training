@@ -71,7 +71,140 @@ describe("DbLearningQuizReportStore", () => {
     expect(empty.categories).toEqual([]);
     expect(empty.questionWeaknesses).toEqual([]);
   });
+
+  it("does not map a legacy answer to a revision created after the answer", async () => {
+    const answeredAt = Date.parse("2026-08-21T01:00:00.000Z");
+    client.exec(`
+      INSERT INTO question_catalogs (id, stable_key) VALUES ('catalog-future', 'future-only-key');
+      INSERT INTO questions
+        (id, question_catalog_id, revision, content_hash, knowledge_version_id, knowledge_unit_key,
+         question_key, type, prompt, options, correct_answers, explanation, category, difficulty, sources, status,
+         created_at, updated_at)
+      VALUES
+        ('question-future', 'catalog-future', 1, '${"7".repeat(64)}', 'kv-1', 'ku-future', 'future-only-key',
+         'single_choice', '未来题干', '["正确","错误"]', '["正确"]', '未来解析',
+         '产品属性及卖点', 'easy', '[]', 'published', ${answeredAt + 60_000}, ${answeredAt + 60_000});
+      INSERT INTO topic_quiz_attempts
+        (id, learner_id, topic_id, quiz_hash, status, correct_count, total_questions, score, completed_at)
+      VALUES
+        ('legacy-future', 'learner-1', '产品属性及卖点', '${"8".repeat(64)}', 'needs_retry', 0, 1, 0, ${answeredAt});
+      INSERT INTO topic_quiz_answers
+        (id, topic_quiz_attempt_id, question_key, selected_answers, is_correct, answered_at)
+      VALUES
+        ('legacy-future-answer', 'legacy-future', 'future-only-key', '["错误"]', 0, ${answeredAt});
+    `);
+
+    const report = await store.getReport("learner-1", {
+      preset: "custom", startDate: "2026-08-21", endDate: "2026-08-21",
+    });
+    const weakness = report.questionWeaknesses.find((item) => item.stableKey === "future-only-key");
+
+    expect(weakness?.evidence[0]).toMatchObject({
+      revisionId: null, prompt: null, correctAnswers: null, explanation: null, isCorrect: false,
+    });
+  });
+
+  it("assigns standard and legacy answers to the Beijing completion date in trend", async () => {
+    const answeredAt = Date.parse("2026-08-20T15:59:00.000Z");
+    const completedAt = Date.parse("2026-08-20T16:01:00.000Z");
+    client.exec(`
+      INSERT INTO quiz_attempts
+        (id, quiz_set_id, learner_id, knowledge_version_id, status, correct_count, total_questions, score, started_at, completed_at)
+      VALUES
+        ('attempt-cross-midnight', 'formal-set', 'learner-1', 'kv-1', 'passed', 1, 1, 100, ${answeredAt}, ${completedAt});
+      INSERT INTO quiz_answers
+        (id, quiz_attempt_id, question_id, selected_answers, is_correct, answered_at)
+      VALUES
+        ('answer-cross-midnight', 'attempt-cross-midnight', 'question-service', '["对"]', 1, ${answeredAt});
+      INSERT INTO topic_quiz_attempts
+        (id, learner_id, topic_id, quiz_hash, status, correct_count, total_questions, score, completed_at)
+      VALUES
+        ('legacy-cross-midnight', 'learner-1', '产品属性及卖点', '${"9".repeat(64)}', 'needs_retry', 0, 1, 0, ${completedAt});
+      INSERT INTO topic_quiz_answers
+        (id, topic_quiz_attempt_id, question_key, selected_answers, is_correct, answered_at)
+      VALUES
+        ('legacy-answer-cross-midnight', 'legacy-cross-midnight', 'q-product', '["错误选项"]', 0, ${answeredAt});
+    `);
+
+    const report = await store.getReport("learner-1", {
+      preset: "custom", startDate: "2026-08-21", endDate: "2026-08-21",
+    });
+
+    expect(report.trend.map((item) => item.date)).toEqual(["2026-08-21"]);
+    expect(report.trend.reduce((sum, item) => sum + item.completedAttempts, 0)).toBe(report.summary.completedAttempts);
+    expect(report.trend.reduce((sum, item) => sum + item.answeredCount, 0)).toBe(report.summary.answeredCount);
+    expect(report.questionWeaknesses.find((item) => item.stableKey === "q-product")?.evidence)
+      .toEqual(expect.arrayContaining([expect.objectContaining({
+        answeredAt: new Date(answeredAt).toISOString(),
+      })]));
+  });
+
+  it("sorts equal-rounded weakness rates by their raw ratios before recency", async () => {
+    client.prepare("INSERT INTO users (id, email, name, password_hash, role) VALUES (?, ?, ?, 'disabled', 'learner')")
+      .run("learner-ratio", "ratio@example.test", "比例测试学员");
+    seedRatioFixture(database, { key: "ratio-rank-1", category: "比例排名一", answeredCount: 2, wrongAt: 1787245100000 });
+    seedRatioFixture(database, { key: "ratio-rank-2", category: "比例排名二", answeredCount: 3, wrongAt: 1787245100000 });
+    seedRatioFixture(database, { key: "ratio-rank-3", category: "比例排名三", answeredCount: 4, wrongAt: 1787245100000 });
+    seedRatioFixture(database, { key: "ratio-rank-4", category: "比例排名四", answeredCount: 5, wrongAt: 1787245100000 });
+    seedRatioFixture(database, { key: "ratio-higher", category: "比例较高", answeredCount: 101, wrongAt: 1787155200000 });
+    seedRatioFixture(database, { key: "ratio-lower", category: "比例较低", answeredCount: 149, wrongAt: 1787245200000 });
+
+    const report = await store.getReport("learner-ratio", {
+      preset: "custom", startDate: "2026-08-20", endDate: "2026-08-21",
+    });
+    const questionKeys = report.questionWeaknesses.map((item) => item.stableKey);
+    const categoryKeys = report.categories.map((item) => item.category);
+
+    expect(report.questionWeaknesses.find((item) => item.stableKey === "ratio-higher")?.errorRate).toBe(1);
+    expect(report.questionWeaknesses.find((item) => item.stableKey === "ratio-lower")?.errorRate).toBe(1);
+    expect(questionKeys.indexOf("ratio-higher")).toBeLessThan(questionKeys.indexOf("ratio-lower"));
+    expect(categoryKeys.indexOf("比例较高")).toBeLessThan(categoryKeys.indexOf("比例较低"));
+    expect(questionKeys.slice(0, 5)).toContain("ratio-higher");
+    expect(questionKeys.slice(0, 5)).not.toContain("ratio-lower");
+    expect(categoryKeys.slice(0, 5)).toContain("比例较高");
+    expect(categoryKeys.slice(0, 5)).not.toContain("比例较低");
+  });
 });
+
+function seedRatioFixture(
+  database: DatabaseClient,
+  input: { key: string; category: string; answeredCount: number; wrongAt: number },
+) {
+  const sql = database.$client;
+  const catalogId = `catalog-${input.key}`;
+  const questionId = `question-${input.key}`;
+  sql.prepare("INSERT INTO question_catalogs (id, stable_key) VALUES (?, ?)").run(catalogId, input.key);
+  sql.prepare(`
+    INSERT INTO questions
+      (id, question_catalog_id, revision, content_hash, knowledge_version_id, knowledge_unit_key,
+       question_key, type, prompt, options, correct_answers, explanation, category, difficulty, sources, status,
+       created_at, updated_at)
+    VALUES (?, ?, 1, ?, 'kv-1', ?, ?, 'single_choice', ?, '["对","错"]', '["对"]', ?, ?, 'easy', '[]', 'published', 1700000000000, 1700000000000)
+  `).run(questionId, catalogId, input.key.repeat(64).slice(0, 64), `ku-${input.key}`, input.key, input.key, input.key, input.category);
+  const insertAttempt = sql.prepare(`
+    INSERT INTO quiz_attempts
+      (id, quiz_set_id, learner_id, knowledge_version_id, status, correct_count, total_questions, score, started_at, completed_at)
+    VALUES (?, 'formal-set', 'learner-ratio', 'kv-1', ?, ?, 1, ?, ?, ?)
+  `);
+  const insertAnswer = sql.prepare(`
+    INSERT INTO quiz_answers (id, quiz_attempt_id, question_id, selected_answers, is_correct, answered_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+  for (let index = 0; index < input.answeredCount; index += 1) {
+    const isCorrect = index !== 0;
+    const attemptId = `attempt-${input.key}-${index}`;
+    const completedAt = isCorrect ? input.wrongAt + index + 1 : input.wrongAt;
+    insertAttempt.run(attemptId, isCorrect ? "passed" : "needs_retry", isCorrect ? 1 : 0, isCorrect ? 100 : 0, completedAt, completedAt);
+    insertAnswer.run(
+      `answer-${input.key}-${index}`,
+      attemptId,
+      questionId,
+      isCorrect ? '["对"]' : '["错"]',
+      isCorrect ? 1 : 0,
+      completedAt,
+    );
+  }
+}
 
 function seedReportFixture(database: DatabaseClient) {
   const sql = database.$client;
