@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import { DbKnowledgeQueryStore } from "./db-knowledge-query-store";
@@ -14,6 +15,93 @@ import {
 import { createTestDatabase } from "../test-support/create-test-database";
 
 describe("DbKnowledgeQueryStore", () => {
+  it("ignores an active knowledge version until it is published", async () => {
+    const { client, database } = await createTestDatabase();
+    await database.insert(knowledgeVersions).values({
+      id: "00000000-0000-4000-8000-000000000010",
+      versionHash: "1".repeat(64),
+      contentHash: "2".repeat(64),
+      schemaVersion: 1,
+      sourceRoot: "draft-knowledge",
+      status: "draft",
+      isActive: true,
+      coverage: {},
+    });
+    await database.insert(knowledgeUnits).values({
+      id: "00000000-0000-4000-8000-000000000011",
+      knowledgeVersionId: "00000000-0000-4000-8000-000000000010",
+      unitKey: "ku_draft_complaint",
+      title: "客诉处理",
+      content: "未发布的客诉知识",
+      categoryPath: ["客诉"],
+      contentHash: "3".repeat(64),
+      sources: [{ sourcePath: "draft.md", kind: "markdown", anchor: "客诉", path: ["客诉"] }],
+      canUseForScenario: true,
+    });
+
+    const store = new DbKnowledgeQueryStore(database as unknown as DatabaseClient);
+    await expect(store.loadActiveHealth()).resolves.toBeNull();
+    await expect(store.listUnitsForScenario("complaint")).resolves.toEqual([]);
+    await client.close();
+  });
+
+  it("invalidates scenario knowledge cache when the published active version changes", async () => {
+    const { client, database } = await createTestDatabase();
+    const firstVersionId = "00000000-0000-4000-8000-000000000012";
+    const secondVersionId = "00000000-0000-4000-8000-000000000013";
+    await database.insert(knowledgeVersions).values({
+      id: firstVersionId,
+      versionHash: "4".repeat(64),
+      contentHash: "5".repeat(64),
+      schemaVersion: 1,
+      sourceRoot: "first",
+      status: "published",
+      isActive: true,
+      coverage: {},
+    });
+    await database.insert(knowledgeUnits).values({
+      id: "00000000-0000-4000-8000-000000000014",
+      knowledgeVersionId: firstVersionId,
+      unitKey: "ku_first_logistics",
+      title: "物流旧规则",
+      content: "旧物流时效",
+      categoryPath: ["物流"],
+      contentHash: "6".repeat(64),
+      sources: [{ sourcePath: "first.md", kind: "markdown", anchor: "物流", path: ["物流"] }],
+      canUseForScenario: true,
+    });
+    const store = new DbKnowledgeQueryStore(database as unknown as DatabaseClient);
+    await expect(store.listUnitsForScenario("logistics"))
+      .resolves.toMatchObject([{ title: "物流旧规则" }]);
+
+    await database.update(knowledgeVersions).set({ isActive: false }).where(eq(knowledgeVersions.id, firstVersionId));
+    await database.insert(knowledgeVersions).values({
+      id: secondVersionId,
+      versionHash: "7".repeat(64),
+      contentHash: "8".repeat(64),
+      schemaVersion: 1,
+      sourceRoot: "second",
+      status: "published",
+      isActive: true,
+      coverage: {},
+    });
+    await database.insert(knowledgeUnits).values({
+      id: "00000000-0000-4000-8000-000000000015",
+      knowledgeVersionId: secondVersionId,
+      unitKey: "ku_second_logistics",
+      title: "物流新规则",
+      content: "新物流时效",
+      categoryPath: ["物流"],
+      contentHash: "9".repeat(64),
+      sources: [{ sourcePath: "second.md", kind: "markdown", anchor: "物流", path: ["物流"] }],
+      canUseForScenario: true,
+    });
+
+    await expect(store.listUnitsForScenario("logistics"))
+      .resolves.toMatchObject([{ title: "物流新规则" }]);
+    await client.close();
+  });
+
   it("summarizes only the active knowledge version", async () => {
     const { client, database } = await createTestDatabase();
     const adminId = "00000000-0000-4000-8000-000000000001";

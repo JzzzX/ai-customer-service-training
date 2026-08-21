@@ -43,7 +43,10 @@ export class DbKnowledgeQueryStore implements KnowledgeQueryStore {
         createdAt: knowledgeVersions.createdAt,
       })
       .from(knowledgeVersions)
-      .where(eq(knowledgeVersions.isActive, true))
+      .where(and(
+        eq(knowledgeVersions.isActive, true),
+        eq(knowledgeVersions.status, "published"),
+      ))
       .limit(1).all();
     if (!version) {
       return null;
@@ -126,18 +129,25 @@ export class DbKnowledgeQueryStore implements KnowledgeQueryStore {
     limit = 5,
   ): Promise<KnowledgeUnit[]> {
     const now = Date.now();
-    const cached = scenarioUnitCache.get(category);
-    if (cached && cached.expireAt > now) {
-      return selectKnowledgeUnitsForCategory(cached.units, category, limit);
-    }
-
     const [version] = await this.database
       .select({ id: knowledgeVersions.id })
       .from(knowledgeVersions)
-      .where(eq(knowledgeVersions.isActive, true))
+      .where(and(
+        eq(knowledgeVersions.isActive, true),
+        eq(knowledgeVersions.status, "published"),
+      ))
       .limit(1).all();
     if (!version) {
+      scenarioUnitCache.delete(category);
       return [];
+    }
+    const cached = scenarioUnitCache.get(category);
+    if (
+      cached &&
+      cached.versionId === version.id &&
+      cached.expireAt > now
+    ) {
+      return selectKnowledgeUnitsForCategory(cached.units, category, limit);
     }
     const rows = await this.database
       .select({
