@@ -6,6 +6,7 @@ import {
   OpenAIConversationProvider,
   OpenAIEvaluationProvider,
 } from "./ai-providers";
+import { classifyAiGatewayError } from "./ai-errors";
 
 function fakeClient(replies: string[]) {
   const create = vi.fn();
@@ -236,4 +237,78 @@ describe("OpenAIEvaluationProvider", () => {
       expect.objectContaining({ timeout: 180_000, signal }),
     );
   });
+
+  it("classifies an empty report stream as AI_EMPTY_RESPONSE", async () => {
+    const provider = new OpenAIEvaluationProvider(streamingClient([]), "test-model");
+
+    const error = await collectEvaluationError(provider);
+
+    expect(error).toMatchObject({ code: "AI_EMPTY_RESPONSE" });
+    expect(classifyAiGatewayError(error)).toMatchObject({ kind: "empty_response" });
+  });
+
+  it.each([
+    ["not-json", "invalid JSON"],
+    [JSON.stringify({
+      confidence: 0.9,
+      dimensions: scenarioTemplates[0].scoringDimensions.map((dimension) => ({
+        name: dimension.name,
+        score: "not-a-number",
+        evidence: ["证据"],
+      })),
+      risks: [],
+    }), "schema-invalid JSON"],
+  ])("classifies %s report content as AI_INVALID_RESPONSE (%s)", async (content) => {
+    const provider = new OpenAIEvaluationProvider(streamingClient([content]), "test-model");
+
+    const error = await collectEvaluationError(provider);
+
+    expect(error).toMatchObject({ code: "AI_INVALID_RESPONSE" });
+    expect(classifyAiGatewayError(error)).toMatchObject({ kind: "invalid_response" });
+  });
+
+  it("classifies a completed evaluation stream without a report as AI_INVALID_RESPONSE", async () => {
+    class MissingReportProvider extends OpenAIEvaluationProvider {
+      override async *evaluateStream() {
+        yield { delta: "partial" } as const;
+      }
+    }
+    const provider = new MissingReportProvider(streamingClient([]), "test-model");
+
+    await expect(provider.evaluate({
+      scenario: scenarioTemplates[0],
+      learnerMessages: ["测试回复"],
+    })).rejects.toMatchObject({ code: "AI_INVALID_RESPONSE" });
+  });
 });
+
+function streamingClient(contents: string[]): OpenAI {
+  return {
+    chat: {
+      completions: {
+        create: vi.fn().mockResolvedValue({
+          async *[Symbol.asyncIterator]() {
+            for (const content of contents) {
+              yield { choices: [{ delta: { content } }] };
+            }
+          },
+        }),
+      },
+    },
+  } as unknown as OpenAI;
+}
+
+async function collectEvaluationError(provider: OpenAIEvaluationProvider): Promise<unknown> {
+  try {
+    for await (const chunk of provider.evaluateStream({
+      scenario: scenarioTemplates[0],
+      learnerMessages: ["测试回复"],
+    })) {
+      // Consume the provider to its terminal parse step.
+      void chunk;
+    }
+  } catch (error) {
+    return error;
+  }
+  throw new Error("expected evaluation provider to fail");
+}

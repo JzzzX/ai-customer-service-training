@@ -6,7 +6,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { SoftButtonLink } from "@/components/ui/soft-button";
 import { SoftBadge } from "@/components/ui/soft-badge";
 import { SoftCard } from "@/components/ui/soft-card";
-import { requireUser } from "@/lib/auth/guards";
+import { requireLearner } from "@/lib/auth/guards";
 import { getQuizProgressForLearner } from "@/lib/quiz/attempt-service";
 import { quizTopics } from "@/lib/quiz/question-bank";
 import {
@@ -49,7 +49,7 @@ export default async function ProfilePage({
 }: {
   searchParams?: Promise<{ tab?: string; scenarioStatus?: string }>;
 } = {}) {
-  const user = await requireUser();
+  const user = await requireLearner();
   const params = await searchParams;
   const tab = parseTab(params?.tab);
   const scenarioStatus = parseScenarioStatus(params?.scenarioStatus);

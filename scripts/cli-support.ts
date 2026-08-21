@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { hash } from "bcryptjs";
+import { hash, hashSync } from "bcryptjs";
 import { eq } from "drizzle-orm";
 
 import { getDatabase, type DatabaseClient } from "../src/db/client";
@@ -72,7 +72,32 @@ export function grantAdmin(
   email: string,
   database: DatabaseClient = getDatabase(),
 ): boolean {
-  return setUserRole(email, "admin", database);
+  const normalizedEmail = normalizeEmail(email);
+  return database.transaction((transaction) => {
+    const existing = transaction
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, normalizedEmail))
+      .get();
+    if (existing) {
+      return transaction
+        .update(users)
+        .set({ role: "admin", updatedAt: new Date() })
+        .where(eq(users.id, existing.id))
+        .run().changes === 1;
+    }
+
+    const localName = normalizedEmail.split("@", 1)[0] || "待绑定管理员";
+    transaction.insert(users).values({
+      id: randomUUID(),
+      email: normalizedEmail,
+      name: localName,
+      passwordHash: hashSync(randomUUID(), 10),
+      role: "admin",
+      isActive: true,
+    }).run();
+    return true;
+  });
 }
 
 export function revokeAdmin(

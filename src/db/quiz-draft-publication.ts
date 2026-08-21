@@ -21,6 +21,7 @@ export type ResolvedQuizKnowledge = {
   id: string;
   versionHash: string;
   isActive: boolean;
+  status: "draft" | "published" | "disabled" | "archived";
   units: Array<{
     id: string;
     unitKey: string;
@@ -98,8 +99,8 @@ export async function publishQuizDraftToStore(
   if (!knowledge) {
     throw new Error("找不到题库草稿绑定的知识版本。");
   }
-  if (!knowledge.isActive) {
-    throw new Error("题库草稿绑定的知识版本不是当前活动版本。");
+  if (!knowledge.isActive || knowledge.status !== "published") {
+    throw new Error("题库草稿绑定的知识版本不是当前已发布版本。");
   }
 
   const resolvedUnits = new Map(
@@ -177,6 +178,7 @@ export function createQuizDraftPublicationStore(
           id: knowledgeVersions.id,
           versionHash: knowledgeVersions.versionHash,
           isActive: knowledgeVersions.isActive,
+          status: knowledgeVersions.status,
         })
         .from(knowledgeVersions)
         .where(eq(knowledgeVersions.versionHash, versionHash))

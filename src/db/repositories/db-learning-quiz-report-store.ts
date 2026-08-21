@@ -1,5 +1,5 @@
 import type { DatabaseClient } from "../client";
-import { DbRemediationExamStore } from "./db-remediation-exam-store";
+import { DbRemediationExamQueryStore } from "./db-remediation-exam-query-store";
 import {
   resolveBeijingDateRange,
   toBeijingDate,
@@ -84,7 +84,7 @@ export class DbLearningQuizReportStore {
       trend: buildTrend(attempts, answers),
       categories: buildCategories(answers),
       questionWeaknesses: buildQuestionWeaknesses(answers),
-      remediationExams: new DbRemediationExamStore(this.database).listCompletedForLearner(learnerId, range.startAt, range.endExclusiveAt),
+      remediationExams: new DbRemediationExamQueryStore(this.database).listCompletedForLearner(learnerId, range.startAt, range.endExclusiveAt),
     };
   }
 

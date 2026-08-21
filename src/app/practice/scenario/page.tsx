@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { SoftBadge } from "@/components/ui/soft-badge";
 import { SoftCard } from "@/components/ui/soft-card";
-import { requireUser } from "@/lib/auth/guards";
+import { requireLearner } from "@/lib/auth/guards";
 import {
   getScenarioAiMode,
   getScenarioTrainingService,
@@ -45,7 +45,7 @@ const categories: Array<{
 ];
 
 export default async function ScenarioListPage() {
-  const user = await requireUser();
+  const user = await requireLearner();
   const scenarioTemplates =
     await getScenarioTemplateStore().listPublished();
   const progress = await getScenarioTrainingService().getProgress({

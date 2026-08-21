@@ -17,7 +17,7 @@ vi.mock("@/lib/quiz/attempt-service", () => ({
 }));
 
 vi.mock("@/lib/auth/guards", () => ({
-  requireUser: vi.fn().mockResolvedValue({
+  requireLearner: vi.fn().mockResolvedValue({
     id: "learner-1",
     name: "测试学员",
     email: "learner@example.test",

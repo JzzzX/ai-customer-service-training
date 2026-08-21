@@ -4,7 +4,7 @@ import { ScenarioStartForm } from "@/components/scenario/scenario-start-form";
 import { PageHeader } from "@/components/ui/page-header";
 import { SoftBadge } from "@/components/ui/soft-badge";
 import { SoftCard } from "@/components/ui/soft-card";
-import { requireUser } from "@/lib/auth/guards";
+import { requireLearner } from "@/lib/auth/guards";
 import {
   getScenarioAiMode,
   getScenarioTemplateStore,
@@ -15,7 +15,7 @@ export default async function ScenarioDetailPage({
 }: {
   params: Promise<{ scenarioId: string }>;
 }) {
-  await requireUser();
+  await requireLearner();
   const { scenarioId } = await params;
   const scenario =
     await getScenarioTemplateStore().getPublishedById(scenarioId);

@@ -136,7 +136,10 @@ export async function verifyProductionData(
   const activeVersions = await database
     .select({ id: knowledgeVersions.id })
     .from(knowledgeVersions)
-    .where(eq(knowledgeVersions.isActive, true))
+    .where(and(
+      eq(knowledgeVersions.isActive, true),
+      eq(knowledgeVersions.status, "published"),
+    ))
     .all();
   const activeVersionId = activeVersions[0]?.id;
 
@@ -172,39 +175,42 @@ export async function verifyProductionData(
       and(eq(quizSets.status, "published"), eq(quizSets.kind, "topic")),
     )
     .all();
-  const topicQuestionRows = await database
-    .select({
-      value: count(),
-      catalogCount: countDistinct(questions.questionCatalogId),
-      revisionCount: countDistinct(questions.id),
-    })
-    .from(quizSetQuestions)
-    .innerJoin(quizSets, eq(quizSetQuestions.quizSetId, quizSets.id))
-    .innerJoin(questions, eq(quizSetQuestions.questionId, questions.id))
-    .where(
-      and(eq(quizSets.status, "published"), eq(quizSets.kind, "topic")),
-    )
-    .all();
-  const topicCategoryMismatchRows = await database
-    .select({ value: count() })
-    .from(quizSetQuestions)
-    .innerJoin(quizSets, eq(quizSetQuestions.quizSetId, quizSets.id))
-    .innerJoin(questions, eq(quizSetQuestions.questionId, questions.id))
-    .where(
-      and(
-        eq(quizSets.status, "published"),
-        eq(quizSets.kind, "topic"),
-        ne(questions.category, quizSets.topicId),
-      ),
-    )
-    .all();
-  const topicQuestionCountRows = await database
-    .select({ topicId: quizSets.topicId, value: count() })
-    .from(quizSetQuestions)
-    .innerJoin(quizSets, eq(quizSetQuestions.quizSetId, quizSets.id))
-    .where(and(eq(quizSets.status, "published"), eq(quizSets.kind, "topic")))
-    .groupBy(quizSets.topicId)
-    .all();
+  const topicQuestionRows = [database.$client.prepare(`
+    SELECT COUNT(*) AS value,
+      COUNT(DISTINCT linked.question_catalog_id) AS catalogCount,
+      COUNT(DISTINCT current.id) AS revisionCount
+    FROM quiz_set_questions link
+    INNER JOIN quiz_sets set_row ON set_row.id = link.quiz_set_id
+    INNER JOIN questions linked ON linked.id = link.question_id
+    INNER JOIN question_catalog_publications publication
+      ON publication.catalog_id = linked.question_catalog_id
+    INNER JOIN questions current ON current.id = publication.current_question_id
+    WHERE set_row.status = 'published' AND set_row.kind = 'topic'
+      AND current.status = 'published'
+  `).get() as { value: number; catalogCount: number; revisionCount: number }];
+  const topicCategoryMismatchRows = [database.$client.prepare(`
+    SELECT COUNT(*) AS value
+    FROM quiz_set_questions link
+    INNER JOIN quiz_sets set_row ON set_row.id = link.quiz_set_id
+    INNER JOIN questions linked ON linked.id = link.question_id
+    INNER JOIN question_catalog_publications publication
+      ON publication.catalog_id = linked.question_catalog_id
+    INNER JOIN questions current ON current.id = publication.current_question_id
+    WHERE set_row.status = 'published' AND set_row.kind = 'topic'
+      AND current.status = 'published' AND current.category <> set_row.topic_id
+  `).get() as { value: number }];
+  const topicQuestionCountRows = database.$client.prepare(`
+    SELECT set_row.topic_id AS topicId, COUNT(*) AS value
+    FROM quiz_set_questions link
+    INNER JOIN quiz_sets set_row ON set_row.id = link.quiz_set_id
+    INNER JOIN questions linked ON linked.id = link.question_id
+    INNER JOIN question_catalog_publications publication
+      ON publication.catalog_id = linked.question_catalog_id
+    INNER JOIN questions current ON current.id = publication.current_question_id
+    WHERE set_row.status = 'published' AND set_row.kind = 'topic'
+      AND current.status = 'published'
+    GROUP BY set_row.topic_id
+  `).all() as Array<{ topicId: string | null; value: number }>;
   const publishedScenarioRows = await database
     .select({ value: count() })
     .from(scenarioVersions)

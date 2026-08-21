@@ -103,9 +103,23 @@ describe("quiz draft database publication", () => {
 
     await expect(
       publishQuizDraftToStore(draft(), createdById, store),
-    ).rejects.toThrow("知识版本不是当前活动版本");
+    ).rejects.toThrow("知识版本不是当前已发布版本");
     expect(store.publishCount).toBe(0);
   });
+
+  it.each(["draft", "archived"] as const)(
+    "rejects an active knowledge version whose lifecycle status is %s",
+    async (status) => {
+      const store = new MemoryQuizDraftPublicationStore({
+        ...resolvedKnowledge(),
+        status,
+      });
+
+      await expect(publishQuizDraftToStore(draft(), createdById, store))
+        .rejects.toThrow("不是当前已发布版本");
+      expect(store.publishCount).toBe(0);
+    },
+  );
 
   it("rejects a production draft that does not contain exactly 40 questions", async () => {
     const store = new MemoryQuizDraftPublicationStore();
@@ -261,6 +275,7 @@ function resolvedKnowledge(): ResolvedQuizKnowledge {
     id: "00000000-0000-4000-8000-000000000020",
     versionHash: knowledgePackHash,
     isActive: true,
+    status: "published" as const,
     units: Array.from({ length: 40 }, (_, index) => {
       const suffix = index.toString(16).padStart(24, "0");
       return {

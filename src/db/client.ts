@@ -13,6 +13,7 @@ export const DATABASE_SCHEMA_VERSION = 5;
 const requiredTables = [
   "app_schema_marker",
   "evaluation_reports",
+  "feishu_identities",
   "knowledge_sources",
   "knowledge_units",
   "knowledge_versions",

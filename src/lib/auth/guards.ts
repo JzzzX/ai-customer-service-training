@@ -23,19 +23,32 @@ type RequireAdminDependencies = {
   deny?: (path: string) => never;
 };
 
-export async function requireLearner(
-  dependencies: RequireAdminDependencies = {},
-) {
+export type LearnerAccess =
+  | { allowed: true; user: NonNullable<Session["user"]> & { role: "learner" } }
+  | { allowed: false; status: 401 | 403 };
+
+export async function checkLearnerAccess(
+  dependencies: Omit<RequireAdminDependencies, "deny"> = {},
+): Promise<LearnerAccess> {
   const authenticate = dependencies.authenticate ?? (() => auth());
-  const deny = dependencies.deny ?? redirect;
   const session = await authenticate();
-  if (!session?.user) return deny("/login");
+  if (!session?.user) return { allowed: false, status: 401 };
+
   const database = dependencies.database ?? getDatabase();
   const liveLearner = database.select({ id: users.id, role: users.role }).from(users).where(and(
     eq(users.id, session.user.id), eq(users.isActive, true), eq(users.role, "learner"),
   )).get();
-  if (!liveLearner) return deny("/forbidden");
-  return { ...session.user, role: liveLearner.role };
+  if (!liveLearner) return { allowed: false, status: 403 };
+  return { allowed: true, user: { ...session.user, role: "learner" } };
+}
+
+export async function requireLearner(
+  dependencies: RequireAdminDependencies = {},
+) {
+  const deny = dependencies.deny ?? redirect;
+  const access = await checkLearnerAccess(dependencies);
+  if (!access.allowed) return deny(access.status === 401 ? "/login" : "/forbidden");
+  return access.user;
 }
 
 export async function requireAdmin(

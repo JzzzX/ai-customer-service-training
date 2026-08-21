@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  requireUser: vi.fn(),
+  requireLearner: vi.fn(),
   redirect: vi.fn(),
   start: vi.fn(),
   sendMessage: vi.fn(),
@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/auth/guards", () => ({
-  requireUser: mocks.requireUser,
+  requireLearner: mocks.requireLearner,
 }));
 
 vi.mock("@/lib/runtime/services", () => ({
@@ -52,7 +52,7 @@ const scenarioId = `st_${"1".repeat(24)}`;
 describe("scenario server actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.requireUser.mockResolvedValue({
+    mocks.requireLearner.mockResolvedValue({
       id: learnerId,
       name: "测试学员",
       email: "learner@example.test",

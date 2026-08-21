@@ -243,7 +243,10 @@ export class OpenAIEvaluationProvider implements EvaluationProvider {
       }
     }
     if (!report) {
-      throw new Error("AI 评测结果解析失败，请稍后重试。");
+      throw providerError(
+        "AI_INVALID_RESPONSE",
+        "AI 评测结果解析失败，请稍后重试。",
+      );
     }
     return report;
   }
@@ -273,19 +276,27 @@ export class OpenAIEvaluationProvider implements EvaluationProvider {
         yield { delta };
       }
     }
-    let parsed: LlmEvaluation;
-    try {
-      parsed = JSON.parse(accumulated) as LlmEvaluation;
-    } catch {
-      throw new Error("AI 评测结果解析失败，请稍后重试。");
+    if (!accumulated.trim()) {
+      throw providerError(
+        "AI_EMPTY_RESPONSE",
+        "AI 未返回评测内容，请稍后重试。",
+      );
     }
-    yield {
-      report: parseEvaluationReport(
-        parsed,
-        input.scenario,
-        input.learnerMessages.length,
-      ),
-    };
+    try {
+      const parsed = JSON.parse(accumulated) as LlmEvaluation;
+      yield {
+        report: parseEvaluationReport(
+          parsed,
+          input.scenario,
+          input.learnerMessages.length,
+        ),
+      };
+    } catch {
+      throw providerError(
+        "AI_INVALID_RESPONSE",
+        "AI 评测结果解析失败，请稍后重试。",
+      );
+    }
   }
 }
 

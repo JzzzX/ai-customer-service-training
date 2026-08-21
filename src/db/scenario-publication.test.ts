@@ -135,6 +135,23 @@ describe("scenario database publication", () => {
     ).rejects.toThrow("冲突知识不能用于场景");
     expect(store.versions.size).toBe(0);
   });
+
+  it.each(["draft", "archived"] as const)(
+    "rejects an active knowledge version whose lifecycle status is %s",
+    async (status) => {
+      const store = new MemoryScenarioPublicationStore({
+        ...resolvedKnowledge(),
+        status,
+      });
+
+      await expect(publishScenarioTemplatesToStore({
+        templates: scenarioTemplates,
+        knowledgeVersionHash,
+        store,
+      })).rejects.toThrow("不是当前已发布版本");
+      expect(store.versions.size).toBe(0);
+    },
+  );
 });
 
 function resolvedKnowledge(): ResolvedScenarioKnowledge {
@@ -142,6 +159,7 @@ function resolvedKnowledge(): ResolvedScenarioKnowledge {
     id: "00000000-0000-4000-8000-000000000020",
     versionHash: knowledgeVersionHash,
     isActive: true,
+    status: "published" as const,
     units: scenarioTemplates.flatMap((scenario, scenarioIndex) =>
       scenario.sources.map((source, sourceIndex) => ({
         id: `00000000-0000-4000-8001-${String(

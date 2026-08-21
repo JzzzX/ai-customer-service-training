@@ -9,6 +9,8 @@ import {
   questionCatalogPublications,
   questionCatalogs,
   questions,
+  quizSetQuestions,
+  quizSets,
 } from "./schema";
 import { sourceLocatorSchema, type SourceLocator } from "@/lib/knowledge/schema";
 
@@ -195,6 +197,20 @@ export function createAdminQuestionRepository(
           difficulty: draft.difficulty,
         });
         z.array(sourceLocatorSchema).min(1, "题目来源不可追溯").parse(draft.sources);
+        const publishedTopics = transaction
+          .select({ topicId: quizSets.topicId })
+          .from(quizSetQuestions)
+          .innerJoin(questions, eq(questions.id, quizSetQuestions.questionId))
+          .innerJoin(quizSets, eq(quizSets.id, quizSetQuestions.quizSetId))
+          .where(and(
+            eq(questions.questionCatalogId, input.catalogId),
+            eq(quizSets.kind, "topic"),
+            eq(quizSets.status, "published"),
+          ))
+          .all();
+        if (publishedTopics.some((topic) => topic.topicId !== draft.category)) {
+          throw new Error("题目已属于已发布专题题组，分类必须与专题保持一致。");
+        }
         const now = new Date();
         const pointerResult = transaction
           .update(questionCatalogPublications)

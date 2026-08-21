@@ -6,7 +6,7 @@ import { SoftBadge } from "@/components/ui/soft-badge";
 import { SoftButton } from "@/components/ui/soft-button";
 import { SoftCard } from "@/components/ui/soft-card";
 import { StreamingReport } from "@/components/scenario/streaming-report";
-import { requireUser } from "@/lib/auth/guards";
+import { requireLearner } from "@/lib/auth/guards";
 import {
   getScenarioTemplateStore,
   getScenarioTrainingService,
@@ -21,7 +21,7 @@ export default async function ScenarioReportPage({
   params: Promise<{ sessionId: string }>;
   searchParams: Promise<{ streaming?: string }>;
 }) {
-  const user = await requireUser();
+  const user = await requireLearner();
   const { sessionId } = await params;
   const { streaming } = await searchParams;
   const session = await loadSession(user.id, sessionId);

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 
-import { requireUser } from "@/lib/auth/guards";
+import { requireLearner } from "@/lib/auth/guards";
 import { getScenarioTrainingService } from "@/lib/runtime/services";
 import { reportRuntimeError } from "@/lib/runtime/errors";
 import {
@@ -37,7 +37,7 @@ export async function startScenarioAction(
   _previousState: ScenarioStartActionState,
   formData: FormData,
 ): Promise<ScenarioStartActionState> {
-  const user = await requireUser();
+  const user = await requireLearner();
   const scenarioId = scenarioIdSchema.parse(formData.get("scenarioId"));
   let session: Awaited<
     ReturnType<ReturnType<typeof getScenarioTrainingService>["start"]>
@@ -71,7 +71,7 @@ export async function sendScenarioMessageAction(
   _previousState: ScenarioMessageActionState,
   formData: FormData,
 ): Promise<ScenarioMessageActionState> {
-  const user = await requireUser();
+  const user = await requireLearner();
   const sessionId = sessionIdSchema.parse(formData.get("sessionId"));
   const content = messageSchema.safeParse(formData.get("content"));
   if (!content.success) {
@@ -104,7 +104,7 @@ export async function sendScenarioMessageAction(
 export async function completeScenarioAction(
   formData: FormData,
 ): Promise<void> {
-  const user = await requireUser();
+  const user = await requireLearner();
   const sessionId = sessionIdSchema.parse(formData.get("sessionId"));
   const session = await getScenarioTrainingService().complete({
     learnerId: user.id,
@@ -117,7 +117,7 @@ export async function completeScenarioAction(
 export async function restartScenarioAction(
   formData: FormData,
 ): Promise<void> {
-  const user = await requireUser();
+  const user = await requireLearner();
   const sessionId = sessionIdSchema.parse(formData.get("sessionId"));
   const session = await getScenarioTrainingService().restart({
     learnerId: user.id,

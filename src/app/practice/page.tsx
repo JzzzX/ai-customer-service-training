@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { SoftBadge } from "@/components/ui/soft-badge";
 import { SoftCard } from "@/components/ui/soft-card";
-import { requireUser } from "@/lib/auth/guards";
+import { requireLearner } from "@/lib/auth/guards";
 import { getQuizProgressForLearner } from "@/lib/quiz/attempt-service";
 import {
   getScenarioTemplateStore,
@@ -37,7 +37,7 @@ const entries = [
 ] as const;
 
 export default async function PracticePage() {
-  const user = await requireUser();
+  const user = await requireLearner();
   const scenarioTemplates =
     await getScenarioTemplateStore().listPublished();
   const [quizProgress, scenarioProgress] = await Promise.all([

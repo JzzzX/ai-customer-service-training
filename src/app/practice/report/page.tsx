@@ -1,7 +1,7 @@
 import { LearningQuizReportView } from "@/components/report/learning-quiz-report-view";
 import { PageHeader } from "@/components/ui/page-header";
 import { SoftCard } from "@/components/ui/soft-card";
-import { requireUser } from "@/lib/auth/guards";
+import { requireLearner } from "@/lib/auth/guards";
 import { getLearningQuizReport, parseReportRange } from "@/lib/report/service";
 
 export default async function PracticeReportPage({
@@ -9,7 +9,7 @@ export default async function PracticeReportPage({
 }: {
   searchParams?: Promise<{ preset?: string; start?: string; end?: string; learnerId?: string; remediation?: string; category?: string; required?: string; available?: string }>;
 } = {}) {
-  const learner = await requireUser();
+  const learner = await requireLearner();
   const params = await searchParams ?? {};
   let report;
   let dateError: string | null = null;

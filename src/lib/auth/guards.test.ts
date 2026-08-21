@@ -8,7 +8,7 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 import { users } from "@/db/schema";
 import { createTestDatabase } from "@/db/test-support/create-test-database";
 
-import { requireAdmin, requireLearner } from "./guards";
+import { checkLearnerAccess, requireAdmin, requireLearner } from "./guards";
 
 describe("requireAdmin", () => {
   const clients: Array<{ close(): void }> = [];
@@ -78,5 +78,27 @@ describe("requireLearner", () => {
       deny,
     })).rejects.toThrow("FORBIDDEN");
     expect(deny).toHaveBeenCalledWith("/forbidden");
+  });
+
+  it("distinguishes unauthenticated, promoted, disabled, and active learner API access", async () => {
+    const fixture = await createTestDatabase(); clients.push(fixture.client);
+    await fixture.database.insert(users).values([
+      { id: "promoted", email: "promoted@example.test", name: "已提权", passwordHash: "hash", role: "admin", isActive: true },
+      { id: "disabled", email: "disabled@example.test", name: "已停用", passwordHash: "hash", role: "learner", isActive: false },
+      { id: "learner", email: "learner@example.test", name: "学员", passwordHash: "hash", role: "learner", isActive: true },
+    ]);
+    const session = (id: string) => ({
+      user: { id, email: `${id}@example.test`, name: id, role: "learner" as const },
+      expires: "2099-01-01T00:00:00.000Z",
+    });
+
+    await expect(checkLearnerAccess({ authenticate: async () => null, database: fixture.database }))
+      .resolves.toEqual({ allowed: false, status: 401 });
+    await expect(checkLearnerAccess({ authenticate: async () => session("promoted"), database: fixture.database }))
+      .resolves.toEqual({ allowed: false, status: 403 });
+    await expect(checkLearnerAccess({ authenticate: async () => session("disabled"), database: fixture.database }))
+      .resolves.toEqual({ allowed: false, status: 403 });
+    await expect(checkLearnerAccess({ authenticate: async () => session("learner"), database: fixture.database }))
+      .resolves.toMatchObject({ allowed: true, user: { id: "learner", role: "learner" } });
   });
 });

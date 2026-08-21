@@ -10,6 +10,8 @@ import { knowledgeVersions } from "./schema";
 import { createTestDatabase } from "./test-support/create-test-database";
 import type { DatabaseClient } from "./client";
 import { publishTopicQuizCatalog } from "./topic-quiz-publication";
+import { ensureQuestionRevision } from "./question-revision-publication";
+import { topicQuizQuestions } from "@/lib/quiz/question-bank";
 
 const technicalSnapshot = {
   activeKnowledgeCount: 1,
@@ -206,6 +208,47 @@ describe("evaluateProductionSnapshot", () => {
     expect(inconsistent.technicalIssues).toContain(
       "专题题库必须包含350道不同目录、不同版本的题目，且题目分类与题组一致。",
     );
+  });
+
+  it("follows each topic catalog current pointer instead of validating the linked historical revision", async () => {
+    const fixture = await productionFixture();
+    publishTopicQuizCatalog(fixture.database);
+    const source = topicQuizQuestions.find((question) => question.category === "产品属性及卖点")!;
+
+    fixture.database.transaction((transaction) => {
+      ensureQuestionRevision(transaction, {
+        stableKey: source.id,
+        knowledgeVersionId: "knowledge-production",
+        knowledgeUnitId: null,
+        knowledgeUnitKey: source.knowledgeUnitId,
+        type: source.type,
+        prompt: `${source.prompt}（错误分类修订）`,
+        options: source.options,
+        correctAnswers: source.correctAnswers,
+        explanation: source.explanation,
+        category: "日常问答",
+        difficulty: source.difficulty,
+        sources: source.sources,
+      });
+    });
+
+    const result = await verifyProductionData(fixture.database);
+    expect(result.snapshot.topicQuestionCount).toBe(350);
+    expect(result.snapshot.topicCatalogCount).toBe(350);
+    expect(result.snapshot.topicRevisionCount).toBe(350);
+    expect(result.snapshot.topicCategoryMismatchCount).toBe(1);
+  });
+
+  it("does not treat active draft or archived knowledge as the published active version", async () => {
+    for (const status of ["draft", "archived"] as const) {
+      const fixture = await productionFixture();
+      fixture.database.update(knowledgeVersions).set({ status }).run();
+
+      const result = await verifyProductionData(fixture.database);
+
+      expect(result.snapshot.activeKnowledgeCount).toBe(0);
+      expect(result.technicalIssues).toContain("必须且只能有一个活动知识版本。");
+    }
   });
 });
 

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { requireUser } from "@/lib/auth/guards";
+import { requireLearner } from "@/lib/auth/guards";
 import { evaluateAnswer } from "@/lib/quiz/attempt";
 import {
   getQuizProgressForLearner,
@@ -49,7 +49,7 @@ export async function checkDemoQuizAnswerAction(
   questionId: string,
   selected: string,
 ): Promise<QuizAnswerFeedback> {
-  await requireUser();
+  await requireLearner();
   return checkAnswer(demoQuizQuestions, questionId, selected);
 }
 
@@ -58,7 +58,7 @@ export async function checkPublishedQuizAnswerAction(
   questionId: string,
   selected: string,
 ): Promise<QuizAnswerFeedback> {
-  const user = await requireUser();
+  const user = await requireLearner();
   const attemptId = z.string().uuid().parse(attemptIdInput);
   const snapshot = await loadQuizAttemptSnapshotForLearner(user.id, attemptId);
   if (snapshot.kind !== "formal") throw new Error("小测类型不匹配，请重新开始练习。");
@@ -70,7 +70,7 @@ export async function checkTopicQuizAnswerAction(
   questionId: string,
   selected: string,
 ): Promise<QuizAnswerFeedback> {
-  const user = await requireUser();
+  const user = await requireLearner();
   const attemptId = z.string().uuid().parse(attemptIdInput);
   const snapshot = await loadQuizAttemptSnapshotForLearner(user.id, attemptId);
   if (snapshot.kind !== "topic" || !snapshot.topicId) throw new Error("小测类型不匹配，请重新开始练习。");
@@ -82,7 +82,7 @@ export async function saveQuizAttemptAction(
   attemptIdInput: string,
   submittedAnswers: QuizAnswerSubmission[],
 ): Promise<QuizCompletionProgress> {
-  const user = await requireUser();
+  const user = await requireLearner();
   const attemptId = z.string().uuid().parse(attemptIdInput);
   const answers = submittedAnswersSchema.parse(submittedAnswers);
   const savedAttempt = await saveQuizAttemptForLearner({
@@ -102,7 +102,7 @@ export async function saveTopicQuizAttemptAction(
   attemptIdInput: string,
   submittedAnswers: QuizAnswerSubmission[],
 ): Promise<QuizCompletionProgress> {
-  const user = await requireUser();
+  const user = await requireLearner();
   const topic = z.string().trim().min(1).parse(topicId);
   const attemptId = z.string().uuid().parse(attemptIdInput);
   const answers = submittedAnswersSchema.parse(submittedAnswers);

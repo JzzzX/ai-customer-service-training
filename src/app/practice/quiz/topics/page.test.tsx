@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/auth/guards", () => ({
-  requireUser: vi.fn().mockResolvedValue({
+  requireLearner: vi.fn().mockResolvedValue({
     id: "learner-1",
     name: "测试学员",
     email: "learner@example.test",

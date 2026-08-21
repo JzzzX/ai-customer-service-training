@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { auth } from "@/auth";
+import { checkLearnerAccess } from "@/lib/auth/guards";
 import { getScenarioTrainingService } from "@/lib/runtime/services";
 import {
   reportRuntimeError,
@@ -17,13 +17,14 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ sessionId: string }> },
 ) {
-  const session = await auth();
-  if (!session?.user) {
+  const access = await checkLearnerAccess();
+  if (!access.allowed) {
     return NextResponse.json(
-      { error: "未登录，请先登录。" },
-      { status: 401 },
+      { error: access.status === 401 ? "未登录，请先登录。" : "当前账号无权进行练习。" },
+      { status: access.status },
     );
   }
+  const learner = access.user;
   const { sessionId } = await params;
   const parsed = sessionIdSchema.safeParse(sessionId);
   if (!parsed.success) {
@@ -111,7 +112,7 @@ export async function GET(
       }, 15_000);
       try {
         for await (const chunk of service.completeStream({
-          learnerId: session.user.id,
+          learnerId: learner.id,
           sessionId: parsed.data,
           signal,
         })) {
@@ -127,7 +128,7 @@ export async function GET(
             errorCategory: classifyAiGatewayError(error).kind,
             operation: "complete_session",
             route: "/api/scenario/complete",
-            userId: session.user.id,
+            userId: learner.id,
             resourceId: parsed.data,
           },
           error,

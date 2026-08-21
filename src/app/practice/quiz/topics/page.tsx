@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { SoftCard } from "@/components/ui/soft-card";
-import { requireUser } from "@/lib/auth/guards";
+import { requireLearner } from "@/lib/auth/guards";
 import { getQuizProgressForLearner } from "@/lib/quiz/attempt-service";
 import { quizTopics } from "@/lib/quiz/question-bank";
 
@@ -14,7 +14,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
 });
 
 export default async function QuizTopicsPage() {
-  const user = await requireUser();
+  const user = await requireLearner();
   const progress = await getQuizProgressForLearner(user.id, { recentLimit: 1 });
 
   const topicProgressById = new Map(

@@ -7,8 +7,12 @@ const mocks = vi.hoisted(() => ({
   learnerId: "22222222-2222-4222-8222-222222222222",
   reportRuntimeError: vi.fn(),
   completeStream: vi.fn(),
+  checkLearnerAccess: vi.fn(),
 }));
 
+vi.mock("@/lib/auth/guards", () => ({
+  checkLearnerAccess: mocks.checkLearnerAccess,
+}));
 vi.mock("@/auth", () => ({
   auth: vi.fn().mockResolvedValue({ user: { id: mocks.learnerId } }),
 }));
@@ -27,9 +31,28 @@ import { GET } from "./route";
 describe("GET /api/scenario/complete/:sessionId", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.checkLearnerAccess.mockResolvedValue({
+      allowed: true,
+      user: { id: mocks.learnerId, role: "learner" },
+    });
     mocks.completeStream.mockImplementation(async function* () {
       throw Object.assign(new Error("upstream secret detail"), { status: 502 });
     });
+  });
+
+  it.each([
+    [401, "未登录，请先登录。"],
+    [403, "当前账号无权进行练习。"],
+  ])("returns %s before starting report work when live learner access is denied", async (status, message) => {
+    mocks.checkLearnerAccess.mockResolvedValueOnce({ allowed: false, status });
+
+    const response = await GET(new Request("http://localhost"), {
+      params: Promise.resolve({ sessionId }),
+    });
+
+    expect(response.status).toBe(status);
+    await expect(response.json()).resolves.toEqual({ error: message });
+    expect(mocks.completeStream).not.toHaveBeenCalled();
   });
 
   it("propagates a Request.signal abort to report generation", async () => {
@@ -227,5 +250,26 @@ describe("GET /api/scenario/complete/:sessionId", () => {
 
     expect(body).toContain("AI 服务认证异常，请联系管理员。");
     expect(body).not.toContain("top-secret");
+  });
+
+  it.each([
+    ["AI_EMPTY_RESPONSE", "empty_response", "AI 未返回有效内容，请重新发送。"],
+    ["AI_INVALID_RESPONSE", "invalid_response", "AI 返回结果异常，请稍后重试。"],
+  ])("classifies %s and sends only its redacted SSE message", async (code, errorCategory, publicMessage) => {
+    mocks.completeStream.mockImplementationOnce(async function* () {
+      throw Object.assign(new Error("private malformed payload"), { code });
+    });
+
+    const response = await GET(new Request("http://localhost"), {
+      params: Promise.resolve({ sessionId }),
+    });
+    const body = await response.text();
+
+    expect(body).toContain(publicMessage);
+    expect(body).not.toContain("private malformed payload");
+    expect(mocks.reportRuntimeError).toHaveBeenCalledWith(
+      expect.objectContaining({ errorCategory }),
+      expect.any(Error),
+    );
   });
 });

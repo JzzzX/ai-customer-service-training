@@ -83,6 +83,19 @@ describe("SQLite database client", () => {
     }
   });
 
+  it("rejects schema marker 5 when the core Feishu identity table is missing", async () => {
+    const { client, database } = await createTestDatabase();
+    try {
+      client.exec("DROP TABLE feishu_identities");
+
+      expect(() => assertDatabaseSchema(database)).toThrow(
+        "SQLite schema is incompatible",
+      );
+    } finally {
+      client.close();
+    }
+  });
+
   it("uses the non-persistent demo fixture without SQLITE_PATH", () => {
     vi.stubEnv("DEMO_MODE", "true");
     vi.stubEnv("SQLITE_PATH", "");

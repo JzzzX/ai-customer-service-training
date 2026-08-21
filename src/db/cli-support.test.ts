@@ -10,6 +10,7 @@ import { backupDatabase, disableLearner, grantAdmin, importLearners, parseLearne
 import { users } from "./schema";
 import { createTestDatabase } from "./test-support/create-test-database";
 import { assertDatabaseSchema, createDatabaseClient } from "./client";
+import { resolveFeishuUser } from "@/lib/auth/user-repository";
 
 describe("learner CLI support", () => {
   const clients: Array<{ close(): void }> = [];
@@ -42,7 +43,7 @@ describe("learner CLI support", () => {
     expect(() => parseLearnerCsv("email,name,password,is_active\na@example.com,阿甲,password88,true\nA@example.com,阿乙,password99,true\n")).toThrow("重复邮箱");
   });
 
-  it("grants and revokes admin by normalized company email", async () => {
+  it("upgrades an existing learner by normalized company email", async () => {
     const fixture = await createTestDatabase(); clients.push(fixture.client);
     await importLearners(
       parseLearnerCsv("email,name,password,is_active\nadmin@example.com,管理员,password88,true\n"),
@@ -57,7 +58,49 @@ describe("learner CLI support", () => {
     expect(
       fixture.database.select().from(users).where(eq(users.email, "admin@example.com")).get()?.role,
     ).toBe("learner");
-    expect(grantAdmin("missing@example.com", fixture.database)).toBe(false);
+  });
+
+  it("pre-creates an active admin placeholder and binds it on first Feishu login", async () => {
+    const fixture = await createTestDatabase(); clients.push(fixture.client);
+
+    expect(grantAdmin(" NEW.ADMIN@EXAMPLE.COM ", fixture.database)).toBe(true);
+    const placeholder = fixture.database.select().from(users).where(eq(users.email, "new.admin@example.com")).get();
+    expect(placeholder).toMatchObject({
+      email: "new.admin@example.com",
+      role: "admin",
+      isActive: true,
+    });
+    expect(placeholder?.passwordHash).toMatch(/^\$2[aby]\$/);
+    expect(await compare("password88", placeholder!.passwordHash)).toBe(false);
+
+    const resolved = resolveFeishuUser({
+      unionId: "union-preauthorized-admin",
+      openId: "open-preauthorized-admin",
+      email: "NEW.ADMIN@example.com",
+      name: "飞书管理员",
+    }, fixture.database);
+    expect(resolved).toMatchObject({ id: placeholder?.id, role: "admin" });
+    expect(fixture.database.select().from(users).all()).toHaveLength(1);
+  });
+
+  it("does not reactivate a disabled account when granting admin", async () => {
+    const fixture = await createTestDatabase(); clients.push(fixture.client);
+    await importLearners(
+      parseLearnerCsv("email,name,password,is_active\ndisabled@example.com,停用员工,password88,false\n"),
+      fixture.database,
+    );
+
+    expect(grantAdmin("disabled@example.com", fixture.database)).toBe(true);
+    expect(fixture.database.select().from(users).where(eq(users.email, "disabled@example.com")).get()).toMatchObject({
+      role: "admin",
+      isActive: false,
+    });
+    expect(resolveFeishuUser({
+      unionId: "union-disabled-admin",
+      openId: "open-disabled-admin",
+      email: "disabled@example.com",
+      name: "停用员工",
+    }, fixture.database)).toBeNull();
   });
 
   it("backs up a valid SQLite file and refuses to overwrite it", async () => {

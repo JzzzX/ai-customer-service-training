@@ -2,13 +2,13 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  requireUser: vi.fn(),
+  requireLearner: vi.fn(),
   getQuizProgressForLearner: vi.fn(),
   getScenarioProgress: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/guards", () => ({
-  requireUser: mocks.requireUser,
+  requireLearner: mocks.requireLearner,
 }));
 
 vi.mock("@/components/sign-out-button", () => ({
@@ -38,7 +38,7 @@ const learnerId = "00000000-0000-4000-8000-000000000002";
 describe("ProfilePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.requireUser.mockResolvedValue({
+    mocks.requireLearner.mockResolvedValue({
       id: learnerId,
       name: "测试学员",
       email: "learner@example.test",

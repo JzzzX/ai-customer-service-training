@@ -185,6 +185,32 @@ describe("admin question repository", () => {
     ).rejects.toBeInstanceOf(AdminQuestionConflictError);
   });
 
+  it("rejects changing the category of a catalog linked to a published topic set", async () => {
+    const repository = createAdminQuestionRepository(fixture.database);
+    const before = (await repository.list({}))[0]!;
+    fixture.client.prepare(`INSERT INTO quiz_sets
+      (id, knowledge_version_id, quiz_hash, content_hash, title, kind, topic_id, status)
+      VALUES ('topic-set', 'knowledge-1', ?, ?, '产品专题', 'topic', '产品属性及卖点', 'published')`)
+      .run("8".repeat(64), "9".repeat(64));
+    fixture.client.prepare(`INSERT INTO quiz_set_questions
+      (quiz_set_id, question_id, position, points) VALUES ('topic-set', ?, 0, 1)`)
+      .run(before.current.id);
+    const draft = await repository.createDraft({
+      catalogId: before.catalogId,
+      baseRevisionId: before.current.id,
+      actorId: "admin-1",
+      changes: { ...editableChanges(), category: "日常问答" },
+    });
+
+    await expect(repository.publishDraft({
+      catalogId: before.catalogId,
+      draftRevisionId: draft.id,
+      expectedCurrentRevisionId: before.current.id,
+      actorId: "admin-1",
+    })).rejects.toThrow("已发布专题题组");
+    expect((await repository.list({}))[0]!.current.id).toBe(before.current.id);
+  });
+
   function seedHistoricalAnswer(questionId: string): void {
     fixture.client.exec(`
       INSERT INTO users (id, email, name, password_hash, role, is_active)

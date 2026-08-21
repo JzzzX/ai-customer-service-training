@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  requireUser: vi.fn(),
+  requireLearner: vi.fn(),
   loadPublishedQuiz: vi.fn(),
   loadPublishedTopicQuiz: vi.fn(),
   loadQuizAttemptSnapshotForLearner: vi.fn(),
@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/auth/guards", () => ({
-  requireUser: mocks.requireUser,
+  requireLearner: mocks.requireLearner,
 }));
 
 vi.mock("@/lib/quiz/published-service", () => ({
@@ -42,7 +42,7 @@ const quizHash = "a".repeat(64);
 describe("saveQuizAttemptAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.requireUser.mockResolvedValue({
+    mocks.requireLearner.mockResolvedValue({
       id: learnerId,
       name: "测试学员",
       email: "learner@example.test",

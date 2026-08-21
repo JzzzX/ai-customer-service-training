@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
 import { SoftBadge } from "@/components/ui/soft-badge";
 import { ScenarioChat } from "@/components/scenario/scenario-chat";
-import { requireUser } from "@/lib/auth/guards";
+import { requireLearner } from "@/lib/auth/guards";
 import {
   getScenarioTemplateStore,
   getScenarioTrainingService,
@@ -14,7 +14,7 @@ export default async function ScenarioSessionPage({
 }: {
   params: Promise<{ sessionId: string }>;
 }) {
-  const user = await requireUser();
+  const user = await requireLearner();
   const { sessionId } = await params;
   const session = await loadSession(user.id, sessionId);
   if (session.status === "completed") {

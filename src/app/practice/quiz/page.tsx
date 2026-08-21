@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { PageHeader } from "@/components/ui/page-header";
 import { QuizRunner } from "@/components/quiz/quiz-runner";
-import { requireUser } from "@/lib/auth/guards";
+import { requireLearner } from "@/lib/auth/guards";
 import { startQuizAttemptForLearner } from "@/lib/quiz/attempt-service";
 import { demoQuizQuestions } from "@/lib/quiz/demo-questions";
 import { quizTopics } from "@/lib/quiz/question-bank";
@@ -33,7 +33,7 @@ export default async function PracticeQuizPage({
 }: {
   searchParams?: Promise<{ topic?: string; retry?: string }>;
 } = {}) {
-  const user = await requireUser();
+  const user = await requireLearner();
   const params = await searchParams;
   const topicInput = params?.topic;
   const topicMatch = topicInput

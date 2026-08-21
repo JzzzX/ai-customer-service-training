@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ requireUser: vi.fn(), getReport: vi.fn(), parseRange: vi.fn() }));
-vi.mock("@/lib/auth/guards", () => ({ requireUser: mocks.requireUser }));
+const mocks = vi.hoisted(() => ({ requireLearner: vi.fn(), getReport: vi.fn(), parseRange: vi.fn() }));
+vi.mock("@/lib/auth/guards", () => ({ requireLearner: mocks.requireLearner }));
 vi.mock("@/lib/report/service", () => ({
   getLearningQuizReport: mocks.getReport,
   parseReportRange: mocks.parseRange,
@@ -12,7 +12,7 @@ import PracticeReportPage from "./page";
 
 describe("PracticeReportPage", () => {
   beforeEach(() => {
-    mocks.requireUser.mockReset().mockResolvedValue({ id: "learner-self", name: "娄伊娜", role: "learner" });
+    mocks.requireLearner.mockReset().mockResolvedValue({ id: "learner-self", name: "娄伊娜", role: "learner" });
     mocks.getReport.mockReset().mockResolvedValue(reportFixture());
     mocks.parseRange.mockReset().mockImplementation((params: { preset?: string; start?: string; end?: string }) =>
       params.preset === "custom"
