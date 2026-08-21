@@ -110,11 +110,28 @@ describe("BaseDataBundleV2", () => {
       [{ id: "scenario-version-1", scenarioId: "scenario-1", versionKey: "scenario-v1", version: 1, knowledgeVersionId: "knowledge-1", background: "背景", summary: "摘要", firstCustomerMessage: "你好", controlledVariables: {}, hiddenFacts: [], customerTurns: ["继续"], checkpoints: [], prohibitions: [], scoringWeights: { service: 1 }, scoringDimensions: [], criticalRisks: [], referenceFlow: [], referenceReply: "回复", sources: [], maxTurns: 12, mockMode: true, customerPersona: null, difficulty: "medium", status: "published", publishedAt: new Date(1000), createdAt: new Date(1000) }],
       [{ id: "scenario-1", scenarioKey: "scenario", title: "情景", category: "售前", status: "published", createdAt: new Date(1000), updatedAt: new Date(1000) }],
     ];
+    const remediationRows: Record<number, Array<Record<string, unknown>>> = {
+      4: [{ id: "remediation-set", knowledgeVersionId: "knowledge-1", quizHash: "remediation-hash", sourceQuizHash: "fingerprint", title: "改善题", description: null, kind: "remediation", topicId: null, status: "published", passingScore: 80, publishedAt: new Date(2000), createdAt: new Date(2000), updatedAt: new Date(2000) }],
+      5: [{ id: "remediation-catalog", stableKey: "remediation-question", createdAt: new Date(2000) }],
+      6: [{ id: "remediation-question-id", questionCatalogId: "remediation-catalog", revision: 1, contentHash: "remediation-content", knowledgeVersionId: "knowledge-1", knowledgeUnitId: "unit-1", knowledgeUnitKey: "unit", questionKey: "remediation-question", type: "single_choice", prompt: "动态题", options: ["A", "B"], correctAnswers: ["A"], explanation: "说明", category: "售前", difficulty: "easy", sources: [], status: "published", createdAt: new Date(2000), updatedAt: new Date(2000) }],
+      7: [{ quizSetId: "remediation-set", questionId: "remediation-question-id", position: 1, points: 1 }],
+    };
     const queries: string[] = [];
-    const reader = { query: async (query: string) => { queries.push(query); return rows.shift() ?? []; } };
+    let queryIndex = 0;
+    const reader = { query: async (query: string) => {
+      queries.push(query);
+      const baseRows = rows.shift() ?? [];
+      const dynamicRows = remediationRows[queryIndex] ?? [];
+      queryIndex += 1;
+      return /kind IN \('formal','topic'\)/.test(query) ? baseRows : [...baseRows, ...dynamicRows];
+    } };
     const bundle = await exportBaseDataBundle(reader, "fixture", "2026-08-10T00:00:00.000Z");
     expect(bundle.schemaVersion).toBe(2);
     expect(bundle.counts).toMatchObject({ users: 1, knowledgeVersions: 1, questionCatalogs: 1, questions: 1, scenarioVersions: 1 });
+    expect(bundle.publishedQuiz.sets.map((item) => item.id)).toEqual(["set-1"]);
+    expect(bundle.publishedQuiz.links.map((item) => item.quizSetId)).toEqual(["set-1"]);
+    expect(bundle.publishedQuiz.questions.every((question) => bundle.publishedQuiz.catalogs.some((catalog) => catalog.id === question.questionCatalogId))).toBe(true);
+    expect(bundle.publishedQuiz.links.every((link) => bundle.publishedQuiz.sets.some((set) => set.id === link.quizSetId) && bundle.publishedQuiz.questions.some((question) => question.id === link.questionId))).toBe(true);
     expect(compareSync("original-password", bundle.learners[0].passwordHash as string)).toBe(true);
     expect(queries.join(" ")).toContain("SELECT DISTINCT q.id");
     expect(queries.join(" ")).not.toMatch(/quiz_attempts|training_messages|evaluation_reports|assignments|review/i);

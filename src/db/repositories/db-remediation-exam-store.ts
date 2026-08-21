@@ -16,7 +16,16 @@ export class DbRemediationExamStore {
       const targets = report.categories.filter((item) => item.wrongCount > 0).slice(0, 2);
       if (targets.length === 0) return { status: "no_weakness" } as const;
       const attemptRows = this.completedAttemptRows(learnerId, report);
-      const fingerprint = sha({ learnerId, range: report.range, attempts: attemptRows, categories: report.categories, questions: report.questionWeaknesses });
+      const fingerprint = sha({
+        learnerId,
+        range: {
+          startAt: report.range.startAt,
+          endExclusiveAt: report.range.endExclusiveAt,
+        },
+        attempts: attemptRows,
+        categories: report.categories,
+        questions: report.questionWeaknesses,
+      });
       const existing = this.database.$client.prepare(
         "SELECT id FROM remediation_exams WHERE learner_id = ? AND weakness_fingerprint = ? AND status = 'in_progress'",
       ).get(learnerId, fingerprint) as { id: string } | undefined;

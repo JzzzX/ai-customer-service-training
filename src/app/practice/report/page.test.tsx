@@ -42,6 +42,12 @@ describe("PracticeReportPage", () => {
     expect(mocks.getReport).not.toHaveBeenCalled();
     expect(screen.getByText(/日期范围无效/)).toBeInTheDocument();
   });
+
+  it("shows the real five-question quota when a two-category bank is short", async () => {
+    render(await PracticeReportPage({ searchParams: Promise.resolve({ remediation: "insufficient-bank", category: "日常问答", required: "5", available: "4" }) }));
+    expect(screen.getByText(/不足 5 题（可用 4 题）/)).toBeInTheDocument();
+    expect(screen.queryByText(/不足 10 题/)).not.toBeInTheDocument();
+  });
 });
 
 function reportFixture() {

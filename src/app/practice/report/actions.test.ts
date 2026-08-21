@@ -17,4 +17,11 @@ describe("generateRemediationExamAction", () => {
     expect(mocks.generate).toHaveBeenCalledWith("learner-1", { preset: "today" });
     expect(mocks.redirect).toHaveBeenCalledWith("/practice/remediation/exam-1");
   });
+
+  it("preserves the actual five-question category quota in an insufficient-bank redirect", async () => {
+    mocks.generate.mockReturnValue({ status: "insufficient_bank", category: "日常问答", required: 5, available: 4 });
+    const form = new FormData(); form.set("preset", "today");
+    await generateRemediationExamAction(form);
+    expect(mocks.redirect).toHaveBeenCalledWith("/practice/report?remediation=insufficient-bank&category=%E6%97%A5%E5%B8%B8%E9%97%AE%E7%AD%94&required=5&available=4");
+  });
 });

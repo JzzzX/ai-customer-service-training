@@ -15,6 +15,6 @@ export async function generateRemediationExamAction(formData: FormData) {
   const result = generateRemediationExam(learner.id, range);
   if (result.status === "created" || result.status === "existing") return redirect(`/practice/remediation/${result.exam.id}`);
   if (result.status === "no_weakness") return redirect("/practice/report?remediation=no-weakness");
-  if (result.status === "insufficient_bank") return redirect(`/practice/report?remediation=insufficient-bank&category=${encodeURIComponent(result.category)}&available=${result.available}`);
+  if (result.status === "insufficient_bank") return redirect(`/practice/report?remediation=insufficient-bank&category=${encodeURIComponent(result.category)}&required=${result.required}&available=${result.available}`);
   throw new Error("无法生成改善考卷。");
 }
