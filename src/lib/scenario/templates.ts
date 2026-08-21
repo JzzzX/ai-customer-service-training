@@ -19,9 +19,13 @@ type TemplateInput = Omit<
 > & {
   customerPersona?: ScenarioTemplate["customerPersona"];
   difficulty?: ScenarioTemplate["difficulty"];
+  rules?: Pick<
+    ScenarioTemplate,
+    "scoringDimensions" | "criticalRisks" | "referenceFlow"
+  >;
 };
 
-const versionIds = ["a", "b", "c", "d", "e", "f", "0", "9"];
+const versionIds = ["a", "b", "c", "d", "e", "f", "0", "9", "8"];
 
 export const categoryRules: Record<
   ScenarioCategory,
@@ -482,17 +486,124 @@ const inputs: TemplateInput[] = [
       ),
     ],
   },
+  {
+    id: `st_${"9".repeat(24)}`,
+    title: "6 个月肠胃敏感英短选粮",
+    category: "presale",
+    summary: "为有软便表现的幼猫核实健康边界，并基于已发布知识给出稳妥的选粮与换粮建议。",
+    openingMessage: "我家6个月的英短最近有点软便，想换一款对肠胃友好些的猫粮，你能推荐吗？",
+    hiddenFacts: [
+      "猫咪6个月大，是英短，体重3.2kg",
+      "当前主粮是其他品牌鸡肉幼猫粮，软便持续3天",
+      "精神和食欲目前正常，没有呕吐或便血等伴随症状",
+    ],
+    customerTurns: [
+      "它6个月，是英短，体重差不多3.2公斤。",
+      "当前吃的是别家的鸡肉幼猫粮，软便大概持续3天了。",
+      "精神和食欲都还正常，没有呕吐，也没看到便血。",
+      "如果换你推荐的粮，要怎么慢慢换？平时还要观察什么？",
+      "要是软便一直不好，或者出现呕吐、便血、精神差，我应该怎么办？",
+    ],
+    referenceReply:
+      "我先确认一下：猫咪6个月、体重3.2公斤，目前吃鸡肉幼猫粮，软便3天，精神食欲正常且暂时没有呕吐、便血。依据当前已发布知识，可以把霸弗烘焙粮鸡肉款作为候选，但食品建议不能替代诊疗，也不承诺改善效果。换粮请至少按7天逐步增加新粮比例，少量多餐，并观察、记录便便状态、进食量、精神和食欲；如果持续软便，或出现呕吐、便血、精神差，请及时就医。您确认需要这款的规格建议后，我再继续跟进。",
+    customerPersona: {
+      temperament: "anxious",
+      knowledgeLevel: "medium",
+      mood: "担心幼猫软便会加重，希望得到明确但不过度承诺的选粮和观察建议。",
+    },
+    difficulty: "hard",
+    rules: {
+      scoringDimensions: [
+        {
+          name: "宠物与现状信息核实",
+          weight: 25,
+          signals: ["年龄", "体重", "当前主粮", "软便持续时间"],
+        },
+        {
+          name: "健康风险筛查",
+          weight: 20,
+          signals: ["精神食欲", "伴随症状", "呕吐", "便血"],
+        },
+        {
+          name: "可追溯产品建议",
+          weight: 20,
+          signals: ["霸弗烘焙粮", "鸡肉", "已发布知识", "不承诺"],
+        },
+        {
+          name: "换粮与观察指导",
+          weight: 20,
+          signals: ["7天", "少量多餐", "观察", "记录"],
+        },
+        {
+          name: "风险边界与跟进闭环",
+          weight: 15,
+          signals: ["就医", "持续软便", "确认需求", "后续跟进"],
+        },
+      ],
+      criticalRisks: [
+        {
+          label: "医疗效果承诺",
+          patterns: ["保证不软便", "7天治好", "一定改善", "保证治愈"],
+        },
+        {
+          label: "忽视严重症状",
+          patterns: ["不用就医", "继续喂就行", "便血没关系", "呕吐没事"],
+        },
+        {
+          label: "虚构产品卖点",
+          patterns: ["百分百低敏", "绝对不过敏", "药用配方"],
+        },
+      ],
+      referenceFlow: [
+        "确认年龄、品种、体重和当前主粮",
+        "询问软便持续时间、精神食欲和呕吐便血等伴随症状",
+        "依据当前已发布知识给出产品建议，不虚构卖点或承诺医疗效果",
+        "说明至少7天渐进换粮、少量多餐，并观察排便、进食、精神和食欲",
+        "持续软便或出现呕吐、便血、精神差时建议及时就医",
+        "确认需求、风险边界和下一步，并约定后续跟进",
+      ],
+    },
+    sources: [
+      source(
+        "销售场景.md",
+        "markdown",
+        "霸弗烘焙软便",
+        ["卖点结合", "霸弗烘焙"],
+      ),
+      source(
+        "销售场景.md",
+        "markdown",
+        "7天过渡法",
+        ["需求代入法", "场景化痛点解决"],
+      ),
+      source(
+        "客服服务流程.md",
+        "mindmap",
+        "软便便血",
+        ["客诉接待处理流程和标准", "病理问题", "未就医", "软便、便血"],
+      ),
+      source(
+        "售前_客诉接待问题划分.xlsx",
+        "excel",
+        "严重症状升级",
+        ["Sheet1"],
+      ),
+    ],
+  },
 ];
 
 export const scenarioTemplates = scenarioTemplatesSchema.parse(
-  inputs.map((input, index) => ({
-    ...input,
-    versionId: `sv_${versionIds[index].repeat(24)}`,
-    ...categoryRules[input.category],
-    maxTurns: 12,
-    status: "published",
-    mockMode: true,
-  })),
+  inputs.map((input, index) => {
+    const { rules, ...template } = input;
+    return {
+      ...template,
+      versionId: `sv_${versionIds[index].repeat(24)}`,
+      ...(rules ?? categoryRules[input.category]),
+      maxTurns: 12,
+      status: "published",
+      mockMode: true,
+    };
+  }),
 );
 
 export function getScenarioTemplate(

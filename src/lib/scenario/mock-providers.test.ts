@@ -54,6 +54,24 @@ describe("MockConversationProvider", () => {
 });
 
 describe("MockEvaluationProvider", () => {
+  it("covers the cat scenario discovery, feeding, safety and follow-up checkpoints", async () => {
+    const scenario = scenarioTemplates.find(
+      (template) => template.title === "6 个月肠胃敏感英短选粮",
+    )!;
+    const report = await new MockEvaluationProvider().evaluate({
+      scenario,
+      learnerMessages: [
+        "先确认年龄、体重、当前主粮和软便持续时间，再了解精神食欲、呕吐便血等伴随症状。",
+        "可基于已发布知识考虑霸弗烘焙粮鸡肉款，并按7天渐进换粮、少量多餐，观察排便、精神和食欲。",
+        "如果持续软便、呕吐、便血或精神差请及时就医，我会确认需求并后续跟进。",
+      ],
+    });
+
+    expect(report.status).toBe("passed");
+    expect(report.totalScore).toBe(100);
+    expect(report.risks).toEqual([]);
+  });
+
   it("awards literal signal evidence across all five dimensions", async () => {
     const scenario = scenarioTemplates[0];
     const report = await new MockEvaluationProvider().evaluate({

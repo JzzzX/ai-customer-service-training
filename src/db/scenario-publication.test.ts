@@ -55,7 +55,7 @@ describe("scenario database publication", () => {
     ).toBe(true);
   });
 
-  it("publishes exactly eight stable scenario versions idempotently", async () => {
+  it("publishes exactly nine stable scenario versions idempotently", async () => {
     const store = new MemoryScenarioPublicationStore();
 
     const first = await publishScenarioTemplatesToStore({
@@ -69,9 +69,9 @@ describe("scenario database publication", () => {
       store,
     });
 
-    expect(first).toEqual({ created: 8, existing: 0 });
-    expect(second).toEqual({ created: 0, existing: 8 });
-    expect(store.versions.size).toBe(8);
+    expect(first).toEqual({ created: 9, existing: 0 });
+    expect(second).toEqual({ created: 0, existing: 9 });
+    expect(store.versions.size).toBe(9);
     expect(
       [...store.versions.values()].every(
         (publication) =>

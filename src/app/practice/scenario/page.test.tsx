@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { scenarioTemplates } from "@/lib/scenario/templates";
 
 const progress = {
-  publishedScenarioCount: 8,
+  publishedScenarioCount: 9,
   completedScenarioCount: 1,
   completedSessionCount: 2,
   recentAverageScore: 84,
@@ -34,7 +34,7 @@ vi.mock("@/lib/runtime/services", () => ({
 import ScenarioListPage from "./page";
 
 describe("ScenarioListPage", () => {
-  it("shows all eight scenarios with the active real AI mode", async () => {
+  it("shows all nine scenarios including the cat presale flow", async () => {
     render(await ScenarioListPage());
 
     expect(
@@ -49,12 +49,13 @@ describe("ScenarioListPage", () => {
     expect(screen.getByRole("heading", { name: "客诉" })).toBeInTheDocument();
     expect(
       screen.getAllByRole("link", { name: "开始训练" }),
-    ).toHaveLength(8);
-    expect(screen.getByText("已完成 1 / 8 个场景")).toBeInTheDocument();
+    ).toHaveLength(9);
+    expect(screen.getByText("已完成 1 / 9 个场景")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "查看详细记录" }),
     ).toHaveAttribute("href", "/practice/profile?tab=scenario");
     expect(screen.getByText("给3个月泰迪推荐主粮")).toBeInTheDocument();
+    expect(screen.getByText("6 个月肠胃敏感英短选粮")).toBeInTheDocument();
     expect(screen.getByText("食用后呕吐软便")).toBeInTheDocument();
     expect(screen.queryByText("继续训练")).not.toBeInTheDocument();
     expect(

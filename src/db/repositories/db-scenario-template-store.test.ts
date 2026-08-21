@@ -37,10 +37,10 @@ describe("DbScenarioTemplateStore", () => {
     await client.close();
   });
 
-  it("reconstructs all eight full published templates", async () => {
+  it("reconstructs all nine full published templates", async () => {
     const templates = await store.listPublished();
 
-    expect(templates).toHaveLength(8);
+    expect(templates).toHaveLength(9);
     expect(templates[0]).toEqual(scenarioTemplates[0]);
     expect(
       templates.every(

@@ -52,13 +52,13 @@ describe("in-memory demo fixture", () => {
     ).toEqual({ count: 5 });
   });
 
-  it("publishes one mock scenario for the full demo flow", async () => {
+  it("publishes the original and cat mock scenarios for the full demo flow", async () => {
     database = createDatabaseClient(":memory:");
     initializeDemoDatabase(database);
 
     const templates = await new DbScenarioTemplateStore(database).listPublished();
 
-    expect(templates).toHaveLength(1);
+    expect(templates).toHaveLength(2);
     expect(templates[0]).toMatchObject({
       id: "st_000000000000000000000001",
       versionId: "sv_000000000000000000000001",
@@ -66,6 +66,25 @@ describe("in-memory demo fixture", () => {
       status: "published",
       mockMode: true,
     });
+    expect(templates[1]).toMatchObject({
+      id: "st_999999999999999999999999",
+      versionId: "sv_888888888888888888888888",
+      title: "6 个月肠胃敏感英短选粮",
+      category: "presale",
+      status: "published",
+      mockMode: true,
+      sources: [
+        {
+          sourcePath: "演示知识（临时）",
+          kind: "markdown",
+          anchor: "demo",
+          path: ["演示", "售前"],
+        },
+      ],
+    });
+    expect(templates[1]?.referenceFlow.join(" ")).toMatch(
+      /7天.*少量多餐.*就医.*后续跟进/,
+    );
   });
 
   it("loads demo knowledge units with production-compatible hashes", async () => {

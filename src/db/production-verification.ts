@@ -6,6 +6,7 @@ import {
   questions,
   quizSetQuestions,
   quizSets,
+  scenarios,
   scenarioVersions,
   users,
 } from "./schema";
@@ -18,6 +19,7 @@ export type ProductionSnapshot = {
   publishedQuizCount: number;
   publishedQuizKnowledgeMismatchCount: number;
   publishedScenarioCount: number;
+  publishedCatScenarioCount: number;
   publishedScenarioKnowledgeMismatchCount: number;
   activeLearnerCount: number;
   activeAdminCount: number;
@@ -62,8 +64,11 @@ export function evaluateProductionSnapshot(
   ) {
     technicalIssues.push("当前正式题组必须链接40道不同目录、不同版本的题目。");
   }
-  if (snapshot.publishedScenarioCount !== 8) {
-    technicalIssues.push("必须发布8个场景版本。");
+  if (snapshot.publishedScenarioCount !== 9) {
+    technicalIssues.push("必须发布9个场景版本。");
+  }
+  if (snapshot.publishedCatScenarioCount !== 1) {
+    technicalIssues.push("必须发布“6 个月肠胃敏感英短选粮”场景。");
   }
   if (snapshot.publishedScenarioKnowledgeMismatchCount !== 0) {
     technicalIssues.push("场景版本必须全部引用活动知识版本。");
@@ -205,6 +210,18 @@ export async function verifyProductionData(
     .from(scenarioVersions)
     .where(eq(scenarioVersions.status, "published"))
     .all();
+  const publishedCatScenarioRows = await database
+    .select({ value: count() })
+    .from(scenarioVersions)
+    .innerJoin(scenarios, eq(scenarioVersions.scenarioId, scenarios.id))
+    .where(
+      and(
+        eq(scenarioVersions.status, "published"),
+        eq(scenarios.scenarioKey, "st_999999999999999999999999"),
+        eq(scenarios.title, "6 个月肠胃敏感英短选粮"),
+      ),
+    )
+    .all();
   const quizMismatchRows = activeVersionId
     ? await database
         .select({ value: count() })
@@ -269,6 +286,8 @@ export async function verifyProductionData(
     publishedQuizKnowledgeMismatchCount:
       quizMismatchRows[0]?.value ?? 0,
     publishedScenarioCount: publishedScenarioRows[0]?.value ?? 0,
+    publishedCatScenarioCount:
+      publishedCatScenarioRows[0]?.value ?? 0,
     publishedScenarioKnowledgeMismatchCount:
       scenarioMismatchRows[0]?.value ?? 0,
     activeLearnerCount: activeLearnerRows[0]?.value ?? 0,

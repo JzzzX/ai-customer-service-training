@@ -14,7 +14,8 @@ test("runs a complete mock scenario and restores it after refresh", async ({
   await page.goto("/practice/scenario");
 
   const startLinks = page.getByRole("link", { name: "开始训练" });
-  await expect(startLinks).toHaveCount(8);
+  await expect(startLinks).toHaveCount(9);
+  await expect(page.getByText("6 个月肠胃敏感英短选粮")).toBeVisible();
   await startLinks.first().click();
   await page.getByRole("button", { name: "开始模拟接待" }).click();
   await expect(page).toHaveURL(/\/practice\/scenario\/session\//);
@@ -73,7 +74,7 @@ test("keeps the scenario list and chat usable at 390px", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page);
   await page.goto("/practice/scenario");
-  await expect(page.getByRole("link", { name: "开始训练" })).toHaveCount(8);
+  await expect(page.getByRole("link", { name: "开始训练" })).toHaveCount(9);
   await expectNoHorizontalOverflow(page);
 
   await page.getByRole("link", { name: "开始训练" }).first().click();

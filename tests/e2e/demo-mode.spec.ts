@@ -22,8 +22,14 @@ test("demo mode enters the learner flow without an account and supports quiz and
   await expect(page.getByText("交互演示题")).toBeVisible();
 
   await page.goto("/practice/scenario");
-  await expect(page.getByRole("link", { name: "开始训练" })).toHaveCount(1);
-  await page.getByRole("link", { name: "开始训练" }).click();
+  await expect(page.getByRole("link", { name: "开始训练" })).toHaveCount(2);
+  const catScenarioCard = page
+    .getByText("6 个月肠胃敏感英短选粮")
+    .locator("..");
+  await catScenarioCard.getByRole("link", { name: "开始训练" }).click();
+  await expect(
+    page.getByRole("heading", { name: "6 个月肠胃敏感英短选粮" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "开始模拟接待" }).click();
   for (let turn = 1; turn <= 3; turn += 1) {
     await page

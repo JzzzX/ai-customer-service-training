@@ -10,6 +10,7 @@ import {
   DEMO_USER_ID,
   DEMO_USER_NAME,
 } from "@/lib/runtime/demo-identity";
+import { scenarioTemplates } from "@/lib/scenario/templates";
 
 const DEMO_KNOWLEDGE_VERSION_ID =
   "00000000-0000-4000-8000-000000000002";
@@ -19,6 +20,9 @@ const DEMO_SCENARIO_VERSION_ID =
   "00000000-0000-4000-8000-000000000005";
 const DEMO_SCENARIO_KEY = "st_000000000000000000000001";
 const DEMO_SCENARIO_VERSION_KEY = "sv_000000000000000000000001";
+const DEMO_CAT_SCENARIO_ID = "00000000-0000-4000-8000-000000000006";
+const DEMO_CAT_SCENARIO_VERSION_ID =
+  "00000000-0000-4000-8000-000000000007";
 
 const demoSource = JSON.stringify([
   {
@@ -49,6 +53,12 @@ export function initializeDemoDatabase(
   applyMigrations(database, projectRoot);
   const client = database.$client;
   const now = Date.now();
+  const catScenario = scenarioTemplates.find(
+    (scenario) => scenario.title === "6 个月肠胃敏感英短选粮",
+  );
+  if (!catScenario) {
+    throw new Error("演示猫咪场景不存在。");
+  }
 
   client.transaction(() => {
     client
@@ -73,7 +83,7 @@ export function initializeDemoDatabase(
         "demo-knowledge-v1",
         "demo-knowledge-content",
         "demo",
-        JSON.stringify({ units: 1, scenarios: 1 }),
+        JSON.stringify({ units: 1, scenarios: 2 }),
         now,
         now,
       );
@@ -87,7 +97,7 @@ export function initializeDemoDatabase(
         DEMO_KNOWLEDGE_VERSION_ID,
         "demo-presale-unit",
         "幼宠主粮需求确认",
-        "演示知识：先确认宠物年龄、体重、当前饮食和顾客的核心顾虑，再给出产品建议。",
+        "演示知识：先确认宠物年龄、体重、当前饮食、症状持续时间、精神食欲和伴随症状。对6个月肠胃敏感英短，可将霸弗烘焙粮鸡肉款作为候选，但不承诺医疗或改善效果；换粮至少7天渐进过渡、少量多餐并持续观察，严重或持续症状建议就医。",
         JSON.stringify(["售前", "需求确认"]),
         "b".repeat(64),
         demoSource,
@@ -145,6 +155,56 @@ export function initializeDemoDatabase(
           knowledgeLevel: "low",
           mood: "希望得到清晰的换粮建议",
         }),
+        now,
+        now,
+      );
+
+    client
+      .prepare(
+        "INSERT INTO scenarios (id, scenario_key, title, category, status, created_at, updated_at) VALUES (?, ?, ?, 'presale', 'published', ?, ?)",
+      )
+      .run(
+        DEMO_CAT_SCENARIO_ID,
+        catScenario.id,
+        catScenario.title,
+        now,
+        now,
+      );
+
+    client
+      .prepare(
+        "INSERT INTO scenario_versions (id, scenario_id, version_key, version, knowledge_version_id, content_hash, publication_source, background, summary, first_customer_message, controlled_variables, hidden_facts, customer_turns, checkpoints, prohibitions, scoring_weights, scoring_dimensions, critical_risks, reference_flow, reference_reply, sources, max_turns, mock_mode, customer_persona, difficulty, status, published_at, created_at) VALUES (?, ?, ?, 1, ?, ?, 'cli', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 'published', ?, ?)",
+      )
+      .run(
+        DEMO_CAT_SCENARIO_VERSION_ID,
+        DEMO_CAT_SCENARIO_ID,
+        catScenario.versionId,
+        DEMO_KNOWLEDGE_VERSION_ID,
+        "c".repeat(64),
+        catScenario.summary,
+        catScenario.summary,
+        catScenario.openingMessage,
+        JSON.stringify({}),
+        JSON.stringify(catScenario.hiddenFacts),
+        JSON.stringify(catScenario.customerTurns),
+        JSON.stringify(catScenario.referenceFlow),
+        JSON.stringify(catScenario.criticalRisks.map((risk) => risk.label)),
+        JSON.stringify(
+          Object.fromEntries(
+            catScenario.scoringDimensions.map((dimension) => [
+              dimension.name,
+              dimension.weight,
+            ]),
+          ),
+        ),
+        JSON.stringify(catScenario.scoringDimensions),
+        JSON.stringify(catScenario.criticalRisks),
+        JSON.stringify(catScenario.referenceFlow),
+        catScenario.referenceReply,
+        demoSource,
+        catScenario.maxTurns,
+        JSON.stringify(catScenario.customerPersona ?? null),
+        catScenario.difficulty,
         now,
         now,
       );
