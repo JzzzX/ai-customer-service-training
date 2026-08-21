@@ -369,6 +369,29 @@ export const quizAttempts = sqliteTable(
   ],
 );
 
+export const quizAttemptQuestions = sqliteTable(
+  "quiz_attempt_questions",
+  {
+    quizAttemptId: text("quiz_attempt_id")
+      .notNull()
+      .references(() => quizAttempts.id, { onDelete: "cascade" }),
+    questionId: text("question_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "restrict" }),
+    position: integer("position").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "quiz_attempt_questions_pk",
+      columns: [table.quizAttemptId, table.questionId],
+    }),
+    unique("quiz_attempt_questions_position_unique").on(
+      table.quizAttemptId,
+      table.position,
+    ),
+  ],
+);
+
 export const quizAnswers = sqliteTable(
   "quiz_answers",
   {
@@ -635,6 +658,7 @@ export const mvpTables = {
   questions,
   quizSetQuestions,
   quizAttempts,
+  quizAttemptQuestions,
   quizAnswers,
   topicQuizAttempts,
   topicQuizAnswers,

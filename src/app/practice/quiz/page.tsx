@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { PageHeader } from "@/components/ui/page-header";
 import { QuizRunner } from "@/components/quiz/quiz-runner";
 import { requireUser } from "@/lib/auth/guards";
+import { startQuizAttemptForLearner } from "@/lib/quiz/attempt-service";
 import { demoQuizQuestions } from "@/lib/quiz/demo-questions";
 import { quizTopics } from "@/lib/quiz/question-bank";
 import {
@@ -12,6 +13,7 @@ import {
 import {
   shuffleClientQuestionOptions,
   toClientQuizQuestion,
+  type QuizQuestionPublished,
 } from "@/lib/quiz/schema";
 import {
   selectQuestionGroup,
@@ -29,9 +31,9 @@ import {
 export default async function PracticeQuizPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ topic?: string }>;
+  searchParams?: Promise<{ topic?: string; retry?: string }>;
 } = {}) {
-  await requireUser();
+  const user = await requireUser();
   const params = await searchParams;
   const topicInput = params?.topic;
   const topicMatch = topicInput
@@ -42,12 +44,21 @@ export default async function PracticeQuizPage({
   if (topicMatch) {
     const topicQuiz = await loadPublishedTopicQuiz(topicMatch.id);
     if (topicQuiz) {
-      const questions = selectQuestionGroupByTopic(
-        topicQuiz.questions,
+      const questions = selectRetryQuestions(topicQuiz.questions, params?.retry)
+        ?? selectQuestionGroupByTopic(topicQuiz.questions, topicMatch.id);
+      const snapshot = await startQuizAttemptForLearner({
+        attemptId,
+        learnerId: user.id,
+        quizHash: topicQuiz.quizHash,
+        topicId: topicMatch.id,
+        questionIds: questions.map((question) => question.id),
+      });
+      const saveAttempt = saveTopicQuizAttemptAction.bind(
+        null,
         topicMatch.id,
+        snapshot.quizHash,
       );
-      const saveAttempt = saveTopicQuizAttemptAction.bind(null, topicMatch.id);
-      const checkAnswer = checkTopicQuizAnswerAction.bind(null, topicMatch.id);
+      const checkAnswer = checkTopicQuizAnswerAction.bind(null, attemptId);
 
       return (
         <main className="min-h-screen px-5 py-6 sm:px-8 sm:py-8">
@@ -65,13 +76,14 @@ export default async function PracticeQuizPage({
                 attemptId={attemptId}
                 onAnswer={checkAnswer}
                 onComplete={saveAttempt}
-                passingScore={topicQuiz.passingScore}
-                questions={questions.map((question) =>
+                passingScore={snapshot.passingScore}
+                questions={snapshot.questions.map((question) =>
                   shuffleClientQuestionOptions(
                     toClientQuizQuestion(question),
                   ),
                 )}
                 resultBackHref="/practice/quiz/topics"
+                restartHref={`/practice/quiz?topic=${encodeURIComponent(topicMatch.id)}`}
               />
             </div>
           </div>
@@ -82,14 +94,23 @@ export default async function PracticeQuizPage({
 
   const publishedQuiz = await loadPublishedQuiz();
   const questions = publishedQuiz
-    ? selectQuestionGroup(publishedQuiz.questions)
+    ? selectRetryQuestions(publishedQuiz.questions, params?.retry)
+      ?? selectQuestionGroup(publishedQuiz.questions)
     : demoQuizQuestions;
   const passingScore = publishedQuiz?.passingScore ?? 80;
+  const snapshot = publishedQuiz
+    ? await startQuizAttemptForLearner({
+        attemptId,
+        learnerId: user.id,
+        quizHash: publishedQuiz.quizHash,
+        questionIds: questions.map((question) => question.id),
+      })
+    : null;
   const saveAttempt = publishedQuiz
     ? saveQuizAttemptAction.bind(null, publishedQuiz.quizHash)
     : undefined;
   const checkAnswer = publishedQuiz
-    ? checkPublishedQuizAnswerAction.bind(null, publishedQuiz.quizHash)
+    ? checkPublishedQuizAnswerAction.bind(null, attemptId)
     : checkDemoQuizAnswerAction;
 
   return (
@@ -112,14 +133,28 @@ export default async function PracticeQuizPage({
             attemptId={attemptId}
             onAnswer={checkAnswer}
             onComplete={saveAttempt}
-            passingScore={passingScore}
-            questions={questions.map((question) =>
+            passingScore={snapshot?.passingScore ?? passingScore}
+            questions={(snapshot?.questions ?? questions).map((question) =>
               shuffleClientQuestionOptions(toClientQuizQuestion(question)),
             )}
             resultBackHref="/practice"
+            restartHref={publishedQuiz ? "/practice/quiz" : undefined}
           />
         </div>
       </div>
     </main>
   );
+}
+
+function selectRetryQuestions(
+  questions: QuizQuestionPublished[],
+  retryInput: string | undefined,
+): QuizQuestionPublished[] | null {
+  const ids = retryInput?.split(",").map((id) => id.trim()).filter(Boolean) ?? [];
+  if (ids.length === 0 || ids.length > 10 || new Set(ids).size !== ids.length) return null;
+  const byId = new Map(questions.map((question) => [question.id, question]));
+  const selected = ids.map((id) => byId.get(id));
+  return selected.every((question): question is QuizQuestionPublished => Boolean(question))
+    ? selected
+    : null;
 }

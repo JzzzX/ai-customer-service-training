@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { and, desc, eq, like, or, type SQL } from "drizzle-orm";
+import { and, desc, eq, like } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDatabase, type DatabaseClient } from "./client";
@@ -17,7 +17,7 @@ const editableChangesSchema = z
   .object({
     prompt: z.string().trim().min(1, "题干不能为空"),
     options: z.array(z.string().trim().min(1)).min(2, "至少需要两个选项"),
-    correctAnswers: z.array(z.string().trim().min(1)).min(1),
+    correctAnswers: z.array(z.string().trim().min(1)).min(1, "正确答案不能为空"),
     explanation: z.string().trim().min(1, "解析不能为空"),
     category: z.string().trim().min(1, "分类不能为空"),
     difficulty: difficultySchema,
@@ -75,24 +75,14 @@ export function createAdminQuestionRepository(
 ) {
   return {
     async list(filters: AdminQuestionFilters): Promise<AdminQuestionCatalogRecord[]> {
-      const conditions: SQL[] = [];
-      if (filters.category?.trim()) {
-        conditions.push(eq(questions.category, filters.category.trim()));
-      }
-      if (filters.stableKey?.trim()) {
-        conditions.push(like(questionCatalogs.stableKey, `%${filters.stableKey.trim()}%`));
-      }
-      if (filters.keyword?.trim()) {
-        const keyword = `%${filters.keyword.trim()}%`;
-        conditions.push(or(like(questions.prompt, keyword), like(questions.explanation, keyword))!);
-      }
+      const stableKey = filters.stableKey?.trim();
 
       const currentRows = database
         .select({ catalogId: questionCatalogs.id, stableKey: questionCatalogs.stableKey })
         .from(questionCatalogPublications)
         .innerJoin(questionCatalogs, eq(questionCatalogs.id, questionCatalogPublications.catalogId))
         .innerJoin(questions, eq(questions.id, questionCatalogPublications.currentQuestionId))
-        .where(conditions.length ? and(...conditions) : undefined)
+        .where(stableKey ? like(questionCatalogs.stableKey, `%${stableKey}%`) : undefined)
         .orderBy(questionCatalogs.stableKey)
         .all();
 
@@ -111,7 +101,7 @@ export function createAdminQuestionRepository(
         const current = history.find((revision) => revision.id === currentQuestionId);
         if (!current) throw new Error(`题目目录缺少当前版本：${row.stableKey}`);
         return { ...row, current, history };
-      }).filter((record) => !filters.status || record.history.some((revision) => revision.status === filters.status));
+      }).filter((record) => record.history.some((revision) => revisionMatchesFilters(revision, filters)));
     },
 
     async createDraft(input: {
@@ -195,9 +185,16 @@ export function createAdminQuestionRepository(
           eq(questions.questionCatalogId, input.catalogId),
           eq(questions.status, "draft"),
         )).get();
-        if (!draft || z.array(sourceLocatorSchema).safeParse(draft.sources).success === false || draft.sources.length === 0) {
-          throw new Error("草稿不存在、已发布或来源不可追溯。");
-        }
+        if (!draft) throw new Error("草稿不存在或已经发布。");
+        editableChangesSchema.parse({
+          prompt: draft.prompt,
+          options: draft.options,
+          correctAnswers: draft.correctAnswers,
+          explanation: draft.explanation,
+          category: draft.category,
+          difficulty: draft.difficulty,
+        });
+        z.array(sourceLocatorSchema).min(1, "题目来源不可追溯").parse(draft.sources);
         const now = new Date();
         const pointerResult = transaction
           .update(questionCatalogPublications)
@@ -238,3 +235,18 @@ const revisionSelection = {
   createdAt: questions.createdAt,
   updatedAt: questions.updatedAt,
 };
+
+function revisionMatchesFilters(
+  revision: AdminQuestionRevision,
+  filters: AdminQuestionFilters,
+): boolean {
+  const category = filters.category?.trim();
+  const keyword = filters.keyword?.trim().toLocaleLowerCase("zh-CN");
+  return (
+    (!filters.status || revision.status === filters.status)
+    && (!category || revision.category === category)
+    && (!keyword
+      || revision.prompt.toLocaleLowerCase("zh-CN").includes(keyword)
+      || revision.explanation.toLocaleLowerCase("zh-CN").includes(keyword))
+  );
+}

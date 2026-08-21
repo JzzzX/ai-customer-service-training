@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { quizQuestionPublishedSchema } from "./schema";
+
 const questionIdSchema = z.string().regex(/^qq_[a-f0-9]{24}$/);
 
 export const quizAttemptRecordSchema = z.object({
@@ -51,7 +53,37 @@ export type SaveQuizAttemptInput = z.infer<
   typeof saveQuizAttemptInputSchema
 >;
 
+export const startQuizAttemptInputSchema = z.object({
+  attemptId: z.string().uuid(),
+  learnerId: z.string().uuid(),
+  quizHash: z.string().regex(/^[a-f0-9]{64}$/),
+  topicId: z.string().trim().min(1).optional(),
+  questionIds: z.array(questionIdSchema).min(1).max(10).refine(
+    (ids) => new Set(ids).size === ids.length,
+    "同一道题不能重复加入小测。",
+  ),
+  startedAt: z.string().datetime().optional(),
+});
+
+export type StartQuizAttemptInput = z.infer<typeof startQuizAttemptInputSchema>;
+
+export const quizAttemptSnapshotSchema = z.object({
+  attemptId: z.string().uuid(),
+  learnerId: z.string().uuid(),
+  quizHash: z.string().regex(/^[a-f0-9]{64}$/),
+  topicId: z.string().trim().min(1).optional(),
+  passingScore: z.number().int().min(0).max(100),
+  status: z.enum(["in_progress", "passed", "needs_retry"]),
+  questions: z.array(
+    quizQuestionPublishedSchema.extend({ revisionId: z.string().min(1) }),
+  ).min(1).max(10),
+});
+
+export type QuizAttemptSnapshot = z.infer<typeof quizAttemptSnapshotSchema>;
+
 export interface QuizAttemptStore {
+  startAttempt(input: StartQuizAttemptInput): Promise<QuizAttemptSnapshot>;
+  loadSnapshot(learnerId: string, attemptId: string): Promise<QuizAttemptSnapshot>;
   saveAttempt(input: SaveQuizAttemptInput): Promise<QuizAttemptRecord>;
   listAttempts(learnerId: string): Promise<QuizAttemptRecord[]>;
 }

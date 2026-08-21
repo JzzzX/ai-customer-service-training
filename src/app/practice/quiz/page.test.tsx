@@ -9,6 +9,11 @@ import type {
 const mocks = vi.hoisted(() => ({
   loadPublishedQuiz: vi.fn(),
   loadPublishedTopicQuiz: vi.fn(),
+  startQuizAttemptForLearner: vi.fn(),
+}));
+
+vi.mock("@/lib/quiz/attempt-service", () => ({
+  startQuizAttemptForLearner: mocks.startQuizAttemptForLearner,
 }));
 
 vi.mock("@/lib/auth/guards", () => ({
@@ -93,6 +98,28 @@ describe("PracticeQuizPage", () => {
   beforeEach(() => {
     mocks.loadPublishedQuiz.mockReset();
     mocks.loadPublishedTopicQuiz.mockReset();
+    mocks.startQuizAttemptForLearner.mockReset().mockImplementation((input: {
+      attemptId: string;
+      learnerId: string;
+      quizHash: string;
+      topicId?: string;
+      questionIds: string[];
+    }) => {
+      const base = publishedQuiz().questions.map((question) => ({
+        ...question,
+        ...(input.topicId ? { category: input.topicId } : {}),
+        revisionId: `revision-${question.id}`,
+      }));
+      return Promise.resolve({
+        attemptId: input.attemptId,
+        learnerId: input.learnerId,
+        quizHash: input.quizHash,
+        ...(input.topicId ? { topicId: input.topicId } : {}),
+        passingScore: 80,
+        status: "in_progress",
+        questions: input.questionIds.map((id) => base.find((question) => question.id === id)!),
+      });
+    });
   });
 
   it("uses a 10-question group from the published quiz", async () => {

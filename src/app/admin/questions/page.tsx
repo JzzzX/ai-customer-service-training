@@ -120,22 +120,37 @@ export default async function AdminQuestionsPage({
                 <ol className="mt-3 space-y-3">
                   {record.history.map((revision) => (
                     <li className="rounded-2xl bg-surface-muted p-4" key={revision.id}>
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="font-bold text-ink">版本 {revision.revision}</p>
-                          <p className="mt-1 text-sm text-ink-soft">{revision.prompt}</p>
-                        </div>
+                      <details>
+                        <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3">
+                          <span>
+                            <span className="block font-bold text-ink">版本 {revision.revision}</span>
+                            <span className="mt-1 block text-sm text-ink-soft">{revision.prompt}</span>
+                          </span>
+                          <SoftBadge variant={revision.status === "draft" ? "warning" : "muted"}>{revision.status}</SoftBadge>
+                        </summary>
+                        <div className="mt-4 border-t border-border-soft pt-4 text-sm">
+                          <dl className="grid gap-3 md:grid-cols-2">
+                            <Info label="题干" value={revision.prompt} />
+                            <Info label="选项" value={revision.options.join("、")} />
+                            <Info label="正确答案" value={revision.correctAnswers.join("、")} />
+                            <Info label="分类 / 难度" value={`${revision.category} / ${difficultyLabel(revision.difficulty)}`} />
+                            <Info label="解析" value={revision.explanation} />
+                            <Info label="来源" value={revision.sources.map((source) => `${source.sourcePath} · ${source.anchor}`).join("；")} />
+                            <Info label="创建人" value={revision.createdById ?? "系统发布"} />
+                            <Info label="创建时间 / 状态" value={`${formatDateTime(revision.createdAt)} / ${revision.status}`} />
+                          </dl>
                         {revision.status === "draft" ? (
                           <form action={publishQuestionDraftFromFormAction}>
                             <input name="catalogId" type="hidden" value={record.catalogId} />
                             <input name="draftRevisionId" type="hidden" value={revision.id} />
                             <input name="expectedCurrentRevisionId" type="hidden" value={record.current.id} />
-                            <button className="rounded-[var(--radius-control)] bg-ink px-4 py-2 text-sm font-bold text-white" type="submit">
+                            <button className="mt-4 rounded-[var(--radius-control)] bg-ink px-4 py-2 text-sm font-bold text-white" type="submit">
                               发布此草稿
                             </button>
                           </form>
-                        ) : <SoftBadge variant="muted">{revision.status}</SoftBadge>}
-                      </div>
+                        ) : null}
+                        </div>
+                      </details>
                     </li>
                   ))}
                 </ol>
@@ -173,4 +188,12 @@ function Info({ label, value }: { label: string; value: string }) {
 
 function difficultyLabel(value: "easy" | "medium" | "hard") {
   return { easy: "简单", medium: "中等", hard: "困难" }[value];
+}
+
+function formatDateTime(value: Date) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Shanghai",
+  }).format(value);
 }

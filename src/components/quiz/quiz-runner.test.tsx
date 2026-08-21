@@ -112,6 +112,7 @@ describe("QuizRunner", () => {
         onComplete={onComplete}
         passingScore={80}
         questions={questions}
+        restartHref="/practice/quiz"
         resultBackHref="/practice/quiz/topics"
       />,
     );
@@ -143,6 +144,14 @@ describe("QuizRunner", () => {
     expect(
       screen.getByRole("heading", { name: "这组需要再练一次" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "重练错题" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/practice/quiz?retry="),
+    );
+    expect(screen.getByRole("link", { name: "再来一组" })).toHaveAttribute(
+      "href",
+      "/practice/quiz",
+    );
   });
 
   it("shows the saved coverage delta and a route back to the topic", async () => {

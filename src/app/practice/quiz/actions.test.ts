@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   requireUser: vi.fn(),
   loadPublishedQuiz: vi.fn(),
   loadPublishedTopicQuiz: vi.fn(),
+  loadQuizAttemptSnapshotForLearner: vi.fn(),
   saveQuizAttemptForLearner: vi.fn(),
   getQuizProgressForLearner: vi.fn(),
   revalidatePath: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock("@/lib/quiz/published-service", () => ({
 }));
 
 vi.mock("@/lib/quiz/attempt-service", () => ({
+  loadQuizAttemptSnapshotForLearner: mocks.loadQuizAttemptSnapshotForLearner,
   saveQuizAttemptForLearner: mocks.saveQuizAttemptForLearner,
   getQuizProgressForLearner: mocks.getQuizProgressForLearner,
 }));
@@ -45,31 +47,45 @@ describe("saveQuizAttemptAction", () => {
       name: "测试学员",
       email: "learner@example.test",
     });
-    mocks.loadPublishedQuiz.mockResolvedValue({
-      schemaVersion: 1,
+    mocks.loadQuizAttemptSnapshotForLearner.mockResolvedValue({
+      attemptId,
+      learnerId,
       quizHash,
-      sourceQuizHash: "b".repeat(64),
-      knowledgePackHash: "c".repeat(64),
-      title: "客服新人知识基础小测",
       passingScore: 80,
-      status: "published",
+      status: "in_progress",
       questions: [
         {
+          revisionId: "revision-1",
           id: `qq_${"1".repeat(24)}`,
           type: "single_choice",
+          prompt: "第一题",
+          options: ["答案一", "答案二"],
           correctAnswers: ["答案一"],
+          explanation: "解释一",
+          category: "日常问答",
+          difficulty: "easy",
+          status: "published",
+          sources: [],
         },
         {
+          revisionId: "revision-2",
           id: `qq_${"2".repeat(24)}`,
           type: "true_false",
+          prompt: "第二题",
+          options: ["正确", "错误"],
           correctAnswers: ["正确"],
+          explanation: "解释二",
+          category: "日常问答",
+          difficulty: "easy",
+          status: "published",
+          sources: [],
         },
       ],
     });
     mocks.loadPublishedTopicQuiz.mockResolvedValue(null);
   });
 
-  it("rechecks answers on the server and stores them under the session user", async () => {
+  it("passes selections to the authoritative snapshot store under the session user", async () => {
     await saveQuizAttemptAction(quizHash, attemptId, [
       {
         questionId: `qq_${"1".repeat(24)}`,
@@ -90,7 +106,7 @@ describe("saveQuizAttemptAction", () => {
         {
           questionId: `qq_${"1".repeat(24)}`,
           selectedAnswers: ["答案一"],
-          isCorrect: true,
+          isCorrect: false,
         },
         {
           questionId: `qq_${"2".repeat(24)}`,
@@ -106,6 +122,9 @@ describe("saveQuizAttemptAction", () => {
   });
 
   it("rejects answers that do not belong to the active published quiz", async () => {
+    mocks.saveQuizAttemptForLearner.mockRejectedValueOnce(
+      new Error("题目不属于当前已发布题组。"),
+    );
     await expect(
       saveQuizAttemptAction(quizHash, attemptId, [
         {
@@ -115,7 +134,7 @@ describe("saveQuizAttemptAction", () => {
       ]),
     ).rejects.toThrow("题目不属于当前已发布题组");
 
-    expect(mocks.saveQuizAttemptForLearner).not.toHaveBeenCalled();
+    expect(mocks.saveQuizAttemptForLearner).toHaveBeenCalledOnce();
   });
 
   it("returns topic coverage delta after saving a topic attempt", async () => {
@@ -135,17 +154,14 @@ describe("saveQuizAttemptAction", () => {
       answeredQuestionIds: [question.id],
       completedAt: "2026-08-03T08:00:00.000Z",
     };
-    mocks.loadPublishedTopicQuiz.mockResolvedValue({
-      schemaVersion: 1,
+    mocks.loadQuizAttemptSnapshotForLearner.mockResolvedValue({
+      attemptId: topicAttemptId,
+      learnerId,
       quizHash: "f".repeat(64),
-      sourceQuizHash: "f".repeat(64),
-      knowledgePackHash: "c".repeat(64),
-      title: question.category,
       passingScore: 80,
-      status: "published",
-      kind: "topic",
+      status: "in_progress",
       topicId: question.category,
-      questions: [question],
+      questions: [{ ...question, revisionId: "topic-revision-1" }],
     });
     mocks.saveQuizAttemptForLearner.mockResolvedValue(savedAttempt);
     mocks.getQuizProgressForLearner.mockResolvedValue({
@@ -173,6 +189,7 @@ describe("saveQuizAttemptAction", () => {
 
     const result = await saveTopicQuizAttemptAction(
       question.category,
+      "f".repeat(64),
       topicAttemptId,
       [{ questionId: question.id, selected: question.correctAnswers[0]! }],
     );
@@ -195,7 +212,7 @@ describe("saveQuizAttemptAction", () => {
         {
           questionId: question.id,
           selectedAnswers: question.correctAnswers,
-          isCorrect: true,
+          isCorrect: false,
         },
       ],
     });
@@ -208,35 +225,36 @@ describe("saveQuizAttemptAction", () => {
 
   it("rejects a topic attempt when the topic or question does not belong", async () => {
     const question = topicQuizQuestions[0]!;
+    mocks.saveQuizAttemptForLearner.mockRejectedValue(
+      new Error("题目不属于当前专题题库。"),
+    );
 
     await expect(
       saveTopicQuizAttemptAction(
         "不存在的专题",
+        "f".repeat(64),
         "00000000-0000-4000-8000-000000000061",
         [{ questionId: question.id, selected: question.correctAnswers[0]! }],
       ),
     ).rejects.toThrow();
-    mocks.loadPublishedTopicQuiz.mockResolvedValue({
-      schemaVersion: 1,
+    mocks.loadQuizAttemptSnapshotForLearner.mockResolvedValue({
+      attemptId: "00000000-0000-4000-8000-000000000062",
+      learnerId,
       quizHash: "f".repeat(64),
-      sourceQuizHash: "f".repeat(64),
-      knowledgePackHash: "c".repeat(64),
-      title: "日常问答",
       passingScore: 80,
-      status: "published",
-      kind: "topic",
+      status: "in_progress",
       topicId: "日常问答",
       questions: topicQuizQuestions.filter(
         (candidate) => candidate.category === "日常问答",
-      ),
+      ).map((candidate) => ({ ...candidate, revisionId: `revision-${candidate.id}` })),
     });
     await expect(
       saveTopicQuizAttemptAction(
         "日常问答",
+        "f".repeat(64),
         "00000000-0000-4000-8000-000000000062",
         [{ questionId: question.id, selected: question.correctAnswers[0]! }],
       ),
-    ).rejects.toThrow("题目不属于当前专题题库");
-    expect(mocks.saveQuizAttemptForLearner).not.toHaveBeenCalled();
+    ).rejects.toThrow();
   });
 });

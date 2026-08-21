@@ -4,9 +4,24 @@ import {
 } from "@/lib/runtime/services";
 
 import type {
+  QuizAttemptSnapshot,
   QuizAttemptRecord,
   SaveQuizAttemptInput,
+  StartQuizAttemptInput,
 } from "./attempt-store";
+
+export async function startQuizAttemptForLearner(
+  input: StartQuizAttemptInput,
+): Promise<QuizAttemptSnapshot> {
+  return getQuizAttemptStore().startAttempt(input);
+}
+
+export async function loadQuizAttemptSnapshotForLearner(
+  learnerId: string,
+  attemptId: string,
+): Promise<QuizAttemptSnapshot> {
+  return getQuizAttemptStore().loadSnapshot(learnerId, attemptId);
+}
 import {
   summarizeQuizProgress,
   type QuizProgressSummary,

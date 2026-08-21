@@ -57,6 +57,7 @@ describe("DbQuizAttemptStore", () => {
   });
 
   it("persists selected answers and recomputes score from official answers", async () => {
+    await startFormal(attemptId, [firstQuestionKey, secondQuestionKey]);
     const record = await store.saveAttempt({
       attemptId,
       learnerId,
@@ -120,6 +121,7 @@ describe("DbQuizAttemptStore", () => {
       ],
     };
 
+    await startFormal(attemptId, [firstQuestionKey]);
     const first = await store.saveAttempt(input);
     const second = await store.saveAttempt(input);
 
@@ -130,6 +132,50 @@ describe("DbQuizAttemptStore", () => {
     await expect(database.select().from(quizAnswers)).resolves.toHaveLength(
       1,
     );
+  });
+
+  it("keeps a pre-snapshot completed attempt readable and idempotent", async () => {
+    const originalQuestion = database.select({ id: questions.id }).from(questions).where(eq(questions.questionKey, firstQuestionKey)).get()!;
+    await database.insert(quizAttempts).values({
+      id: attemptId,
+      quizSetId,
+      learnerId,
+      knowledgeVersionId,
+      status: "passed",
+      correctCount: 1,
+      totalQuestions: 1,
+      score: 100,
+      startedAt: new Date(1000),
+      completedAt: new Date(1000),
+    });
+    await database.insert(quizAnswers).values({
+      id: "legacy-answer-1",
+      quizAttemptId: attemptId,
+      questionId: originalQuestion.id,
+      selectedAnswers: ["答案一"],
+      isCorrect: true,
+      answeredAt: new Date(1000),
+    });
+
+    await expect(store.saveAttempt({
+      attemptId,
+      learnerId,
+      quizHash,
+      passingScore: 80,
+      answers: [{ questionId: firstQuestionKey, selectedAnswers: ["答案二"], isCorrect: false }],
+    })).resolves.toMatchObject({ status: "passed", score: 100 });
+    expect(client.prepare("SELECT COUNT(*) AS count FROM quiz_attempt_questions").get()).toEqual({ count: 0 });
+    expect(client.prepare("SELECT selected_answers AS selectedAnswers FROM quiz_answers").get()).toEqual({ selectedAnswers: '["答案一"]' });
+  });
+
+  it("rejects completion when no trusted start snapshot exists", async () => {
+    await expect(store.saveAttempt({
+      attemptId,
+      learnerId,
+      quizHash,
+      passingScore: 80,
+      answers: [{ questionId: firstQuestionKey, selectedAnswers: ["答案一"], isCorrect: true }],
+    })).rejects.toThrow("小测尚未开始");
   });
 
   it("binds a new answer to the current revision without rewriting the previous version", async () => {
@@ -155,6 +201,7 @@ describe("DbQuizAttemptStore", () => {
       actorId: adminId,
     });
 
+    await startFormal(attemptId, [firstQuestionKey]);
     await store.saveAttempt({
       attemptId,
       learnerId,
@@ -167,7 +214,65 @@ describe("DbQuizAttemptStore", () => {
     expect(client.prepare("SELECT prompt, status FROM questions WHERE id = ?").get(original.current.id)).toEqual({ prompt: "第一题", status: "published" });
   });
 
+  it("keeps a formal attempt on its start-time revision after an admin publishes a replacement", async () => {
+    const snapshot = await store.startAttempt({
+      attemptId,
+      learnerId,
+      quizHash,
+      questionIds: [firstQuestionKey],
+    });
+    const originalRevisionId = snapshot.questions[0]!.revisionId;
+    const repository = createAdminQuestionRepository(database);
+    const original = (await repository.list({ stableKey: firstQuestionKey }))[0]!;
+    const draft = await repository.createDraft({
+      catalogId: original.catalogId, baseRevisionId: original.current.id, actorId: adminId,
+      changes: { prompt: "新题干", options: ["答案一", "答案二"], correctAnswers: ["答案二"], explanation: "新解析", category: "日常问答", difficulty: "easy" },
+    });
+    await repository.publishDraft({ catalogId: original.catalogId, draftRevisionId: draft.id, expectedCurrentRevisionId: original.current.id, actorId: adminId });
+
+    const record = await store.saveAttempt({
+      attemptId, learnerId, quizHash, passingScore: 80,
+      answers: [{ questionId: firstQuestionKey, selectedAnswers: ["答案一"], isCorrect: false }],
+    });
+    expect(record).toMatchObject({ correctCount: 1, score: 100 });
+    expect(client.prepare("SELECT question_id AS questionId FROM quiz_answers").get()).toEqual({ questionId: originalRevisionId });
+  });
+
+  it("keeps a topic attempt on its start-time revision after an admin publishes a replacement", async () => {
+    const question = topicQuizQuestions[0]!;
+    const topicSet = database.select({ quizHash: quizSets.quizHash }).from(quizSets).where(eq(quizSets.topicId, question.category)).get()!;
+    const topicAttemptId = "00000000-0000-4000-8000-000000000061";
+    const snapshot = await store.startAttempt({
+      attemptId: topicAttemptId, learnerId, quizHash: topicSet.quizHash,
+      topicId: question.category, questionIds: [question.id],
+    });
+    const originalRevisionId = snapshot.questions[0]!.revisionId;
+    const repository = createAdminQuestionRepository(database);
+    const original = (await repository.list({ stableKey: question.id }))[0]!;
+    const draft = await repository.createDraft({
+      catalogId: original.catalogId, baseRevisionId: original.current.id, actorId: adminId,
+      changes: { prompt: "专题新题干", options: original.current.options, correctAnswers: [original.current.options.find((option) => !original.current.correctAnswers.includes(option))!], explanation: "专题新解析", category: original.current.category, difficulty: original.current.difficulty },
+    });
+    await repository.publishDraft({ catalogId: original.catalogId, draftRevisionId: draft.id, expectedCurrentRevisionId: original.current.id, actorId: adminId });
+
+    const record = await store.saveAttempt({
+      attemptId: topicAttemptId, learnerId, quizHash: topicSet.quizHash, topicId: question.category, passingScore: 80,
+      answers: [{ questionId: question.id, selectedAnswers: question.correctAnswers, isCorrect: false }],
+    });
+    expect(record).toMatchObject({ correctCount: 1, score: 100 });
+    expect(client.prepare("SELECT question_id AS questionId FROM quiz_answers").get()).toEqual({ questionId: originalRevisionId });
+  });
+
+  it("starts idempotently for the owner and rejects the same attempt id for another learner", async () => {
+    const input = { attemptId, learnerId, quizHash, questionIds: [firstQuestionKey] };
+    const first = await store.startAttempt(input);
+    await expect(store.startAttempt(input)).resolves.toEqual(first);
+    await expect(store.startAttempt({ ...input, learnerId: otherLearnerId })).rejects.toThrow("无权访问该小测记录");
+    expect(client.prepare("SELECT COUNT(*) AS count FROM quiz_attempt_questions").get()).toEqual({ count: 1 });
+  });
+
   it("isolates history by learner ownership", async () => {
+    await startFormal(attemptId, [firstQuestionKey]);
     await store.saveAttempt({
       attemptId,
       learnerId,
@@ -210,6 +315,13 @@ describe("DbQuizAttemptStore", () => {
       .where(eq(quizSets.topicId, question.category))
       .get()!;
 
+    await store.startAttempt({
+      attemptId: topicAttemptId,
+      learnerId,
+      quizHash: topicSet.quizHash,
+      topicId: question.category,
+      questionIds: [question.id],
+    });
     const record = await store.saveAttempt({
       attemptId: topicAttemptId,
       learnerId,
@@ -414,5 +526,14 @@ sourcePath: "企划问答.xlsx",
         points: 1,
       })),
     );
+  }
+
+  async function startFormal(id: string, questionIds: string[]) {
+    return store.startAttempt({
+      attemptId: id,
+      learnerId,
+      quizHash,
+      questionIds,
+    });
   }
 });

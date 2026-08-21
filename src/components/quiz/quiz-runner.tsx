@@ -48,6 +48,7 @@ interface QuizRunnerProps {
     answers: Array<{ questionId: string; selected: string }>,
   ) => Promise<QuizCompletionProgress | void>;
   resultBackHref?: string;
+  restartHref?: string;
 }
 
 type AnswerRecord = {
@@ -65,6 +66,7 @@ export function QuizRunner({
   onAnswer,
   onComplete,
   resultBackHref = "/practice",
+  restartHref,
 }: QuizRunnerProps) {
   const [activeQuestions, setActiveQuestions] = useState(questions);
   const [activeAttemptId, setActiveAttemptId] = useState(attemptId);
@@ -152,19 +154,24 @@ export function QuizRunner({
           </div>
         ) : null}
         <div className="mt-7 grid gap-3">
-          <SoftButton
-            disabled={missed.length === 0}
-            onClick={() => restart(missed)}
-            variant="primary"
-          >
-            重练错题
-          </SoftButton>
-          <SoftButton
-            onClick={() => restart(questions)}
-            variant="secondary"
-          >
-            再来一组
-          </SoftButton>
+          {restartHref ? (
+            missed.length === 0 ? (
+              <SoftButton disabled variant="primary">重练错题</SoftButton>
+            ) : (
+              <Link className="inline-flex min-h-12 w-full items-center justify-center rounded-[var(--radius-control)] bg-ink px-5 font-bold text-white" href={withRetry(restartHref, missed.map((question) => question.id))}>
+                重练错题
+              </Link>
+            )
+          ) : (
+            <SoftButton disabled={missed.length === 0} onClick={() => restart(missed)} variant="primary">重练错题</SoftButton>
+          )}
+          {restartHref ? (
+            <Link className="inline-flex min-h-12 w-full items-center justify-center rounded-[var(--radius-control)] bg-surface-muted px-5 font-bold text-ink" href={restartHref}>
+              再来一组
+            </Link>
+          ) : (
+            <SoftButton onClick={() => restart(questions)} variant="secondary">再来一组</SoftButton>
+          )}
           <Link
             className="inline-flex min-h-12 w-full items-center justify-center rounded-[var(--radius-control)] border-2 border-surface-muted px-5 font-bold text-ink-soft transition-colors hover:border-brand hover:text-brand"
             href={resultBackHref}
@@ -357,4 +364,8 @@ export function QuizRunner({
       </div>
     </SoftCard>
   );
+}
+
+function withRetry(href: string, questionIds: string[]): string {
+  return `${href}${href.includes("?") ? "&" : "?"}retry=${encodeURIComponent(questionIds.join(","))}`;
 }

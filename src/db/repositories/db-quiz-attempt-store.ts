@@ -13,6 +13,7 @@ import {
   questions,
   questionCatalogPublications,
   quizAnswers,
+  quizAttemptQuestions,
   quizAttempts,
   quizSetQuestions,
   quizSets,
@@ -20,12 +21,17 @@ import {
   topicQuizAttempts,
 } from "../schema";
 import { evaluateAnswer, finishQuizAttempt } from "@/lib/quiz/attempt";
+import { normalizeSourceLocators } from "@/lib/knowledge/source-locator-compat";
 import {
+  quizAttemptSnapshotSchema,
   quizAttemptRecordSchema,
   saveQuizAttemptInputSchema,
+  startQuizAttemptInputSchema,
+  type QuizAttemptSnapshot,
   type QuizAttemptRecord,
   type QuizAttemptStore,
   type SaveQuizAttemptInput,
+  type StartQuizAttemptInput,
 } from "@/lib/quiz/attempt-store";
 
 type AttemptRow = {
@@ -57,49 +63,164 @@ const linkedQuestions = alias(questions, "linked_questions");
 export class DbQuizAttemptStore implements QuizAttemptStore {
   constructor(private readonly database: DatabaseClient) {}
 
+  async startAttempt(inputValue: StartQuizAttemptInput): Promise<QuizAttemptSnapshot> {
+    const input = startQuizAttemptInputSchema.parse(inputValue);
+    this.database.transaction((transaction) => {
+      const existing = transaction
+        .select({ learnerId: quizAttempts.learnerId })
+        .from(quizAttempts)
+        .where(eq(quizAttempts.id, input.attemptId))
+        .get();
+      if (existing) {
+        if (existing.learnerId !== input.learnerId) throw new Error("无权访问该小测记录。");
+        return;
+      }
+      const quizSet = transaction
+        .select({
+          id: quizSets.id,
+          knowledgeVersionId: quizSets.knowledgeVersionId,
+        })
+        .from(quizSets)
+        .where(and(
+          eq(quizSets.quizHash, input.quizHash),
+          eq(quizSets.status, "published"),
+          input.topicId
+            ? and(eq(quizSets.kind, "topic"), eq(quizSets.topicId, input.topicId))
+            : eq(quizSets.kind, "formal"),
+        ))
+        .get();
+      if (!quizSet) throw new Error("当前正式题组已更新，请重新开始练习。");
+
+      const currentQuestions = transaction
+        .select({ id: questions.id, questionKey: questions.questionKey })
+        .from(quizSetQuestions)
+        .innerJoin(linkedQuestions, eq(quizSetQuestions.questionId, linkedQuestions.id))
+        .innerJoin(questionCatalogPublications, eq(questionCatalogPublications.catalogId, linkedQuestions.questionCatalogId))
+        .innerJoin(questions, eq(questions.id, questionCatalogPublications.currentQuestionId))
+        .where(and(
+          eq(quizSetQuestions.quizSetId, quizSet.id),
+          inArray(questions.questionKey, input.questionIds),
+        ))
+        .all();
+      const byKey = new Map(currentQuestions.map((question) => [question.questionKey, question]));
+      if (byKey.size !== input.questionIds.length) throw new Error("题目不属于当前已发布题组。");
+      const startedAt = input.startedAt ? new Date(input.startedAt) : new Date();
+      transaction.insert(quizAttempts).values({
+        id: input.attemptId,
+        quizSetId: quizSet.id,
+        learnerId: input.learnerId,
+        knowledgeVersionId: quizSet.knowledgeVersionId,
+        status: "in_progress",
+        totalQuestions: input.questionIds.length,
+        startedAt,
+      }).run();
+      transaction.insert(quizAttemptQuestions).values(
+        input.questionIds.map((questionKey, position) => ({
+          quizAttemptId: input.attemptId,
+          questionId: byKey.get(questionKey)!.id,
+          position,
+        })),
+      ).run();
+    }, { behavior: "immediate" });
+
+    return this.loadSnapshot(input.learnerId, input.attemptId);
+  }
+
+  async loadSnapshot(learnerId: string, attemptId: string): Promise<QuizAttemptSnapshot> {
+    const attempt = this.database
+      .select({
+        attemptId: quizAttempts.id,
+        learnerId: quizAttempts.learnerId,
+        quizHash: quizSets.quizHash,
+        topicId: quizSets.topicId,
+        passingScore: quizSets.passingScore,
+        status: quizAttempts.status,
+      })
+      .from(quizAttempts)
+      .innerJoin(quizSets, eq(quizSets.id, quizAttempts.quizSetId))
+      .where(and(eq(quizAttempts.id, attemptId), eq(quizAttempts.learnerId, learnerId)))
+      .get();
+    if (!attempt) throw new Error("小测记录不存在或无权访问。");
+    const snapshotQuestions = this.database
+      .select({
+        revisionId: questions.id,
+        id: questions.questionKey,
+        knowledgeUnitId: questions.knowledgeUnitKey,
+        type: questions.type,
+        prompt: questions.prompt,
+        options: questions.options,
+        correctAnswers: questions.correctAnswers,
+        explanation: questions.explanation,
+        category: questions.category,
+        difficulty: questions.difficulty,
+        sources: questions.sources,
+      })
+      .from(quizAttemptQuestions)
+      .innerJoin(questions, eq(questions.id, quizAttemptQuestions.questionId))
+      .where(eq(quizAttemptQuestions.quizAttemptId, attemptId))
+      .orderBy(quizAttemptQuestions.position)
+      .all();
+    const { topicId, ...attemptWithoutNullableTopic } = attempt;
+    return quizAttemptSnapshotSchema.parse({
+      ...attemptWithoutNullableTopic,
+      ...(topicId ? { topicId } : {}),
+      questions: snapshotQuestions.map((question) => ({
+        ...question,
+        status: "published" as const,
+        sources: normalizeSourceLocators(question.sources),
+      })),
+    });
+  }
+
   async saveAttempt(
     inputValue: SaveQuizAttemptInput,
   ): Promise<QuizAttemptRecord> {
     const input = saveQuizAttemptInputSchema.parse(inputValue);
-    const [existing] = await this.database
+    const existing = this.database
       .select({
         id: quizAttempts.id,
         learnerId: quizAttempts.learnerId,
+        status: quizAttempts.status,
       })
       .from(quizAttempts)
       .where(eq(quizAttempts.id, input.attemptId))
-      .limit(1).all();
+      .get();
     if (existing && existing.learnerId !== input.learnerId) {
       throw new Error("无权访问该小测记录。");
     }
-    if (existing) {
+    if (!existing) throw new Error("小测尚未开始或已失效，请重新开始练习。");
+    if (existing.status !== "in_progress") {
       return this.loadAttempt(input.learnerId, input.attemptId);
     }
 
     this.database.transaction((transaction) => {
-      const [quizSet] = transaction
+      const quizSet = transaction
         .select({
           id: quizSets.id,
-          knowledgeVersionId: quizSets.knowledgeVersionId,
+          quizHash: quizSets.quizHash,
+          topicId: quizSets.topicId,
           passingScore: quizSets.passingScore,
         })
-        .from(quizSets)
+        .from(quizAttempts)
+        .innerJoin(quizSets, eq(quizSets.id, quizAttempts.quizSetId))
         .where(
           and(
-            eq(quizSets.quizHash, input.quizHash),
-            eq(quizSets.status, "published"),
-            input.topicId
-              ? and(
-                  eq(quizSets.kind, "topic"),
-                  eq(quizSets.topicId, input.topicId),
-                )
-              : eq(quizSets.kind, "formal"),
+            eq(quizAttempts.id, input.attemptId),
+            eq(quizAttempts.learnerId, input.learnerId),
+            eq(quizAttempts.status, "in_progress"),
           ),
         )
-        .limit(1)
-        .all();
+        .get();
       if (!quizSet) {
-        throw new Error("当前正式题组已更新，请重新开始练习。");
+        const completed = transaction.select({ status: quizAttempts.status }).from(quizAttempts).where(and(
+          eq(quizAttempts.id, input.attemptId),
+          eq(quizAttempts.learnerId, input.learnerId),
+        )).get();
+        if (completed?.status === "passed" || completed?.status === "needs_retry") return;
+        throw new Error("当前小测与开始时的题组不一致，请重新开始练习。");
+      }
+      if (quizSet.quizHash !== input.quizHash || (quizSet.topicId ?? undefined) !== input.topicId) {
+        throw new Error("当前小测与开始时的题组不一致，请重新开始练习。");
       }
 
       const officialQuestions = transaction
@@ -108,20 +229,9 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
           questionKey: questions.questionKey,
           correctAnswers: questions.correctAnswers,
         })
-        .from(quizSetQuestions)
-        .innerJoin(
-          linkedQuestions,
-          eq(quizSetQuestions.questionId, linkedQuestions.id),
-        )
-        .innerJoin(
-          questionCatalogPublications,
-          eq(questionCatalogPublications.catalogId, linkedQuestions.questionCatalogId),
-        )
-        .innerJoin(
-          questions,
-          eq(questions.id, questionCatalogPublications.currentQuestionId),
-        )
-        .where(eq(quizSetQuestions.quizSetId, quizSet.id))
+        .from(quizAttemptQuestions)
+        .innerJoin(questions, eq(questions.id, quizAttemptQuestions.questionId))
+        .where(eq(quizAttemptQuestions.quizAttemptId, input.attemptId))
         .all();
       const questionByKey = new Map(
         officialQuestions.map((question) => [
@@ -144,6 +254,9 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
           ),
         };
       });
+      if (checkedAnswers.length !== officialQuestions.length) {
+        throw new Error("提交答案数量与开始时的题目快照不一致。");
+      }
       const correctCount = checkedAnswers.filter(
         (answer) => answer.isCorrect,
       ).length;
@@ -156,38 +269,29 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
         ? new Date(input.completedAt)
         : new Date();
 
-      const [inserted] = transaction
-        .insert(quizAttempts)
-        .values({
-          id: input.attemptId,
-          quizSetId: quizSet.id,
-          learnerId: input.learnerId,
-          knowledgeVersionId: quizSet.knowledgeVersionId,
+      const updated = transaction
+        .update(quizAttempts)
+        .set({
           status: outcome.status,
           correctCount,
-          totalQuestions: checkedAnswers.length,
           score: outcome.score,
-          startedAt: completedAt,
           completedAt,
         })
-        .onConflictDoNothing({ target: quizAttempts.id })
-        .returning({ id: quizAttempts.id })
-        .all();
-      if (!inserted) {
-        return;
-      }
+        .where(and(eq(quizAttempts.id, input.attemptId), eq(quizAttempts.status, "in_progress")))
+        .run();
+      if (updated.changes !== 1) return;
 
       transaction.insert(quizAnswers).values(
         checkedAnswers.map((answer) => ({
           id: randomUUID(),
-          quizAttemptId: inserted.id,
+          quizAttemptId: input.attemptId,
           questionId: answer.questionId,
           selectedAnswers: answer.selectedAnswers,
           isCorrect: answer.isCorrect,
           answeredAt: completedAt,
         })),
       ).run();
-    });
+    }, { behavior: "immediate" });
 
     return this.loadAttempt(input.learnerId, input.attemptId);
   }

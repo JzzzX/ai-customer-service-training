@@ -98,6 +98,8 @@ describe("admin question repository", () => {
     expect(draft).toMatchObject({ revision: 2, status: "draft" });
     expect((await repository.list({}))[0]!.current.id).toBe(before.current.id);
     expect(await repository.list({ status: "draft" })).toHaveLength(1);
+    expect(await repository.list({ status: "draft", category: "产品属性及卖点", keyword: "修订后" })).toHaveLength(1);
+    expect(await repository.list({ status: "draft", category: "不存在", keyword: "修订后" })).toEqual([]);
 
     await repository.publishDraft({
       catalogId: before.catalogId,
@@ -114,11 +116,41 @@ describe("admin question repository", () => {
       status: "published",
     });
     expect(after.history.map((revision) => revision.revision)).toEqual([2, 1]);
+    expect(await repository.list({ status: "draft" })).toEqual([]);
     expect(
       fixture.client
         .prepare("SELECT question_id AS questionId FROM quiz_answers")
         .get(),
     ).toEqual({ questionId: before.current.id });
+  });
+
+  it.each([
+    ["prompt = '   '", "题干不能为空"],
+    ["options = '[\"A\",\"A\"]'", "选项不能重复"],
+    ["options = '[\"A\",\"B\"]', correct_answers = '[\"C\"]'", "正确答案必须属于选项"],
+    ["correct_answers = '[]'", "正确答案"],
+    ["explanation = '   '", "解析不能为空"],
+    ["category = '   '", "分类不能为空"],
+    ["sources = '[]'", "题目来源不可追溯"],
+  ])("revalidates a persisted draft before publishing: %s", async (mutation, message) => {
+    const repository = createAdminQuestionRepository(fixture.database);
+    const before = (await repository.list({}))[0]!;
+    const draft = await repository.createDraft({
+      catalogId: before.catalogId,
+      baseRevisionId: before.current.id,
+      actorId: "admin-1",
+      changes: editableChanges(),
+    });
+    fixture.client.exec(`UPDATE questions SET ${mutation} WHERE id = '${draft.id}'`);
+
+    await expect(repository.publishDraft({
+      catalogId: before.catalogId,
+      draftRevisionId: draft.id,
+      expectedCurrentRevisionId: before.current.id,
+      actorId: "admin-1",
+    })).rejects.toThrow(message);
+    expect((await repository.list({}))[0]!.current.id).toBe(before.current.id);
+    expect(fixture.client.prepare("SELECT status FROM questions WHERE id = ?").get(draft.id)).toEqual({ status: "draft" });
   });
 
   it("rejects concurrent publication when the current pointer has changed", async () => {

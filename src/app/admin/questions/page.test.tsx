@@ -46,9 +46,13 @@ describe("AdminQuestionsPage", () => {
     });
     expect(screen.getByRole("heading", { name: "题库修订" })).toBeInTheDocument();
     expect(screen.getByText("qq_admin_1")).toBeInTheDocument();
-    expect(screen.getByText("产品.md · 蛋白含量")).toBeInTheDocument();
+    expect(screen.getAllByText("产品.md · 蛋白含量").length).toBeGreaterThan(0);
     expect(screen.getByText("版本 2")).toBeInTheDocument();
     expect(screen.getByText("版本 1")).toBeInTheDocument();
+    expect(screen.getAllByText("原题干").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/32%/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("产品资料标注为 40%。").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/创建人/).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "保存为新草稿" })).toBeInTheDocument();
   });
 

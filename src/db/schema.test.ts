@@ -11,6 +11,7 @@ import {
   questionCatalogPublications,
   questions,
   quizAttempts,
+  quizAttemptQuestions,
   quizSets,
   scenarios,
   scenarioVersions,
@@ -41,6 +42,7 @@ describe("MVP database schema", () => {
         "question_catalog_publications",
         "questions",
         "quiz_answers",
+        "quiz_attempt_questions",
         "quiz_attempts",
         "quiz_set_questions",
         "quiz_sets",
@@ -123,6 +125,9 @@ describe("MVP database schema", () => {
 
   it("links attempts and mock sessions to durable workflow state", () => {
     expect(columnNames(quizAttempts)).not.toContain("assignment_id");
+    expect(columnNames(quizAttemptQuestions)).toEqual(
+      expect.arrayContaining(["quiz_attempt_id", "question_id", "position"]),
+    );
     expect(columnNames(trainingSessions)).toContain("mode");
     expect(columnNames(evaluationReports)).toContain("recommendations");
 

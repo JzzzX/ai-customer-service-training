@@ -7,13 +7,10 @@ import { requireUser } from "@/lib/auth/guards";
 import { evaluateAnswer } from "@/lib/quiz/attempt";
 import {
   getQuizProgressForLearner,
+  loadQuizAttemptSnapshotForLearner,
   saveQuizAttemptForLearner,
 } from "@/lib/quiz/attempt-service";
 import { demoQuizQuestions } from "@/lib/quiz/demo-questions";
-import {
-  loadPublishedQuiz,
-  loadPublishedTopicQuiz,
-} from "@/lib/quiz/published-service";
 import type { QuizAttemptRecord } from "@/lib/quiz/attempt-store";
 import type { QuizTopicProgress } from "@/lib/quiz/progress";
 import type { QuizQuestion } from "@/lib/quiz/schema";
@@ -57,30 +54,27 @@ export async function checkDemoQuizAnswerAction(
 }
 
 export async function checkPublishedQuizAnswerAction(
-  quizHash: string,
+  attemptIdInput: string,
   questionId: string,
   selected: string,
 ): Promise<QuizAnswerFeedback> {
-  await requireUser();
-  const publishedQuiz = await loadPublishedQuiz();
-  if (!publishedQuiz || publishedQuiz.quizHash !== quizHash) {
-    throw new Error("当前正式题组已更新，请重新开始练习。");
-  }
-  return checkAnswer(publishedQuiz.questions, questionId, selected);
+  const user = await requireUser();
+  const attemptId = z.string().uuid().parse(attemptIdInput);
+  const snapshot = await loadQuizAttemptSnapshotForLearner(user.id, attemptId);
+  if (snapshot.topicId) throw new Error("小测类型不匹配，请重新开始练习。");
+  return checkAnswer(snapshot.questions, questionId, selected);
 }
 
 export async function checkTopicQuizAnswerAction(
-  topicId: string,
+  attemptIdInput: string,
   questionId: string,
   selected: string,
 ): Promise<QuizAnswerFeedback> {
-  await requireUser();
-  const topic = z.string().trim().min(1).parse(topicId);
-  const publishedQuiz = await loadPublishedTopicQuiz(topic);
-  if (!publishedQuiz) {
-    throw new Error("专题不存在或尚未发布，请重新选择。");
-  }
-  return checkAnswer(publishedQuiz.questions, questionId, selected);
+  const user = await requireUser();
+  const attemptId = z.string().uuid().parse(attemptIdInput);
+  const snapshot = await loadQuizAttemptSnapshotForLearner(user.id, attemptId);
+  if (!snapshot.topicId) throw new Error("小测类型不匹配，请重新开始练习。");
+  return checkAnswer(snapshot.questions, questionId, selected);
 }
 
 export async function saveQuizAttemptAction(
@@ -91,35 +85,12 @@ export async function saveQuizAttemptAction(
   const user = await requireUser();
   const attemptId = z.string().uuid().parse(attemptIdInput);
   const answers = submittedAnswersSchema.parse(submittedAnswers);
-  const publishedQuiz = await loadPublishedQuiz();
-
-  if (!publishedQuiz || publishedQuiz.quizHash !== quizHash) {
-    throw new Error("当前正式题组已更新，请重新开始练习。");
-  }
-
-  const questionsById = new Map(
-    publishedQuiz.questions.map((question) => [question.id, question]),
-  );
-  const checkedAnswers = answers.map((answer) => {
-    const question = questionsById.get(answer.questionId);
-    if (!question) {
-      throw new Error("题目不属于当前已发布题组。");
-    }
-    return {
-      questionId: answer.questionId,
-      selectedAnswers: [answer.selected],
-      isCorrect: evaluateAnswer(
-        [answer.selected],
-        question.correctAnswers,
-      ),
-    };
-  });
   const savedAttempt = await saveQuizAttemptForLearner({
     attemptId,
     learnerId: user.id,
     quizHash,
-    passingScore: publishedQuiz.passingScore,
-    answers: checkedAnswers,
+    passingScore: 80,
+    answers: toStoreSubmissions(answers),
   });
   revalidatePracticePaths();
   return { savedAttempt, newCoverageCount: 0 };
@@ -127,6 +98,7 @@ export async function saveQuizAttemptAction(
 
 export async function saveTopicQuizAttemptAction(
   topicId: string,
+  quizHash: string,
   attemptIdInput: string,
   submittedAnswers: QuizAnswerSubmission[],
 ): Promise<QuizCompletionProgress> {
@@ -134,33 +106,13 @@ export async function saveTopicQuizAttemptAction(
   const topic = z.string().trim().min(1).parse(topicId);
   const attemptId = z.string().uuid().parse(attemptIdInput);
   const answers = submittedAnswersSchema.parse(submittedAnswers);
-  const publishedQuiz = await loadPublishedTopicQuiz(topic);
-  if (!publishedQuiz || publishedQuiz.topicId !== topic) {
-    throw new Error("专题不存在或尚未发布，请重新选择。");
-  }
-
-  const questionsById = new Map(
-    publishedQuiz.questions.map((question) => [question.id, question]),
-  );
-  const checkedAnswers = answers.map((answer) => {
-    const question = questionsById.get(answer.questionId);
-    if (!question) {
-      throw new Error("题目不属于当前专题题库。");
-    }
-    return {
-      questionId: answer.questionId,
-      selectedAnswers: [answer.selected],
-      isCorrect: evaluateAnswer([answer.selected], question.correctAnswers),
-    };
-  });
-
   const savedAttempt = await saveQuizAttemptForLearner({
     attemptId,
     learnerId: user.id,
-    quizHash: publishedQuiz.quizHash,
+    quizHash,
     topicId: topic,
-    passingScore: publishedQuiz.passingScore,
-    answers: checkedAnswers,
+    passingScore: 80,
+    answers: toStoreSubmissions(answers),
   });
   const progress = await getQuizProgressForLearner(user.id);
   const recentAttempt = progress.recentAttempts.find(
@@ -182,6 +134,17 @@ function revalidatePracticePaths(): void {
   revalidatePath("/practice/quiz/topics");
   revalidatePath("/practice/profile");
   revalidatePath("/practice/history");
+}
+
+function toStoreSubmissions(answers: QuizAnswerSubmission[]) {
+  return answers.map((answer) => {
+    return {
+      questionId: answer.questionId,
+      selectedAnswers: [answer.selected],
+      // The database store intentionally ignores this hint and grades its immutable snapshot.
+      isCorrect: false,
+    };
+  });
 }
 
 function checkAnswer(

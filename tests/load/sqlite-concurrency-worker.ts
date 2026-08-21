@@ -4,11 +4,11 @@ import { randomUUID } from "node:crypto";
 import { createDatabaseClient } from "../../src/db/client";
 import { DbQuizAttemptStore } from "../../src/db/repositories/db-quiz-attempt-store";
 import { topicQuizQuestions } from "../../src/lib/quiz/question-bank";
-import { createTopicQuizHash } from "../../src/lib/quiz/topic-hash";
 
 type WorkerInput = {
   sqlitePath: string;
   learnerId: string;
+  quizHash: string;
   startGate: SharedArrayBuffer;
   durationMs: number;
   maxWrites: number;
@@ -37,10 +37,17 @@ async function run(): Promise<void> {
     let writes = 0;
     while (Date.now() < deadline && writes < input.maxWrites) {
       const attemptId = randomUUID();
+      await store.startAttempt({
+        attemptId,
+        learnerId: input.learnerId,
+        quizHash: input.quizHash,
+        topicId,
+        questionIds: answers.map((answer) => answer.questionId),
+      });
       await store.saveAttempt({
         attemptId,
         learnerId: input.learnerId,
-        quizHash: createTopicQuizHash(topicId),
+        quizHash: input.quizHash,
         topicId,
         passingScore: 80,
         answers,
@@ -49,7 +56,7 @@ async function run(): Promise<void> {
       await store.saveAttempt({
         attemptId,
         learnerId: input.learnerId,
-        quizHash: createTopicQuizHash(topicId),
+        quizHash: input.quizHash,
         topicId,
         passingScore: 80,
         answers,

@@ -4,7 +4,7 @@ import { Worker } from "node:worker_threads";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { createDatabaseClient } from "../../src/db/client";
-import { topicQuizAttempts, users } from "../../src/db/schema";
+import { quizAttempts, quizSets, users } from "../../src/db/schema";
 
 const sqlitePath = process.env.SQLITE_PATH ?? ".tmp/learner-lite-e2e.sqlite";
 const clientCount = Number(process.env.SQLITE_LOAD_CLIENTS ?? "30");
@@ -16,6 +16,11 @@ async function main(): Promise<void> {
   const admin = createDatabaseClient(sqlitePath);
   const learnerIds = Array.from({ length: clientCount }, () => randomUUID());
   try {
+    const publishedTopic = admin.select({ quizHash: quizSets.quizHash })
+      .from(quizSets)
+      .where(and(eq(quizSets.topicId, topicId), eq(quizSets.status, "published")))
+      .get();
+    if (!publishedTopic) throw new Error(`并发烟测专题未发布：${topicId}`);
     admin.transaction((transaction) => {
       for (const learnerId of learnerIds) {
         transaction.insert(users).values({
@@ -33,7 +38,7 @@ async function main(): Promise<void> {
       new URL("./sqlite-concurrency-worker.ts", import.meta.url),
       {
         execArgv: ["--import", "tsx"],
-        workerData: { sqlitePath, learnerId, startGate: gate, durationMs, maxWrites },
+        workerData: { sqlitePath, learnerId, quizHash: publishedTopic.quizHash, startGate: gate, durationMs, maxWrites },
       },
     ));
     const results = workers.map((worker) => waitForWorker(worker));
@@ -52,10 +57,11 @@ async function main(): Promise<void> {
     const expected = writes.reduce((total, result) => total + result.writes, 0);
     const failed = writes.filter((result) => result.error).length;
     const [attemptCount] = admin.select({ count: sql<number>`count(*)` })
-      .from(topicQuizAttempts)
-      .where(and(eq(topicQuizAttempts.topicId, topicId), inArray(topicQuizAttempts.learnerId, learnerIds)))
+      .from(quizAttempts)
+      .innerJoin(quizSets, eq(quizSets.id, quizAttempts.quizSetId))
+      .where(and(eq(quizSets.topicId, topicId), inArray(quizAttempts.learnerId, learnerIds)))
       .all();
-    const duplicateScores = admin.$client.prepare("SELECT count(*) AS count FROM (SELECT learner_id, id, count(*) AS duplicates FROM topic_quiz_attempts GROUP BY learner_id, id HAVING duplicates > 1)").get() as { count: number };
+    const duplicateScores = admin.$client.prepare("SELECT count(*) AS count FROM (SELECT learner_id, id, count(*) AS duplicates FROM quiz_attempts GROUP BY learner_id, id HAVING duplicates > 1)").get() as { count: number };
     const duplicateMessages = admin.$client.prepare("SELECT count(*) AS count FROM (SELECT training_session_id, position, count(*) AS duplicates FROM training_messages GROUP BY training_session_id, position HAVING duplicates > 1)").get() as { count: number };
     const foreignKeyViolations = admin.$client.pragma("foreign_key_check") as unknown[];
     if (failed || attemptCount?.count !== expected || duplicateScores.count || duplicateMessages.count || foreignKeyViolations.length) {
