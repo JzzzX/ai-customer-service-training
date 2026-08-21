@@ -3,8 +3,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { DbPublishedQuizStore } from "./db-published-quiz-store";
+import { createAdminQuestionRepository } from "../admin-question-repository";
 import type { DatabaseClient } from "../client";
-import { knowledgeVersions } from "../schema";
+import { knowledgeVersions, users } from "../schema";
 import { createTestDatabase } from "../test-support/create-test-database";
 import { publishTopicQuizCatalog } from "../topic-quiz-publication";
 import { topicQuizQuestions } from "@/lib/quiz/question-bank";
@@ -86,12 +87,48 @@ describe("DbPublishedQuizStore", () => {
          '${"e".repeat(64)}', '正式题组', 'formal', 'published', 80, 2000);
       INSERT INTO quiz_set_questions (quiz_set_id, question_id, position, points)
       VALUES ('formal-set', 'formal-question', 0, 1);
+      INSERT INTO question_catalog_publications
+        (catalog_id, current_question_id, published_at, updated_at)
+      VALUES ('formal-catalog', 'formal-question', 2000, 2000);
     `);
 
     await expect(store.loadPublished()).resolves.toMatchObject({
       kind: "formal",
       title: "正式题组",
       questions: [expect.objectContaining({ id: "qq_ffffffffffffffffffffffff" })],
+    });
+  });
+
+  it("serves the current published revision while preserving the quiz set's stable position", async () => {
+    await fixture.database.insert(users).values({
+      id: "admin-1", email: "admin@example.test", name: "管理员", passwordHash: "disabled", role: "admin",
+    });
+    const repository = createAdminQuestionRepository(fixture.database);
+    const original = (await repository.list({ stableKey: topicQuizQuestions[0]!.id }))[0]!;
+    const draft = await repository.createDraft({
+      catalogId: original.catalogId,
+      baseRevisionId: original.current.id,
+      actorId: "admin-1",
+      changes: {
+        prompt: "管理员修订后的题干",
+        options: original.current.options,
+        correctAnswers: original.current.correctAnswers,
+        explanation: "管理员修订后的解析。",
+        category: original.current.category,
+        difficulty: original.current.difficulty,
+      },
+    });
+    await repository.publishDraft({
+      catalogId: original.catalogId,
+      draftRevisionId: draft.id,
+      expectedCurrentRevisionId: original.current.id,
+      actorId: "admin-1",
+    });
+
+    const pack = await store.loadPublishedTopic(topicQuizQuestions[0]!.category);
+    expect(pack?.questions.find((question) => question.id === topicQuizQuestions[0]!.id)).toMatchObject({
+      prompt: "管理员修订后的题干",
+      explanation: "管理员修订后的解析。",
     });
   });
 });

@@ -5,11 +5,13 @@ import {
   inArray,
   isNotNull,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 import { randomUUID } from "node:crypto";
 
 import type { DatabaseClient } from "../client";
 import {
   questions,
+  questionCatalogPublications,
   quizAnswers,
   quizAttempts,
   quizSetQuestions,
@@ -49,6 +51,8 @@ type TopicAttemptRow = {
   score: number;
   completedAt: Date;
 };
+
+const linkedQuestions = alias(questions, "linked_questions");
 
 export class DbQuizAttemptStore implements QuizAttemptStore {
   constructor(private readonly database: DatabaseClient) {}
@@ -106,8 +110,16 @@ export class DbQuizAttemptStore implements QuizAttemptStore {
         })
         .from(quizSetQuestions)
         .innerJoin(
+          linkedQuestions,
+          eq(quizSetQuestions.questionId, linkedQuestions.id),
+        )
+        .innerJoin(
+          questionCatalogPublications,
+          eq(questionCatalogPublications.catalogId, linkedQuestions.questionCatalogId),
+        )
+        .innerJoin(
           questions,
-          eq(quizSetQuestions.questionId, questions.id),
+          eq(questions.id, questionCatalogPublications.currentQuestionId),
         )
         .where(eq(quizSetQuestions.quizSetId, quizSet.id))
         .all();

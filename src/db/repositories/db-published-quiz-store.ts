@@ -1,8 +1,10 @@
 import { and, count, desc, eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 
 import type { DatabaseClient } from "../client";
 import {
   knowledgeVersions,
+  questionCatalogPublications,
   questions,
   quizSetQuestions,
   quizSets,
@@ -28,6 +30,8 @@ type PublishedQuestionRow = {
   sources: QuizQuestionDraft["sources"];
   position: number;
 };
+
+const linkedQuestions = alias(questions, "linked_questions");
 
 export class DbPublishedQuizStore implements PublishedQuizStore {
   constructor(private readonly database: DatabaseClient) {}
@@ -119,7 +123,12 @@ export class DbPublishedQuizStore implements PublishedQuizStore {
         position: quizSetQuestions.position,
       })
       .from(quizSetQuestions)
-      .innerJoin(questions, eq(quizSetQuestions.questionId, questions.id))
+      .innerJoin(linkedQuestions, eq(quizSetQuestions.questionId, linkedQuestions.id))
+      .innerJoin(
+        questionCatalogPublications,
+        eq(questionCatalogPublications.catalogId, linkedQuestions.questionCatalogId),
+      )
+      .innerJoin(questions, eq(questions.id, questionCatalogPublications.currentQuestionId))
       .where(eq(quizSetQuestions.quizSetId, set.id))
       .orderBy(quizSetQuestions.position).all();
 

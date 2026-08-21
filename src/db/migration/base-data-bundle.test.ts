@@ -60,6 +60,7 @@ describe("BaseDataBundleV2", () => {
     expect(compareSync("original-password", row.passwordHash)).toBe(true);
     expect(client.prepare("select role from users").get()).toEqual({ role: "admin" });
     expect(client.prepare("select count(*) as count from question_catalogs").get()).toEqual({ count: 1 });
+    expect(client.prepare("select catalog_id as catalogId, current_question_id as questionId from question_catalog_publications").get()).toEqual({ catalogId: "catalog-1", questionId: "question-1" });
     expect(client.prepare("select count(*) as count from quiz_attempts").get()).toEqual({ count: 0 });
     expect(client.prepare("select count(*) as count from training_messages").get()).toEqual({ count: 0 });
     expect(client.prepare("select count(*) as count from evaluation_reports").get()).toEqual({ count: 0 });

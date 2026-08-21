@@ -2,11 +2,13 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { DbQuizAttemptStore } from "./db-quiz-attempt-store";
+import { createAdminQuestionRepository } from "../admin-question-repository";
 import type { DatabaseClient } from "../client";
 import {
   knowledgeUnits,
   knowledgeVersions,
   questionCatalogs,
+  questionCatalogPublications,
   questions,
   quizAnswers,
   quizAttempts,
@@ -130,6 +132,41 @@ describe("DbQuizAttemptStore", () => {
     );
   });
 
+  it("binds a new answer to the current revision without rewriting the previous version", async () => {
+    const repository = createAdminQuestionRepository(database);
+    const original = (await repository.list({ stableKey: firstQuestionKey }))[0]!;
+    const draft = await repository.createDraft({
+      catalogId: original.catalogId,
+      baseRevisionId: original.current.id,
+      actorId: adminId,
+      changes: {
+        prompt: "第一题修订版",
+        options: ["答案一", "答案二"],
+        correctAnswers: ["答案二"],
+        explanation: "修订解释",
+        category: original.current.category,
+        difficulty: original.current.difficulty,
+      },
+    });
+    await repository.publishDraft({
+      catalogId: original.catalogId,
+      draftRevisionId: draft.id,
+      expectedCurrentRevisionId: original.current.id,
+      actorId: adminId,
+    });
+
+    await store.saveAttempt({
+      attemptId,
+      learnerId,
+      quizHash,
+      passingScore: 80,
+      answers: [{ questionId: firstQuestionKey, selectedAnswers: ["答案二"], isCorrect: false }],
+    });
+
+    expect(client.prepare("SELECT question_id AS questionId FROM quiz_answers").get()).toEqual({ questionId: draft.id });
+    expect(client.prepare("SELECT prompt, status FROM questions WHERE id = ?").get(original.current.id)).toEqual({ prompt: "第一题", status: "published" });
+  });
+
   it("isolates history by learner ownership", async () => {
     await store.saveAttempt({
       attemptId,
@@ -247,6 +284,7 @@ describe("DbQuizAttemptStore", () => {
         email: "admin@example.com",
         name: "管理员",
         passwordHash: "not-used",
+        role: "admin" as const,
       },
       {
         id: learnerId,
@@ -360,6 +398,14 @@ sourcePath: "企划问答.xlsx",
       questionCatalogId: `catalog-${question.id}`,
     }));
     await database.insert(questions).values(revisionRows);
+    await database.insert(questionCatalogPublications).values(
+      revisionRows.map((question) => ({
+        catalogId: question.questionCatalogId,
+        currentQuestionId: question.id,
+        publishedAt: new Date(),
+        updatedAt: new Date(),
+      })),
+    );
     await database.insert(quizSetQuestions).values(
       revisionRows.map((question, position) => ({
         quizSetId,

@@ -8,6 +8,7 @@ import {
   knowledgeVersions,
   mvpTables,
   questionCatalogs,
+  questionCatalogPublications,
   questions,
   quizAttempts,
   quizSets,
@@ -37,6 +38,7 @@ describe("MVP database schema", () => {
         "knowledge_units",
         "knowledge_versions",
         "question_catalogs",
+        "question_catalog_publications",
         "questions",
         "quiz_answers",
         "quiz_attempts",
@@ -85,6 +87,9 @@ describe("MVP database schema", () => {
     expect(columnNames(questionCatalogs)).toEqual(
       expect.arrayContaining(["stable_key", "created_at"]),
     );
+    expect(columnNames(questionCatalogPublications)).toEqual(
+      expect.arrayContaining(["catalog_id", "current_question_id", "published_by_id"]),
+    );
     expect(columnNames(questions)).toEqual(
       expect.arrayContaining([
         "question_catalog_id",
@@ -92,6 +97,7 @@ describe("MVP database schema", () => {
         "content_hash",
         "knowledge_unit_key",
         "sources",
+        "created_by_id",
       ]),
     );
     expect(columnNames(quizSets)).toEqual(

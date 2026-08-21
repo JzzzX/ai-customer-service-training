@@ -54,7 +54,7 @@ export type BaseDataBundleInput = z.infer<typeof bundleShape>;
 
 const importedTables = [
   "users", "knowledge_versions", "knowledge_sources", "knowledge_units", "quiz_sets",
-  "question_catalogs", "questions", "quiz_set_questions", "scenarios", "scenario_versions",
+  "question_catalogs", "question_catalog_publications", "questions", "quiz_set_questions", "scenarios", "scenario_versions",
 ] as const;
 const historyTables = [
   "quiz_attempts", "quiz_answers", "topic_quiz_attempts", "topic_quiz_answers",
@@ -106,6 +106,7 @@ export function importBaseDataBundle(value: unknown, database: DatabaseClient): 
     insertRows(database, "quiz_sets", bundle.publishedQuiz.sets);
     insertRows(database, "question_catalogs", bundle.publishedQuiz.catalogs);
     insertRows(database, "questions", bundle.publishedQuiz.questions);
+    createCurrentQuestionPointers(database);
     insertRows(database, "quiz_set_questions", bundle.publishedQuiz.links);
     insertRows(database, "scenarios", bundle.publishedScenarios.scenarios);
     insertRows(database, "scenario_versions", bundle.publishedScenarios.versions);
@@ -201,12 +202,30 @@ function verifyImportedDatabase(database: DatabaseClient, bundle: BaseDataBundle
   }
   const active = database.$client.prepare("SELECT COUNT(*) AS count FROM knowledge_versions WHERE is_active = 1 AND status = 'published'").get() as { count: number };
   if (active.count !== 1) throw new Error("SQLite import did not preserve the active knowledge pointer.");
+  const pointers = database.$client.prepare("SELECT COUNT(*) AS count FROM question_catalog_publications").get() as { count: number };
+  if (pointers.count !== bundle.counts.questionCatalogs) throw new Error("SQLite import did not create every current question pointer.");
   for (const table of historyTables) {
     const row = database.$client.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get() as { count: number };
     if (row.count !== 0) throw new Error("SQLite import must exclude historical training data.");
   }
   const foreignKeys = database.$client.pragma("foreign_key_check") as unknown[];
   if (foreignKeys.length) throw new Error("SQLite import produced foreign-key violations.");
+}
+
+function createCurrentQuestionPointers(database: DatabaseClient): void {
+  database.$client.exec(`
+    INSERT INTO question_catalog_publications
+      (catalog_id, current_question_id, published_by_id, published_at, updated_at)
+    SELECT q.question_catalog_id, q.id, NULL, q.updated_at, q.updated_at
+      FROM questions q
+     WHERE q.status = 'published'
+       AND q.revision = (
+         SELECT MAX(latest.revision)
+           FROM questions latest
+          WHERE latest.question_catalog_id = q.question_catalog_id
+            AND latest.status = 'published'
+       );
+  `);
 }
 
 function insertRows(database: DatabaseClient, table: string, rows: BaseRecord[]): void {

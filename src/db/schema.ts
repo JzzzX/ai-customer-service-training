@@ -251,6 +251,9 @@ export const questions = sqliteTable(
     difficulty: text("difficulty", { enum: difficulties }).default("easy").notNull(),
     sources: json<SourceLocator[]>("sources").notNull(),
     status: text("status", { enum: lifecycleStatus }).default("draft").notNull(),
+    createdById: text("created_by_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     ...auditTimestamps(),
   },
   (table) => [
@@ -279,6 +282,28 @@ export const questions = sqliteTable(
       sql`${table.status} in ('draft', 'published', 'disabled', 'archived')`,
     ),
     check("questions_revision_check", sql`${table.revision} >= 1`),
+  ],
+);
+
+export const questionCatalogPublications = sqliteTable(
+  "question_catalog_publications",
+  {
+    catalogId: text("catalog_id")
+      .primaryKey()
+      .references(() => questionCatalogs.id, { onDelete: "cascade" }),
+    currentQuestionId: text("current_question_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "restrict" }),
+    publishedById: text("published_by_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    publishedAt: timestamp("published_at").notNull(),
+    updatedAt: timestamp("updated_at").notNull(),
+  },
+  (table) => [
+    unique("question_catalog_publications_current_unique").on(
+      table.currentQuestionId,
+    ),
   ],
 );
 
@@ -606,6 +631,7 @@ export const mvpTables = {
   knowledgeUnits,
   quizSets,
   questionCatalogs,
+  questionCatalogPublications,
   questions,
   quizSetQuestions,
   quizAttempts,

@@ -3,7 +3,11 @@ import { createHash, randomUUID } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 
 import { getDatabase } from "./client";
-import { questionCatalogs, questions } from "./schema";
+import {
+  questionCatalogPublications,
+  questionCatalogs,
+  questions,
+} from "./schema";
 import type { SourceLocator } from "@/lib/knowledge/schema";
 import type { QuizQuestionDraft } from "@/lib/quiz/schema";
 
@@ -55,6 +59,7 @@ export function ensureQuestionRevision(
     )
     .get();
   if (existing) {
+    pointCatalogAtRevision(transaction, catalog.id, existing.id, false);
     return { ...existing, created: false };
   }
 
@@ -89,7 +94,39 @@ export function ensureQuestionRevision(
       status: "published",
     })
     .run();
+  pointCatalogAtRevision(transaction, catalog.id, id, true);
   return { id, revision, created: true };
+}
+
+function pointCatalogAtRevision(
+  transaction: DatabaseTransaction,
+  catalogId: string,
+  questionId: string,
+  replaceCurrent: boolean,
+): void {
+  const now = new Date();
+  const insert = transaction
+    .insert(questionCatalogPublications)
+    .values({
+      catalogId,
+      currentQuestionId: questionId,
+      publishedById: null,
+      publishedAt: now,
+      updatedAt: now,
+    });
+  if (!replaceCurrent) {
+    insert.onConflictDoNothing({ target: questionCatalogPublications.catalogId }).run();
+    return;
+  }
+  insert.onConflictDoUpdate({
+    target: questionCatalogPublications.catalogId,
+    set: {
+      currentQuestionId: questionId,
+      publishedById: null,
+      publishedAt: now,
+      updatedAt: now,
+    },
+  }).run();
 }
 
 export function hashQuestionRevision(input: QuestionRevisionInput): string {

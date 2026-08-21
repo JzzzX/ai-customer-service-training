@@ -36,10 +36,13 @@ describe("RBAC and unified quiz catalog migration", () => {
       database.$client.exec(await readFile(migration, "utf8"));
     }
 
-    expect(DATABASE_SCHEMA_VERSION).toBe(2);
+    expect(DATABASE_SCHEMA_VERSION).toBe(3);
     expect(
       database.$client.prepare("SELECT version FROM app_schema_marker").get(),
-    ).toEqual({ version: 2 });
+    ).toEqual({ version: 3 });
+    expect(
+      database.$client.prepare("SELECT catalog_id AS catalogId, current_question_id AS questionId FROM question_catalog_publications").get(),
+    ).toEqual({ catalogId: expect.any(String), questionId: "question-physical-1" });
     expect(
       database.$client
         .prepare("SELECT role FROM users WHERE id = 'learner-1'")
@@ -117,7 +120,7 @@ describe("RBAC and unified quiz catalog migration", () => {
 
     expect(
       database.$client.prepare("SELECT version FROM app_schema_marker").get(),
-    ).toEqual({ version: 2 });
+    ).toEqual({ version: 3 });
     expect(
       database.$client
         .prepare("SELECT created_at AS createdAt FROM __drizzle_migrations ORDER BY created_at")
@@ -125,6 +128,7 @@ describe("RBAC and unified quiz catalog migration", () => {
     ).toEqual([
       { createdAt: 1786521668604 },
       { createdAt: 1787215765257 },
+      { createdAt: 1787275299372 },
     ]);
     expect(database.$client.pragma("foreign_key_check")).toEqual([]);
     expect(
